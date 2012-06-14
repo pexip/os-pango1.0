@@ -1,0 +1,37 @@
+From dc54dda64344fe8f7c18ce1223351fa2d8740832 Mon Sep 17 00:00:00 2001
+From: Robert Ancell <robert.ancell@canonical.com>
+Date: Thu, 14 Jun 2012 12:24:04 +1200
+Subject: [PATCH] [opentype] Free mutex on hb_blob destruction
+
+---
+ pango/opentype/hb-blob.c    |    1 +
+ pango/opentype/hb-private.h |    1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/pango/opentype/hb-blob.c b/pango/opentype/hb-blob.c
+index 3e787fc..3e2f16c 100644
+--- a/pango/opentype/hb-blob.c
++++ b/pango/opentype/hb-blob.c
+@@ -174,6 +174,7 @@ hb_blob_destroy (hb_blob_t *blob)
+   HB_OBJECT_DO_DESTROY (blob);
+ 
+   _hb_blob_destroy_user_data (blob);
++  hb_mutex_free (blob->lock);
+ 
+   free (blob);
+ }
+diff --git a/pango/opentype/hb-private.h b/pango/opentype/hb-private.h
+index 2791b05..4523a1d 100644
+--- a/pango/opentype/hb-private.h
++++ b/pango/opentype/hb-private.h
+@@ -76,6 +76,7 @@ typedef GStaticMutex hb_mutex_t;
+ #define hb_mutex_lock(M)		g_static_mutex_lock (&M)
+ #define hb_mutex_trylock(M)		g_static_mutex_trylock (&M)
+ #define hb_mutex_unlock(M)		g_static_mutex_unlock (&M)
++#define hb_mutex_free(M)		g_static_mutex_free (&M)
+ 
+ #else
+ #error "Could not find any system to define platform macros, see hb-private.h"
+-- 
+1.7.10.4
+

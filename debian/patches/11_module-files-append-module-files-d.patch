@@ -1,0 +1,39 @@
+Index: pango1.0-1.30.0/pango/modules.c
+===================================================================
+--- pango1.0-1.30.0.orig/pango/modules.c	2012-03-29 11:25:20.402429369 +1100
++++ pango1.0-1.30.0/pango/modules.c	2012-03-29 11:25:24.030429242 +1100
+@@ -530,6 +530,11 @@
+   FILE *module_file;
+ 
+   char *file_str =  pango_config_key_get ("Pango/ModuleFiles");
++  char *module_files_d_str = g_build_filename (pango_get_lib_subdirectory (),
++					       MODULE_VERSION,
++					       "module-files.d",
++					       NULL);
++  char *list_str;
+   char **files;
+   int n;
+ 
+@@ -540,7 +545,12 @@
+ 				 "pango.modules",
+ 				 NULL);
+ 
+-  files = pango_split_file_list (file_str);
++  list_str = g_strjoin (G_SEARCHPATH_SEPARATOR_S,
++			file_str,
++			module_files_d_str,
++			NULL);
++
++  files = pango_split_file_list (list_str);
+ 
+   n = 0;
+   while (files[n])
+@@ -586,6 +596,8 @@
+     }
+ 
+   g_strfreev (files);
++  g_free (list_str);
++  g_free (module_files_d_str);
+   g_free (file_str);
+ 
+   dlloaded_engines = g_slist_reverse (dlloaded_engines);

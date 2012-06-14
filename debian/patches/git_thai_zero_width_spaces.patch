@@ -1,0 +1,13 @@
+diff --git a/modules/thai/thai-fc.c b/modules/thai/thai-fc.c
+--- a/modules/thai/thai-fc.c
++++ b/modules/thai/thai-fc.c
+@@ -233,6 +233,9 @@ thai_make_glyph_uni (ThaiFontInfo *font_info, gunichar uc)
+   PangoGlyph result;
+   PangoFcFont *fc_font = (PangoFcFont *)font_info->font;
+
++  if (pango_is_zero_width (uc))
++    return PANGO_GLYPH_EMPTY;
++
+   result = pango_fc_font_get_glyph (fc_font, uc);
+   if (result)
+     return result;
