@@ -1,3 +1,9 @@
+pango1.0 (1.30.0-0ubuntu3.1pexip1) pexip; urgency=low
+
+  * Prepare Pexip packaging
+
+ -- John-Mark Bell <jmb@pexip.com>  Tue, 07 Jan 2014 11:23:44 +0000
+
 pango1.0 (1.30.0-0ubuntu3.1) precise-proposed; urgency=low
 
   * debian/patches/git_memory_leak.patch:
