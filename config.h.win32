@@ -5,9 +5,6 @@
 /* Have usable Cairo library and font backend */
 #define HAVE_CAIRO 1
 
-/* Whether Cairo can use ATSUI for fonts */
-/* #undef HAVE_CAIRO_ATSUI */
-
 /* Whether Cairo can use FreeType for fonts */
 #ifndef PANGO_VISUALC_NO_FC
 #define HAVE_CAIRO_FREETYPE 1
@@ -21,6 +18,9 @@
 
 /* Whether Cairo has PS support */
 #define HAVE_CAIRO_PS 1
+
+/* Whether Cairo can use Quartz for fonts */
+/* #undef HAVE_CAIRO_QUARTZ */
 
 /* Whether Cairo can use the Win32 GDI for fonts */
 #define HAVE_CAIRO_WIN32 1
@@ -55,14 +55,11 @@
 /* Define to 1 if you have the <memory.h> header file. */
 /* #undef HAVE_MEMORY_H */
 
-/* Define to 1 if you have the `mprotect' function. */
-/* #undef HAVE_MPROTECT */
-
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 /* #undef HAVE_NDIR_H */
 
 /* Define to 1 if you have the <stdint.h> header file. */
-#if (_MSC_VER >= 1600)
+#if (!defined (_MSC_VER) || (_MSC_VER >= 1600))
 #define HAVE_STDINT_H 1
 #endif
 
@@ -101,9 +98,6 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 /* #undef HAVE_UNISTD_H */
 
-/* Have X libraries */
-/* #undef HAVE_X */
-
 /* Have Xft library */
 /* #undef HAVE_XFT */
 
@@ -112,7 +106,7 @@
 #define LT_OBJDIR ".libs/"
 
 /* Module interface version */
-#define MODULE_VERSION "1.6.0"
+#define MODULE_VERSION "1.8.0"
 
 /* Name of package */
 #define PACKAGE "pango"
@@ -124,28 +118,31 @@
 #define PACKAGE_NAME "pango"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "pango 1.30.0"
+#define PACKAGE_STRING "pango 1.36.8"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "pango"
 
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.30.0"
+#define PACKAGE_VERSION "1.36.8"
 
 /* PANGO binary age */
-#define PANGO_BINARY_AGE 3000
+#define PANGO_BINARY_AGE 3608
 
 /* PANGO interface age */
-#define PANGO_INTERFACE_AGE 0
+#define PANGO_INTERFACE_AGE 8
 
 /* PANGO major version */
 #define PANGO_VERSION_MAJOR 1
 
 /* PANGO micro version */
-#define PANGO_VERSION_MICRO 0
+#define PANGO_VERSION_MICRO 8
 
 /* PANGO minor version */
-#define PANGO_VERSION_MINOR 30
+#define PANGO_VERSION_MINOR 36
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -154,7 +151,4 @@
 /* #undef USE_LA_MODULES */
 
 /* Version number of package */
-#define VERSION "1.30.0"
-
-/* Define to 1 if the X Window System is missing or not being used. */
-#define X_DISPLAY_MISSING 1
+#define VERSION "1.36.8"

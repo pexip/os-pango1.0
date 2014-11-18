@@ -133,6 +133,15 @@ pango_language_free (PangoLanguage *language G_GNUC_UNUSED)
   return; /* nothing */
 }
 
+/**
+ * PangoLanguage:
+ *
+ * The #PangoLanguage structure is used to
+ * represent a language.
+ *
+ * #PangoLanguage pointers can be efficiently
+ * copied and compared with each other.
+ */
 G_DEFINE_BOXED_TYPE (PangoLanguage, pango_language,
                      pango_language_copy,
                      pango_language_free);
@@ -192,7 +201,7 @@ _pango_get_lc_ctype (void)
     return g_strdup (p);
 
   return g_win32_getlocale ();
-#elif HAVE_CORE_TEXT
+#elif defined(HAVE_CORE_TEXT)
   CFArrayRef languages;
   CFStringRef language;
   gchar ret[16];
@@ -210,7 +219,14 @@ _pango_get_lc_ctype (void)
 
   return g_strdup (ret);
 #else
-  return g_strdup (setlocale (LC_CTYPE, NULL));
+  {
+    gchar *lc_ctype = setlocale (LC_CTYPE, NULL);
+
+    if (lc_ctype)
+      return g_strdup (lc_ctype);
+    else
+      return g_strdup ("C");
+  }
 #endif
 }
 
@@ -244,21 +260,26 @@ _pango_get_lc_ctype (void)
  * functions automatically (by calling gtk_set_locale()).
  * See <literal>man setlocale</literal> for more details.
  *
- * Return value: the default language as a #PangoLanguage, must not be
- *               freed.
+ * Return value: (transfer none): the default language as a
+ *               #PangoLanguage, must not be freed.
  *
  * Since: 1.16
  **/
 PangoLanguage *
 pango_language_get_default (void)
 {
-  static PangoLanguage *result = NULL;
+  static PangoLanguage *result = NULL; /* MT-safe */
 
-  if (G_UNLIKELY (!result))
+  if (g_once_init_enter (&result))
     {
-      gchar *lang = _pango_get_lc_ctype ();
-      result = pango_language_from_string (lang);
-      g_free (lang);
+      gchar *lc_ctype;
+      PangoLanguage *lang;
+
+      lc_ctype = _pango_get_lc_ctype ();
+      lang = pango_language_from_string (lc_ctype);
+      g_free (lc_ctype);
+
+      g_once_init_leave (&result, lang);
     }
 
   return result;
@@ -280,14 +301,16 @@ pango_language_get_default (void)
  * Use pango_language_get_default() if you want to get the #PangoLanguage for
  * the current locale of the process.
  *
- * Return value: an opaque pointer to a #PangoLanguage structure, or %NULL
- *               if @language was %NULL.  The returned pointer will be valid
- *               forever after, and should not be freed.
+ * Return value: (transfer none): an opaque pointer to a
+ *               #PangoLanguage structure, or %NULL if @language was
+ *               %NULL.  The returned pointer will be valid forever
+ *               after, and should not be freed.
  **/
 PangoLanguage *
 pango_language_from_string (const char *language)
 {
-  static GHashTable *hash = NULL;
+  G_LOCK_DEFINE_STATIC (lang_from_string);
+  static GHashTable *hash = NULL; /* MT-safe */
   PangoLanguagePrivate *priv;
   char *result;
   int len;
@@ -296,13 +319,15 @@ pango_language_from_string (const char *language)
   if (language == NULL)
     return NULL;
 
+  G_LOCK (lang_from_string);
+
   if (G_UNLIKELY (!hash))
     hash = g_hash_table_new (lang_hash, lang_equal);
   else
     {
       result = g_hash_table_lookup (hash, language);
       if (result)
-	return (PangoLanguage *)result;
+        goto out;
     }
 
   len = strlen (language);
@@ -319,6 +344,9 @@ pango_language_from_string (const char *language)
     ;
 
   g_hash_table_insert (hash, result, result);
+
+out:
+  G_UNLOCK (lang_from_string);
 
   return (PangoLanguage *)result;
 }
@@ -472,12 +500,6 @@ find_best_lang_match_cached (PangoLanguage *language,
   return result;
 }
 
-#define FIND_BEST_LANG_MATCH(language, records) \
-	find_best_lang_match ((language), \
-			      records, \
-			      G_N_ELEMENTS (records), \
-			      sizeof (*records));
-
 #define FIND_BEST_LANG_MATCH_CACHED(language, cache_key, records) \
 	find_best_lang_match_cached ((language), \
 				     pango_language_get_private (language) ? \
@@ -597,12 +619,12 @@ pango_language_get_sample_string (PangoLanguage *language)
  * The pango_language_includes_script() function uses this function
  * internally.
  *
- * Return value: An array of #PangoScript values, with the
- * number of entries in the array stored in @num_scripts, or
- * %NULL if Pango does not have any information about this
- * particular language tag (also the case if @language is %NULL).
- * The returned array is owned by Pango and should not be modified
- * or freed.
+ * Return value: (array length=num_scripts): An array of #PangoScript
+ * values, with the number of entries in the array stored in
+ * @num_scripts, or %NULL if Pango does not have any information about
+ * this particular language tag (also the case if @language is %NULL).
+ * The returned array is owned by Pango and should not be modified or
+ * freed.
  
  * Since: 1.22
  **/
@@ -749,10 +771,13 @@ parse_default_languages (void)
 static PangoLanguage *
 _pango_script_get_default_language (PangoScript script)
 {
-  static gboolean initialized = FALSE;
-  static PangoLanguage * const * languages = NULL;
-  static GHashTable *hash = NULL;
+  G_LOCK_DEFINE_STATIC (languages);
+  static gboolean initialized = FALSE; /* MT-safe */
+  static PangoLanguage * const * languages = NULL; /* MT-safe */
+  static GHashTable *hash = NULL; /* MT-safe */
   PangoLanguage *result, * const * p;
+
+  G_LOCK (languages);
 
   if (G_UNLIKELY (!initialized))
     {
@@ -765,10 +790,13 @@ _pango_script_get_default_language (PangoScript script)
     }
 
   if (!languages)
-    return NULL;
+    {
+      result = NULL;
+      goto out;
+    }
 
   if (g_hash_table_lookup_extended (hash, GINT_TO_POINTER (script), NULL, (gpointer *) (gpointer) &result))
-    return result;
+    goto out;
 
   for (p = languages; *p; p++)
     if (pango_language_includes_script (*p, script))
@@ -776,6 +804,9 @@ _pango_script_get_default_language (PangoScript script)
   result = *p;
 
   g_hash_table_insert (hash, GINT_TO_POINTER (script), result);
+
+out:
+  G_UNLOCK (languages);
 
   return result;
 }
@@ -909,7 +940,34 @@ pango_script_get_sample_language (PangoScript script)
     "",    /* PANGO_SCRIPT_CUNEIFORM */
     "",    /* PANGO_SCRIPT_PHOENICIAN */
     "",    /* PANGO_SCRIPT_PHAGS_PA */
-    "nqo"  /* PANGO_SCRIPT_NKO */
+    "nqo", /* PANGO_SCRIPT_NKO */
+
+    /* Unicode-5.1 additions */
+    "",    /* PANGO_SCRIPT_KAYAH_LI */
+    "",    /* PANGO_SCRIPT_LEPCHA */
+    "",    /* PANGO_SCRIPT_REJANG */
+    "",    /* PANGO_SCRIPT_SUNDANESE */
+    "",    /* PANGO_SCRIPT_SAURASHTRA */
+    "",    /* PANGO_SCRIPT_CHAM */
+    "",    /* PANGO_SCRIPT_OL_CHIKI */
+    "",    /* PANGO_SCRIPT_VAI */
+    "",    /* PANGO_SCRIPT_CARIAN */
+    "",    /* PANGO_SCRIPT_LYCIAN */
+    "",    /* PANGO_SCRIPT_LYDIAN */
+
+    /* Unicode-6.0 additions */
+    "",    /* PANGO_SCRIPT_BATAK */
+    "",    /* PANGO_SCRIPT_BRAHMI */
+    "",    /* PANGO_SCRIPT_MANDAIC */
+
+    /* Unicode-6.1 additions */
+    "",    /* PANGO_SCRIPT_CHAKMA */
+    "",    /* PANGO_SCRIPT_MEROITIC_CURSIVE */
+    "",    /* PANGO_SCRIPT_MEROITIC_HIEROGLYPHS */
+    "",    /* PANGO_SCRIPT_MIAO */
+    "",    /* PANGO_SCRIPT_SHARADA */
+    "",    /* PANGO_SCRIPT_SORA_SOMPENG */
+    "",    /* PANGO_SCRIPT_TAKRI */
   };
   const char *sample_language;
   PangoLanguage *result;

@@ -9,16 +9,9 @@ include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS =
 INTROSPECTION_SCANNER_ARGS = --warn-all --add-include-path=$(srcdir) --add-include-path=.
 INTROSPECTION_COMPILER_ARGS = --includedir=$(srcdir) --includedir=.
+INTROSPECTION_SCANNER_ENV = CC="$(CC)"
 
-if HAVE_FREETYPE
-OPENTYPE_SUBDIR=opentype
-endif
-
-FRIBIDI_SUBDIR=mini-fribidi
-
-SUBDIRS = $(OPENTYPE_SUBDIR) $(FRIBIDI_SUBDIR)
-
-DIST_SUBDIRS = mini-fribidi opentype
+SUBDIRS = mini-fribidi
 
 INCLUDES =						\
 	-DG_LOG_DOMAIN=\"Pango\"			\
@@ -32,6 +25,7 @@ INCLUDES =						\
 	$(GLIB_CFLAGS)					\
 	$(XFT_CFLAGS)					\
 	$(CAIRO_CFLAGS)					\
+	$(HARFBUZZ_CFLAGS)				\
 	$(FREETYPE_CFLAGS)				\
 	$(X_CFLAGS)
 
@@ -96,7 +90,7 @@ libpango_1_0_la_SOURCES =			\
 	pango-renderer.c			\
 	pango-script.c				\
 	pango-script-lang-table.h		\
-	pango-script-private.h				\
+	pango-script-private.h			\
 	pango-tabs.c				\
 	pango-utils.c				\
 	reorder-items.c				\
@@ -135,29 +129,20 @@ pangoinclude_HEADERS =	   \
 	pango-enum-types.h
 
 pango-enum-types.h: s-enum-types-h
-s-enum-types-h: $(pango_headers) Makefile.am
+s-enum-types-h: $(pango_headers) Makefile.am pango-enum-types.h.template
 	$(AM_V_GEN) ( cd $(srcdir) && $(GLIB_MKENUMS) \
-			--fhead "#ifndef __PANGO_ENUM_TYPES_H__\n#define __PANGO_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \
-			--fprod "/* enumerations from \"@filename@\" */\n" \
-			--vhead "GType @enum_name@_get_type (void);\n#define @ENUMPREFIX@_TYPE_@ENUMSHORT@ (@enum_name@_get_type())\n" 	\
-			--ftail "G_END_DECLS\n\n#endif /* __PANGO_ENUM_TYPES_H__ */" \
-		$(pango_headers) ) > tmp-pango-enum-types.h \
-	&& (cmp -s tmp-pango-enum-types.h pango-enum-types.h || cp tmp-pango-enum-types.h pango-enum-types.h ) \
-	&& rm -f tmp-pango-enum-types.h	\
-	&& echo timestamp > $(@F)
+			 --template pango-enum-types.h.template \
+			$(pango_headers) ) > pango-enum-types.h.tmp \
+			&& mv pango-enum-types.h.tmp pango-enum-types.h \
+			&& echo timestamp > $@
 
 pango-enum-types.c: s-enum-types-c
-s-enum-types-c: $(pango_headers) Makefile.am
+s-enum-types-c: $(pango_headers) Makefile.am pango-enum-types.c.template
 	$(AM_V_GEN) ( cd $(srcdir) && $(GLIB_MKENUMS) \
-			--fhead "#include <pango.h>" \
-			--fprod "\n/* enumerations from \"@filename@\" */" \
-			--vhead "GType\n@enum_name@_get_type (void)\n{\n  static GType etype = 0;\n  if (etype == 0) {\n    static const G@Type@Value values[] = {" 	\
-			--vprod "      { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
-			--vtail "      { 0, NULL, NULL }\n    };\n    etype = g_@type@_register_static (g_intern_static_string (\"@EnumName@\"), values);\n  }\n  return etype;\n}\n" \
-		$(pango_headers) ) > tmp-pango-enum-types.c \
-	&& (cmp -s tmp-pango-enum-types.c pango-enum-types.c || cp tmp-pango-enum-types.c pango-enum-types.c ) \
-	&& rm -f tmp-pango-enum-types.c \
-	&& echo timestamp > $(@F)
+			 --template pango-enum-types.c.template \
+			$(pango_headers) ) > pango-enum-types.c.tmp \
+			&& mv pango-enum-types.c.tmp pango-enum-types.c \
+			&& echo timestamp > $@
 
 pango-features.h:
 	$(AM_V_GEN) cd $(top_builddir) && ./config.status pango/pango-features.h
@@ -168,52 +153,16 @@ pango_introspection_files = \
 	    pango-enum-types.h
 Pango-1.0.gir: libpango-1.0.la
 
-Pango_1_0_gir_PACKAGES = gobject-2.0 cairo freetype2
+Pango_1_0_gir_PACKAGES = gobject-2.0 cairo glib-2.0
+if HAVE_CAIRO_FREETYPE
+Pango_1_0_gir_PACKAGES += freetype2
+endif
 Pango_1_0_gir_EXPORT_PACKAGES = pango
 Pango_1_0_gir_INCLUDES = GObject-2.0 cairo-1.0
 Pango_1_0_gir_LIBS = libpango-1.0.la
-Pango_1_0_gir_CFLAGS = -I$(top_srcdir) -I$(top_builddir) $(PANGO_CFLAGS)
+Pango_1_0_gir_CFLAGS = -I$(top_builddir) -I$(top_srcdir) $(INCLUDES)
 Pango_1_0_gir_FILES = $(filter-out %-private.h pango-color-table.h, $(pango_introspection_files))
 Pango_1_0_gir_SCANNERFLAGS = --c-include "pango/pango.h"
-
-# ------------------- libpangox -------------------
-
-if HAVE_X
-pangoinclude_HEADERS += $(pangox_headers)
-lib_LTLIBRARIES += libpangox-1.0.la
-aliasdir = $(sysconfdir)/pango
-alias_DATA = pangox.aliases
-endif
-
-pangox_headers = pangox.h
-pangox_public_sources = pangox.c
-
-libpangox_1_0_la_LDFLAGS = $(LIBRARY_LIBTOOL_OPTIONS)
-libpangox_1_0_la_LIBADD = 			\
-	libpango-$(PANGO_API_VERSION).la	\
-	$(INCLUDED_X_MODULES)			\
-	$(GLIB_LIBS)				\
-	$(X_LIBS)				\
-	$(X_EXTRA_LIBS)
-libpangox_1_0_la_DEPENDENCIES =			\
-	libpango-$(PANGO_API_VERSION).la	\
-	$(INCLUDED_X_MODULES)
-
-if PLATFORM_WIN32
-libpangox_1_0_la_LDFLAGS += -export-symbols $(srcdir)/pangox.def -Wl,pangox-win32-res.o
-libpangox_1_0_la_DEPENDENCIES += pangox-win32-res.o pangox.def
-endif
-
-pangox-win32-res.o: pangox.rc
-	$(WINDRES) $< $@
-
-libpangox_1_0_la_SOURCES = 			\
-	$(pangox_public_sources) 		\
-	modules.h 	   			\
-	module-defs-x.c	   			\
-	pangox-private.h   			\
-	pangox-fontcache.c 			\
-	pangox-fontmap.c
 
 # ------------------- libpangoft2 -------------------
 
@@ -238,14 +187,13 @@ pangoft2_public_sources = 	\
 
 libpangoft2_1_0_la_LDFLAGS = $(LIBRARY_LIBTOOL_OPTIONS)
 libpangoft2_1_0_la_LIBADD =			\
-	opentype/libharfbuzz.la			\
 	libpango-$(PANGO_API_VERSION).la	\
 	$(INCLUDED_FC_MODULES)			\
 	$(GLIB_LIBS)				\
+	$(HARFBUZZ_LIBS)			\
 	$(FREETYPE_LIBS)			\
 	$(libm)
 libpangoft2_1_0_la_DEPENDENCIES =		\
-	opentype/libharfbuzz.la			\
 	libpango-$(PANGO_API_VERSION).la	\
 	$(INCLUDED_FC_MODULES)
 libpangoft2_1_0_la_SOURCES =   	\
@@ -281,8 +229,8 @@ PangoFT2-1.0.gir: Pango-1.0.gir
 PangoFT2_1_0_gir_PACKAGES = freetype2
 PangoFT2_1_0_gir_EXPORT_PACKAGES = pangoft2
 PangoFT2_1_0_gir_INCLUDES = GObject-2.0 cairo-1.0 freetype2-2.0 fontconfig-2.0
-PangoFT2_1_0_gir_LIBS = libpangoft2-1.0.la
-PangoFT2_1_0_gir_CFLAGS = -I$(top_srcdir) -I$(top_builddir)
+PangoFT2_1_0_gir_LIBS = $(Pango_1_0_gir_LIBS) libpangoft2-1.0.la
+PangoFT2_1_0_gir_CFLAGS = -I$(top_builddir) -I$(top_srcdir) $(INCLUDES)
 PangoFT2_1_0_gir_SCANNERFLAGS = --include-uninstalled=$(builddir)/Pango-1.0.gir --c-include "pango/pangoft2.h"
 PangoFT2_1_0_gir_FILES = $(filter-out %-private.h, $(addprefix $(srcdir)/,$(pangoft2_introspection_files)))
 
@@ -332,8 +280,8 @@ PangoXft-1.0.gir: Pango-1.0.gir PangoFT2-1.0.gir
 PangoXft_1_0_gir_PACKAGES = gobject-2.0 freetype2
 PangoXft_1_0_gir_EXPORT_PACKAGES = pangoxft
 PangoXft_1_0_gir_INCLUDES = GObject-2.0 xft-2.0 xlib-2.0
-PangoXft_1_0_gir_LIBS = libpangoxft-1.0.la
-PangoXft_1_0_gir_CFLAGS = -I$(top_srcdir) -I$(top_builddir) $(PANGO_CFLAGS)
+PangoXft_1_0_gir_LIBS = $(PangoFT2_1_0_gir_LIBS) libpangoxft-1.0.la
+PangoXft_1_0_gir_CFLAGS = -I$(top_builddir) -I$(top_srcdir) $(INCLUDES)
 PangoXft_1_0_gir_SCANNERFLAGS = --include-uninstalled=$(builddir)/Pango-1.0.gir --include-uninstalled=$(builddir)/PangoFT2-1.0.gir --c-include "pango/pangoxft.h"
 PangoXft_1_0_gir_FILES = $(filter-out %-private.h, $(addprefix $(srcdir)/,$(pangoxft_introspection_files)))
 
@@ -382,7 +330,7 @@ endif
 if HAVE_CAIRO_FREETYPE
 libpangocairo_1_0_la_LIBADD +=  libpangoft2-$(PANGO_API_VERSION).la $(FREETYPE_LIBS)
 libpangocairo_1_0_la_DEPENDENCIES += libpangoft2-$(PANGO_API_VERSION).la 
-PANGOCAIRO_FONT_BACKEND_GI_MODULE = PangoFT2-1.0
+PANGOCAIRO_FONT_BACKEND_GI_MODULE = PangoFT2-1.0.gir
 
 libpangocairo_1_0_la_SOURCES += \
 	pangocairo-fcfont.c	\
@@ -390,7 +338,7 @@ libpangocairo_1_0_la_SOURCES += \
 	pangocairo-fc.h
 endif
 
-if HAVE_CAIRO_ATSUI
+if HAVE_CAIRO_QUARTZ
 if HAVE_CORE_TEXT
 libpangocairo_1_0_la_SOURCES += \
 	modules.h		\
@@ -408,27 +356,7 @@ pangoinclude_HEADERS += pangocoretext.h
 libpangocairo_1_0_la_LDFLAGS += -framework CoreFoundation -framework ApplicationServices
 libpangocairo_1_0_la_LIBADD += $(INCLUDED_CORE_TEXT_MODULES)
 # We don't have an CoreText GIR right now, so this is just hypothetical
-PANGOCAIRO_FONT_BACKEND_GI_MODULE = PangoCoreText-1.0
-
-else
-libpangocairo_1_0_la_SOURCES += \
-	modules.h		\
-	module-defs-atsui.c	\
-	pangoatsui.h		\
-	pangoatsui.c		\
-	pangoatsui-private.h	\
-	pangoatsui-fontmap.c	\
-	pangocairo-atsui.h	\
-	pangocairo-atsuifont.c	\
-	pangocairo-atsuifont.h	\
-	pangocairo-atsuifontmap.c
-pangoinclude_HEADERS += pangoatsui.h
-
-libpangocairo_1_0_la_CFLAGS = -xobjective-c
-libpangocairo_1_0_la_LDFLAGS += -framework CoreFoundation -framework Carbon -framework Cocoa
-libpangocairo_1_0_la_LIBADD += $(INCLUDED_ATSUI_MODULES)
-# We don't have an ATSUI GIR right now, so this is just hypothetical
-PANGOCAIRO_FONT_BACKEND_GI_MODULE = PangoATSUI-1.0
+# PANGOCAIRO_FONT_BACKEND_GI_MODULE = PangoCoreText-1.0.gir
 endif
 endif
 
@@ -437,14 +365,18 @@ pangocairo_introspection_files = \
     $(pangocairo_headers)
 
 PangoCairo-1.0.gir: libpangocairo-1.0.la
-PangoCairo-1.0.gir: Pango-1.0.gir $(PANGOCAIRO_FONT_BACKEND_GI_MODULE).gir
+PangoCairo-1.0.gir: Pango-1.0.gir $(PANGOCAIRO_FONT_BACKEND_GI_MODULE)
 
 PangoCairo_1_0_gir_PACKAGES = gobject-2.0 cairo
 PangoCairo_1_0_gir_EXPORT_PACKAGES = pangocairo
 PangoCairo_1_0_gir_INCLUDES = GObject-2.0 cairo-1.0
-PangoCairo_1_0_gir_LIBS = libpangocairo-1.0.la
-PangoCairo_1_0_gir_CFLAGS = -I$(top_srcdir) -I$(top_builddir) $(PANGO_CFLAGS)
-PangoCairo_1_0_gir_SCANNERFLAGS = --include-uninstalled=$(builddir)/Pango-1.0.gir --include-uninstalled=$(builddir)/$(PANGOCAIRO_FONT_BACKEND_GI_MODULE).gir --c-include "pango/pangocairo.h"
+PangoCairo_1_0_gir_LIBS = $(Pango_1_0_gir_LIBS) libpangocairo-1.0.la
+PangoCairo_1_0_gir_CFLAGS = -I$(top_builddir) -I$(top_srcdir) $(INCLUDES)
+PangoCairo_1_0_gir_SCANNERFLAGS = --include-uninstalled=$(builddir)/Pango-1.0.gir --c-include "pango/pangocairo.h"
+if HAVE_CAIRO_FREETYPE
+PangoCairo_1_0_gir_SCANNERFLAGS += --include-uninstalled=$(builddir)/$(PANGOCAIRO_FONT_BACKEND_GI_MODULE)
+PangoCairo_1_0_gir_LIBS += $(PangoFT2_1_0_gir_LIBS)
+endif
 PangoCairo_1_0_gir_FILES = $(filter-out %-private.h, $(addprefix $(srcdir)/,$(pangocairo_introspection_files)))
 
 # ------------------- libpangowin32 -------------------
@@ -480,78 +412,6 @@ pangowin32-win32-res.o: pangowin32.rc
 	$(AM_V_GEN) $(WINDRES) $< $@
 
 
-# ------------------- win32 build stuff -------------------
-
-if OS_WIN32
-install-def-files:
-	$(AM_V_GEN) mkdir -p $(DESTDIR)$(libdir) && \
-	$(INSTALL) $(srcdir)/pango.def $(DESTDIR)$(libdir)/pango-$(PANGO_API_VERSION).def
-if HAVE_FREETYPE
-	$(INSTALL) $(srcdir)/pangoft2.def $(DESTDIR)$(libdir)/pangoft2-$(PANGO_API_VERSION).def
-endif
-	$(INSTALL) $(srcdir)/pangowin32.def $(DESTDIR)$(libdir)/pangowin32-$(PANGO_API_VERSION).def
-	$(INSTALL) $(srcdir)/pangocairo.def $(DESTDIR)$(libdir)/pangocairo-$(PANGO_API_VERSION).def
-if HAVE_X
-	$(INSTALL) $(srcdir)/pangox.def $(DESTDIR)$(libdir)/pangox-$(PANGO_API_VERSION).def
-	$(INSTALL) $(srcdir)/pangoxft.def $(DESTDIR)$(libdir)/pangoxft-$(PANGO_API_VERSION).def
-endif
-uninstall-def-files:
-	-rm $(DESTDIR)$(libdir)/pango$(PANGO_API_VERSION).def
-if HAVE_FREETYPE
-	-rm $(DESTDIR)$(libdir)/pangoft2-$(PANGO_API_VERSION).def
-endif
-	-rm $(DESTDIR)$(libdir)/pangowin32-$(PANGO_API_VERSION).def
-	-rm $(DESTDIR)$(libdir)/pangocairo-$(PANGO_API_VERSION).def
-if HAVE_X
-	-rm $(DESTDIR)$(libdir)/pangox-$(PANGO_API_VERSION).def
-	-rm $(DESTDIR)$(libdir)/pangoxft-$(PANGO_API_VERSION).def
-endif
-else
-install-def-files:
-uninstall-def-files:
-
-endif
-
-if MS_LIB_AVAILABLE
-MS_LIB_FILES = pango-$(PANGO_API_VERSION).lib pangowin32-$(PANGO_API_VERSION).lib pangocairo-$(PANGO_API_VERSION).lib
-
-if HAVE_FREETYPE
-MS_LIB_FILES += pangoft2-$(PANGO_API_VERSION).lib 
-endif
-
-noinst_DATA = $(MS_LIB_FILES)
-
-install-ms-lib: $(MS_LIB_FILES)
-	$(INSTALL) pango-$(PANGO_API_VERSION).lib $(DESTDIR)$(libdir)
-if HAVE_FREETYPE
-	$(INSTALL) pangoft2-$(PANGO_API_VERSION).lib $(DESTDIR)$(libdir)
-endif
-	$(INSTALL) pangowin32-$(PANGO_API_VERSION).lib $(DESTDIR)$(libdir)
-	$(INSTALL) pangocairo-$(PANGO_API_VERSION).lib $(DESTDIR)$(libdir)
-
-uninstall-ms-lib:
-	-rm $(DESTDIR)$(libdir)/pango-$(PANGO_API_VERSION).lib
-	-rm $(DESTDIR)$(libdir)/pangoft2-$(PANGO_API_VERSION).lib
-	-rm $(DESTDIR)$(libdir)/pangowin32-$(PANGO_API_VERSION).lib
-	-rm $(DESTDIR)$(libdir)/pangocairo-$(PANGO_API_VERSION).lib
-else
-install-ms-lib:
-uninstall-ms-lib:
-endif
-
-pango-$(PANGO_API_VERSION).lib: libpango-$(PANGO_API_VERSION).la $(srcdir)/pango.def
-	$(AM_V_GEN) lib -machine:$(LIB_EXE_MACHINE_FLAG) -name:libpango-$(PANGO_API_VERSION)-$(PANGO_CURRENT_MINUS_AGE).dll -def:$(srcdir)/pango.def -out:$@
-
-pangoft2-$(PANGO_API_VERSION).lib: libpangoft2-$(PANGO_API_VERSION).la $(srcdir)/pangoft2.def
-	$(AM_V_GEN) lib -machine:$(LIB_EXE_MACHINE_FLAG) -name:libpangoft2-$(PANGO_API_VERSION)-$(PANGO_CURRENT_MINUS_AGE).dll -def:$(srcdir)/pangoft2.def -out:$@
-
-pangowin32-$(PANGO_API_VERSION).lib: libpangowin32-$(PANGO_API_VERSION).la $(srcdir)/pangowin32.def
-	$(AM_V_GEN) lib -machine:$(LIB_EXE_MACHINE_FLAG) -name:libpangowin32-$(PANGO_API_VERSION)-$(PANGO_CURRENT_MINUS_AGE).dll -def:$(srcdir)/pangowin32.def -out:$@
-
-pangocairo-$(PANGO_API_VERSION).lib: libpangocairo-$(PANGO_API_VERSION).la $(srcdir)/pangocairo.def
-	$(AM_V_GEN) lib -machine:$(LIB_EXE_MACHINE_FLAG) -name:libpangocairo-$(PANGO_API_VERSION)-$(PANGO_CURRENT_MINUS_AGE).dll -def:$(srcdir)/pangocairo.def -out:$@
-
-
 # ------------------- introspection -------------------
 
 if HAVE_INTROSPECTION
@@ -568,16 +428,10 @@ endif # HAVE_INTROSPECTION
 
 bin_PROGRAMS = pango-querymodules
 
-#
-# As a temporary hack, we pull in libpangox here so that we can link
-#
 pango_querymodules_SOURCES = \
 	querymodules.c
 
 pango_querymodules_LDADD =
-if HAVE_X
-pango_querymodules_LDADD += libpangox-$(PANGO_API_VERSION).la
-endif
 if HAVE_XFT
 pango_querymodules_LDADD += libpangoxft-$(PANGO_API_VERSION).la
 endif
@@ -591,6 +445,8 @@ pango_querymodules_LDADD += libpango-$(PANGO_API_VERSION).la $(GLIB_LIBS)
 
 EXTRA_DIST =					\
 	pango-enum-types.h			\
+	pango-enum-types.h.template		\
+	pango-enum-types.c.template		\
 	module-defs.h				\
 	module-defs.h.win32			\
 	module-defs-lang.c.win32		\
@@ -600,18 +456,15 @@ EXTRA_DIST =					\
 	pangocairo.def				\
 	pangowin32.def				\
 	pangoft2.def				\
-	makefile.msc				\
+	pangoxft.def				\
 	pango.rc				\
 	pango.rc.in				\
-	pangox.aliases				\
 	pangoft2.rc				\
 	pangoft2.rc.in				\
 	pangowin32.rc				\
 	pangowin32.rc.in			\
 	pangocairo.rc				\
 	pangocairo.rc.in			\
-	pangox.rc				\
-	pangox.rc.in				\
 	pangoxft.rc				\
 	pangoxft.rc.in				\
 	check.defs
@@ -621,7 +474,7 @@ if HAVE_INCLUDED_MODULES
 included-modules:
 	$(AM_V_GEN) cd $(top_builddir)/modules && $(MAKE) $(AM_MAKEFLAGS) included-modules
 
-$(INCLUDED_LANG_MODULES) $(INCLUDED_X_MODULES) $(INCLUDED_FC_MODULES) $(INCLUDED_WIN32_MODULES) $(INCLUDED_ATSUI_MODULES): included-modules
+$(INCLUDED_LANG_MODULES) $(INCLUDED_FC_MODULES) $(INCLUDED_WIN32_MODULES) $(INCLUDED_CORE_TEXT_MODULES): included-modules
 	$(AM_V_GEN) true
 
 .PHONY: included-modules
@@ -630,14 +483,16 @@ endif
 MODULE_DEF_FILES = \
 	module-defs.h \
 	module-defs-lang.c \
-	module-defs-x.c \
 	module-defs-fc.c \
 	module-defs-win32.c \
-	module-defs-atsui.c \
 	module-defs-coretext.c
 
 $(MODULE_DEF_FILES): $(top_builddir)/config.status
 	$(AM_V_GEN) cd $(top_builddir) && $(SHELL) ./config.status pango/$@
+
+include $(top_srcdir)/build/Makefile-msvcproj.am
+
+dist-hook: $(pango_vcproj_stuff)
 
 CLEANFILES =			\
 	pango-enum-types.h	\
@@ -653,175 +508,16 @@ MOSTLYCLEANFILES = 		\
 
 DISTCLEANFILES = 		\
 	pango-features.h	\
-	$(MODULE_DEF_FILES)
+	$(MODULE_DEF_FILES)	\
+	$(pango_vcproj_stuff)
 
-install-data-local: install-ms-lib install-def-files
-
-install-exec-hook: 
+install-exec-hook:
 if DISABLE_EXPLICIT_DEPS
-	-for i in libpangoft2-$(PANGO_API_VERSION).la libpangoxft-$(PANGO_API_VERSION).la libpangox-$(PANGO_API_VERSION).la libpangowin32-$(PANGO_API_VERSION).la; do \
+	-for i in libpangoft2-$(PANGO_API_VERSION).la libpangoxft-$(PANGO_API_VERSION).la libpangowin32-$(PANGO_API_VERSION).la; do \
 	  test -f $(DESTDIR)$(libdir)/$$i && $(SHELL) $(top_srcdir)/sanitize-la.sh $(DESTDIR)$(libdir)/$$i ; \
 	done
 endif
 
-uninstall-local: uninstall-ms-lib uninstall-def-files
-
 TESTS = check.defs
-
-dist-hook: \
-	../build/win32/vs9/pango.vcproj \
-	../build/win32/vs9/pangoft2.vcproj \
-	../build/win32/vs9/pangocairo.vcproj \
-	../build/win32/vs10/pango.vcxproj \
-	../build/win32/vs10/pango.vcxproj.filters \
-	../build/win32/vs10/pangocairo.vcxproj \
-	../build/win32/vs10/pangocairo.vcxproj.filters \
-	../build/win32/vs10/pangocairo_fc.vcxproj \
-	../build/win32/vs10/pangocairo_fc.vcxproj.filters \
-	../build/win32/vs10/pangoft2.vcxproj \
-	../build/win32/vs10/pangoft2.vcxproj.filters
-
-# pangowin32.vcproj, pangowin32.vcxproj and pangowin32.vcxproj.filters are not automatically built, it is not being changed
-
-../build/win32/vs9/pango.vcproj: $(top_srcdir)/build/win32/vs9/pango.vcprojin mini-fribidi/libmini-fribidi.sourcefiles
-	-rm $@
-	for F in $(libpango_1_0_la_SOURCES); do \
-		case $$F in \
-		*.c) echo '   <File RelativePath="..\..\..\pango\'$$F'" />' \
-		     ;; \
-		esac; \
-	done >libpango.sourcefiles
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs9/pango.vcprojin >$@
-
-../build/win32/vs10/pango.vcxproj: $(top_srcdir)/build/win32/vs10/pango.vcxprojin mini-fribidi/libmini-fribidi.vs10.sourcefiles
-	-rm $@
-	for F in $(libpango_1_0_la_SOURCES); do \
-		case $$F in \
-		*.c) echo '   <ClCompile Include="..\..\..\pango\'$$F'" />' \
-		     ;; \
-		esac; \
-	done >libpango.vs10.sourcefiles
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/pango.vcxprojin >$@
-
-../build/win32/vs10/pango.vcxproj.filters: $(top_srcdir)/build/win32/vs10/pango.vcxproj.filtersin mini-fribidi/libmini-fribidi.vs10.sourcefiles.filters
-	-rm $@
-	for F in $(libpango_1_0_la_SOURCES); do \
-		case $$F in \
-		*.c) echo '   <ClCompile Include="..\..\..\pango\'$$F'"><Filter>Source Files</Filter></ClCompile>' \
-		     ;; \
-		esac; \
-	done >libpango.vs10.sourcefiles.filters
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/pango.vcxproj.filtersin >$@
-
-../build/win32/vs9/pangoft2.vcproj: $(top_srcdir)/build/win32/vs9/pangoft2.vcprojin opentype/libharfbuzz.sourcefiles
-	-rm $@
-	for F in $(libpangoft2_1_0_la_SOURCES); do \
-		case $$F in \
-		*.c) echo '   <File RelativePath="..\..\..\pango\'$$F'" />' \
-		     ;; \
-		esac; \
-	done >libpangoft2.sourcefiles
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs9/pangoft2.vcprojin >$@
-
-../build/win32/vs10/pangoft2.vcxproj: $(top_srcdir)/build/win32/vs10/pangoft2.vcxprojin opentype/libharfbuzz.vs10.sourcefiles
-	-rm $@
-	for F in $(libpangoft2_1_0_la_SOURCES); do \
-		case $$F in \
-		*.c) echo '   <ClCompile Include="..\..\..\pango\'$$F'" />' \
-		     ;; \
-		esac; \
-	done >libpangoft2.vs10.sourcefiles
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/pangoft2.vcxprojin >$@
-
-../build/win32/vs10/pangoft2.vcxproj.filters: $(top_srcdir)/build/win32/vs10/pangoft2.vcxproj.filtersin opentype/libharfbuzz.vs10.sourcefiles.filters
-	-rm $@
-	for F in $(libpangoft2_1_0_la_SOURCES); do \
-		case $$F in \
-		*.c) echo '   <ClCompile Include="..\..\..\pango\'$$F'"><Filter>Source Files</Filter></ClCompile>' \
-		     ;; \
-		esac; \
-	done >libpangoft2.vs10.sourcefiles.filters
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/pangoft2.vcxproj.filtersin >$@
-
-../build/win32/vs9/pangocairo.vcproj: $(top_srcdir)/build/win32/vs9/pangocairo.vcprojin
-# Backend-specific sources for the libpangocairo DLL are explicitly
-# listed in the vcprojin file
-	-rm $@
-	for F in $(pangocairo_core_sources); do \
-		case $$F in \
-		*.c) echo '   <File RelativePath="..\..\..\pango\'$$F'" />' \
-		     ;; \
-		esac; \
-	done >libpangocairo.sourcefiles
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs9/pangocairo.vcprojin >$@
-
-../build/win32/vs10/pangocairo.vcxproj: $(top_srcdir)/build/win32/vs10/pangocairo.vcxprojin
-# Backend-specific sources for the libpangocairo DLL are explicitly
-# listed in the vcxprojin file
-# I know it does not sound nice to have 2 pangocairo projects/filters sets due to FontConfig usage (or not), but VS2010 forces me to do that...
-	-rm $@
-	for F in $(pangocairo_core_sources); do \
-		case $$F in \
-		*.c) echo '   <ClCompile Include="..\..\..\pango\'$$F'" />' \
-		     ;; \
-		esac; \
-	done >libpangocairo.vs10.sourcefiles
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/pangocairo.vcxprojin >$@
-
-../build/win32/vs10/pangocairo.vcxproj.filters: $(top_srcdir)/build/win32/vs10/pangocairo.vcxproj.filtersin
-# Backend-specific sources for the libpangocairo DLL are explicitly
-# listed in the vcxproj.filtersin file
-	-rm $@
-	for F in $(pangocairo_core_sources); do \
-		case $$F in \
-		*.c) echo '   <ClCompile Include="..\..\..\pango\'$$F'"><Filter>Source Files</Filter></ClCompile>' \
-		     ;; \
-		esac; \
-	done >libpangocairo.vs10.sourcefiles.filters
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/pangocairo.vcxproj.filtersin >$@
-
-../build/win32/vs10/pangocairo_fc.vcxproj: $(top_srcdir)/build/win32/vs10/pangocairo_fc.vcxprojin
-# Backend-specific sources for the libpangocairo DLL are explicitly
-# listed in the vcxprojin file
-	-rm $@
-	for F in $(pangocairo_core_sources); do \
-		case $$F in \
-		*.c) echo '   <ClCompile Include="..\..\..\pango\'$$F'" />' \
-		     ;; \
-		esac; \
-	done >libpangocairo.vs10.sourcefiles
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/pangocairo_fc.vcxprojin >$@
-
-../build/win32/vs10/pangocairo_fc.vcxproj.filters: $(top_srcdir)/build/win32/vs10/pangocairo_fc.vcxproj.filtersin
-# Backend-specific sources for the libpangocairo DLL are explicitly
-# listed in the vcxproj.filtersin file
-	-rm $@
-	for F in $(pangocairo_core_sources); do \
-		case $$F in \
-		*.c) echo '   <ClCompile Include="..\..\..\pango\'$$F'"><Filter>Source Files</Filter></ClCompile>' \
-		     ;; \
-		esac; \
-	done >libpangocairo.vs10.sourcefiles.filters
-	$(CPP) -P - <$(top_srcdir)/build/win32/vs10/pangocairo_fc.vcxproj.filtersin >$@
-
-DISTCLEANFILES += \
-	../build/win32/vs9/pango.vcproj \
-	../build/win32/vs9/pangoft2.vcproj \
-	../build/win32/vs9/pangocairo.vcproj \
-	../build/win32/vs10/pango.vcxproj \
-	../build/win32/vs10/pango.vcxproj.filters \
-	../build/win32/vs10/pangocairo.vcxproj \
-	../build/win32/vs10/pangocairo.vcxproj.filters \
-	../build/win32/vs10/pangocairo_fc.vcxproj \
-	../build/win32/vs10/pangocairo_fc.vcxproj.filters \
-	../build/win32/vs10/pangoft2.vcxproj \
-	../build/win32/vs10/pangoft2.vcxproj.filters \
-	libpangocairo.vs10.sourcefiles.filters \
-	libpangocairo.vs10.sourcefiles \
-	libpangoft2.vs10.sourcefiles.filters \
-	libpangoft2.vs10.sourcefiles \
-	libpango.vs10.sourcefiles \
-	libpango.vs10.sourcefiles
-	
 
 -include $(top_srcdir)/git.mk

@@ -14,6 +14,9 @@ include /usr/share/gnome-pkg-tools/1/rules/gnome-get-source.mk
 
 GNOME_MODULE := pango
 
+# Enable parallel build support
+DEB_BUILD_PARALLEL = 1
+
 # Ensure the build aborts when there are still references to undefined symbols
 LDFLAGS += -Wl,-z,defs
 
@@ -22,8 +25,7 @@ LDFLAGS += -Wl,-O1
 
 APIVER := 1.0
 SONAME := 0
-MODVER := 1.6.0
-SHVERSION := 1.29.4
+MODVER := 1.8.0
 
 # relative libdir
 LIBDIR := usr/lib/$(DEB_HOST_MULTIARCH)
@@ -40,7 +42,7 @@ MODULE_FILES_D := $(LIBDIR)/pango/$(MODVER)/module-files.d
 PANGO_MODVER_DEP := pango$(APIVER)-multiarch-modver-$(MODVER)
 
 # package names
-SHARED_PKG := libpango$(APIVER)-$(SONAME)
+SHARED_PKG := libpango-$(APIVER)-$(SONAME)
 UDEB_PKG := libpango$(APIVER)-udeb
 DEV_PKG := libpango$(APIVER)-dev
 DEBUG_PKG := libpango$(APIVER)-$(SONAME)-dbg
@@ -50,7 +52,9 @@ DEB_CONFIGURE_EXTRA_FLAGS = \
 		--with-html-dir=\$${prefix}/share/doc/$(DOC_PKG)
 
 DEB_CONFIGURE_FLAGS_shared = \
-		--libdir=/$(LIBDIR)
+		--libdir=/$(LIBDIR) \
+		--with-included-modules \
+		--enable-installed-tests
 
 DEB_CONFIGURE_FLAGS_static = \
 		--libdir=/$(LIBDIR) \
@@ -62,11 +66,14 @@ DEB_CONFIGURE_FLAGS_udeb = \
 		--libdir=/$(LIBDIR_UDEB) \
 		--disable-debug
 
+# Get failing tests' stdout/err so we have some information when a build fails
+export VERBOSE=1
+
 DEB_MAKE_CHECK_TARGET = check
+DEB_DH_STRIP_ARGS_DEFAULT = --dbg-package=libpango$(APIVER)-$(SONAME)-dbg
 DEB_DH_STRIP_ARGS_$(UDEB_PKG) =
-DEB_DH_MAKESHLIBS_ARGS_$(SHARED_PKG) += -X$(MODULES_PATH) \
-		-V '$(SHARED_PKG) (>= $(SHVERSION))' \
-		--add-udeb=$(UDEB_PKG) -- -c4
+DEB_DH_MAKESHLIBS_ARGS_ALL += -X$(MODULES_PATH) \
+		-V --add-udeb=$(UDEB_PKG) -- -c4
 
 # macro computing the list of 'debian/<pkg>.*" files which have a corresponding
 # ".in" file; pass the list of packages in $(1)
@@ -84,7 +91,6 @@ debian/%: debian/%.in
 		-e 's#@PANGO_MODVER_DEP@#$(PANGO_MODVER_DEP)#g' \
 		-e 's#@LIBDIR@#$(LIBDIR)#g' \
 		-e 's#@LIBDIR_UDEB@#$(LIBDIR_UDEB)#g' \
-		-e 's#@OPTLIBDIR@#$(OPTLIBDIR)#g' \
 		-e 's#@MODULES_PATH@#$(MODULES_PATH)#g' \
 		-e 's#@MODULES_PATH_UDEB@#$(MODULES_PATH_UDEB)#g' \
 		-e 's#@MODULE_FILES_D@#$(MODULE_FILES_D)#g' \
@@ -97,6 +103,7 @@ clean:: debian/control
 	# remove generated files
 	rm -f $(call dh_subst_files,$(DEB_ALL_PACKAGES))
 	rm -f debian/dh_pangomodules debian/dh_pangomodules.1
+	rm -rf $(DEB_BUILDDIR) debian/install
 
 build-indep: $(call dh_subst_files,$(DEB_INDEP_PACKAGES))
 build-arch: $(call dh_subst_files,$(DEB_ARCH_PACKAGES)) debian/dh_pangomodules.1
@@ -126,3 +133,5 @@ binary-install/$(UDEB_PKG)::
 	PANGO_QUERYMODULES=debian/build/udeb/pango/pango-querymodules \
 		debian/dh_pangomodules \
 			-p$(UDEB_PKG) -k
+
+binary-install/pango1.0-tests:: DEB_DH_INSTALL_ARGS = --sourcedir=debian/install/shared

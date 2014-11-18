@@ -98,7 +98,7 @@ pango_font_map_load_font  (PangoFontMap               *fontmap,
 /**
  * pango_font_map_list_families:
  * @fontmap: a #PangoFontMap
- * @families: (out) (array length=n_families): location to store a pointer to an array of #PangoFontFamily *.
+ * @families: (out) (array length=n_families) (transfer container): location to store a pointer to an array of #PangoFontFamily *.
  *            This array should be freed with g_free().
  * @n_families: (out): location to store the number of elements in @families
  *
@@ -145,32 +145,12 @@ pango_font_map_fontset_add_fonts (PangoFontMap          *fontmap,
 				  PangoFontDescription  *desc,
 				  const char            *family)
 {
-  char **aliases;
-  int n_aliases;
-  int j;
   PangoFont *font;
 
-  pango_lookup_aliases (family,
-			&aliases,
-			&n_aliases);
-
-  if (n_aliases)
-    {
-      for (j = 0; j < n_aliases; j++)
-	{
-	  pango_font_description_set_family_static (desc, aliases[j]);
-	  font = pango_font_map_load_font (fontmap, context, desc);
-	  if (font)
-	    pango_fontset_simple_append (fonts, font);
-	}
-    }
-  else
-    {
-      pango_font_description_set_family_static (desc, family);
-      font = pango_font_map_load_font (fontmap, context, desc);
-      if (font)
-	pango_fontset_simple_append (fonts, font);
-    }
+  pango_font_description_set_family_static (desc, family);
+  font = pango_font_map_load_font (fontmap, context, desc);
+  if (font)
+    pango_fontset_simple_append (fonts, font);
 }
 
 static PangoFontset *
@@ -184,7 +164,8 @@ pango_font_map_real_load_fontset (PangoFontMap               *fontmap,
   char **families;
   int i;
   PangoFontsetSimple *fonts;
-  static GHashTable *warned_fonts = NULL;
+  static GHashTable *warned_fonts = NULL; /* MT-safe */
+  G_LOCK_DEFINE_STATIC (warned_fonts);
 
   family = pango_font_description_get_family (desc);
   families = g_strsplit (family ? family : "", ",", -1);
@@ -213,6 +194,7 @@ pango_font_map_real_load_fontset (PangoFontMap               *fontmap,
       ctmp1 = pango_font_description_to_string (desc);
       pango_font_description_set_family_static (tmp_desc, "Sans");
 
+      G_LOCK (warned_fonts);
       if (!warned_fonts || !g_hash_table_lookup (warned_fonts, ctmp1))
 	{
 	  if (!warned_fonts)
@@ -225,6 +207,7 @@ pango_font_map_real_load_fontset (PangoFontMap               *fontmap,
 		     "expect ugly output.", ctmp1, ctmp2);
 	  g_free (ctmp2);
 	}
+      G_UNLOCK (warned_fonts);
       g_free (ctmp1);
 
       pango_font_map_fontset_add_fonts (fontmap,
@@ -247,6 +230,7 @@ pango_font_map_real_load_fontset (PangoFontMap               *fontmap,
       pango_font_description_set_variant (tmp_desc, PANGO_VARIANT_NORMAL);
       pango_font_description_set_stretch (tmp_desc, PANGO_STRETCH_NORMAL);
 
+      G_LOCK (warned_fonts);
       if (!warned_fonts || !g_hash_table_lookup (warned_fonts, ctmp1))
 	{
 	  g_hash_table_insert (warned_fonts, g_strdup (ctmp1), GINT_TO_POINTER (1));
@@ -257,7 +241,7 @@ pango_font_map_real_load_fontset (PangoFontMap               *fontmap,
 		     "expect ugly output.", ctmp1, ctmp2);
 	  g_free (ctmp2);
 	}
-
+      G_UNLOCK (warned_fonts);
       g_free (ctmp1);
 
       pango_font_map_fontset_add_fonts (fontmap,
@@ -300,3 +284,56 @@ pango_font_map_get_shape_engine_type (PangoFontMap *fontmap)
   return PANGO_FONT_MAP_GET_CLASS (fontmap)->shape_engine_type;
 }
 
+/**
+ * pango_font_map_get_serial:
+ * @fontmap: a #PangoFontMap
+ *
+ * Returns the current serial number of @fontmap.  The serial number is
+ * initialized to an small number larger than zero when a new fontmap
+ * is created and is increased whenever the fontmap is changed. It may
+ * wrap, but will never have the value 0. Since it can wrap, never compare
+ * it with "less than", always use "not equals".
+ *
+ * The fontmap can only be changed using backend-specific API, like changing
+ * fontmap resolution.
+ *
+ * This can be used to automatically detect changes to a #PangoFontMap, like
+ * in #PangoContext.
+ *
+ * Return value: The current serial number of @fontmap.
+ *
+ * Since: 1.32.4
+ **/
+guint
+pango_font_map_get_serial (PangoFontMap *fontmap)
+{
+  g_return_val_if_fail (PANGO_IS_FONT_MAP (fontmap), 0);
+
+  if (PANGO_FONT_MAP_GET_CLASS (fontmap)->get_serial)
+    return PANGO_FONT_MAP_GET_CLASS (fontmap)->get_serial (fontmap);
+  else
+    return 1;
+}
+
+/**
+ * pango_font_map_changed:
+ * @fontmap: a #PangoFontMap
+ *
+ * Forces a change in the context, which will cause any #PangoContext
+ * using this fontmap to change.
+ *
+ * This function is only useful when implementing a new backend
+ * for Pango, something applications won't do. Backends should
+ * call this function if they have attached extra data to the context
+ * and such data is changed.
+ *
+ * Since: 1.34
+ **/
+void
+pango_font_map_changed (PangoFontMap *fontmap)
+{
+  g_return_if_fail (PANGO_IS_FONT_MAP (fontmap));
+
+  if (PANGO_FONT_MAP_GET_CLASS (fontmap)->changed)
+    PANGO_FONT_MAP_GET_CLASS (fontmap)->changed (fontmap);
+}

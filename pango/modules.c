@@ -19,6 +19,14 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * SECTION:modules
+ * @short_description:Support for loadable modules
+ * @title:Modules
+ *
+ * Functions and macros in this section are used to support loading dynamic
+ * modules that add engines to Pango at run time.
+ */
 #include "config.h"
 
 #include <string.h>
@@ -44,11 +52,24 @@ typedef struct _PangoMapInfo PangoMapInfo;
 typedef struct _PangoEnginePair PangoEnginePair;
 typedef struct _PangoSubmap PangoSubmap;
 
+/**
+ * PangoMap:
+ *
+ * A #PangoMap structure can be used to determine the engine to
+ * use for each character.
+ */
 struct _PangoMap
 {
   GArray *entries;
 };
 
+/**
+ * PangoMapEntry:
+ *
+ * A #PangoMapEntry contains information about the engine that should be used
+ * for the codepoint to which this entry belongs and also whether the engine
+ * matches the language tag for this entry's map exactly or just approximately.
+ */
 struct _PangoMapEntry
 {
   GSList *exact;
@@ -88,7 +109,9 @@ struct _PangoModuleClass
   GTypeModuleClass parent_class;
 };
 
+G_LOCK_DEFINE_STATIC (maps);
 static GList *maps = NULL;
+/* the following are readonly after init_modules */
 static GSList *registered_engines = NULL;
 static GSList *dlloaded_engines = NULL;
 static GHashTable *dlloaded_modules;
@@ -106,7 +129,7 @@ static GType pango_module_get_type (void);
 static GQuark
 get_warned_quark (void)
 {
-  static GQuark warned_quark = 0;
+  static GQuark warned_quark = 0; /* MT-safe */
 
   if (G_UNLIKELY (!warned_quark))
     warned_quark = g_quark_from_static_string ("pango-module-warned");
@@ -131,10 +154,13 @@ pango_find_map (PangoLanguage *language,
 		guint          engine_type_id,
 		guint          render_type_id)
 {
-  GList *tmp_list = maps;
+  GList *tmp_list;
   PangoMapInfo *map_info = NULL;
   gboolean found_earlier = FALSE;
 
+  G_LOCK (maps);
+
+  tmp_list = maps;
   while (tmp_list)
     {
       map_info = tmp_list->data;
@@ -172,6 +198,8 @@ pango_find_map (PangoLanguage *language,
       maps = g_list_prepend(maps, tmp_list->data);
       g_list_free_1(tmp_list);
     }
+
+  G_UNLOCK (maps);
 
   return map_info->map;
 }
@@ -278,10 +306,13 @@ pango_module_class_init (PangoModuleClass *class)
   gobject_class->finalize = pango_module_finalize;
 }
 
+G_LOCK_DEFINE_STATIC (engine);
 
 static PangoEngine *
 pango_engine_pair_get_engine (PangoEnginePair *pair)
 {
+  G_LOCK (engine);
+
   if (!pair->engine)
     {
       if (g_type_module_use (G_TYPE_MODULE (pair->module)))
@@ -302,6 +333,8 @@ pango_engine_pair_get_engine (PangoEnginePair *pair)
 	    }
 	}
     }
+
+  G_UNLOCK (engine);
 
   return pair->engine;
 }
@@ -382,8 +415,8 @@ script_from_string (const char *str)
 {
   static GEnumClass *class = NULL;
   GEnumValue *value;
-  if (!class)
-    class = g_type_class_ref (PANGO_TYPE_SCRIPT);
+  if (g_once_init_enter (&class))
+    g_once_init_leave (&class, g_type_class_ref (PANGO_TYPE_SCRIPT));
 
   value = g_enum_get_value_by_nick (class, str);
   if (!value)
@@ -438,11 +471,23 @@ process_module_file (FILE *module_file, const gchar *module_file_dir)
 	  switch (i)
 	    {
 	    case 0:
-	      if (!g_path_is_absolute (tmp_buf->str)) {
-		const gchar *abs_file_name = g_build_filename (module_file_dir, tmp_buf->str, NULL);
-		g_string_assign (tmp_buf, abs_file_name);
-		g_free ((gpointer) abs_file_name);
-	      }
+	      if (!g_path_is_absolute (tmp_buf->str)
+#ifdef __APPLE__
+	          && strncmp (tmp_buf->str, "@executable_path/", 17)
+	          && strncmp (tmp_buf->str, "@loader_path/", 13)
+	          && strncmp (tmp_buf->str, "@rpath/", 7)
+#endif
+	         )
+		{
+		  const gchar *lib_dir = pango_get_lib_subdirectory ();
+		  const gchar *abs_file_name = g_build_filename (lib_dir,
+								 MODULE_VERSION,
+								 "modules",
+								 tmp_buf->str,
+								 NULL);
+		  g_string_assign (tmp_buf, abs_file_name);
+		  g_free ((gpointer) abs_file_name);
+		}
 	      pair->module = find_or_create_module (tmp_buf->str);
 	      break;
 	    case 1:
@@ -533,11 +578,20 @@ read_modules (void)
   dlloaded_modules = g_hash_table_new (g_str_hash, g_str_equal);
 
   if (!file_str)
-    file_str = g_build_filename (pango_get_sysconf_subdirectory (),
-				 "pango.modules",
-				 NULL);
+    {
+      files = g_new (char *, 3);
 
-  files = pango_split_file_list (file_str);
+      files[0] = g_build_filename (pango_get_sysconf_subdirectory (),
+                                   "pango.modules",
+                                   NULL);
+      files[1] = g_build_filename (pango_get_lib_subdirectory (),
+                                   MODULE_VERSION,
+                                   "modules.cache",
+                                   NULL);
+      files[2] = NULL;
+    }
+  else
+    files = pango_split_file_list (file_str);
 
   n = 0;
   while (files[n])
@@ -549,7 +603,7 @@ read_modules (void)
       if (module_file)
 	{
 	  const gchar *module_file_dir = g_path_get_dirname (files[n]);
-	  process_module_file(module_file, module_file_dir);
+	  process_module_file (module_file, module_file_dir);
 	  g_free ((gpointer) module_file_dir);
 	  fclose(module_file);
 	}
@@ -564,20 +618,22 @@ read_modules (void)
 static void
 init_modules (void)
 {
-  static gboolean init = FALSE;
+  static gsize init = 0;
   int i;
 
-  if (init)
-    return;
-  else
-    init = TRUE;
+  if (g_once_init_enter (&init))
+    {
+#if !GLIB_CHECK_VERSION (2, 35, 3)
+      /* Make sure that the type system is initialized */
+      g_type_init ();
+#endif
 
-  /* Make sure that the type system is initialized */
-  g_type_init ();
+      for (i = 0; _pango_included_lang_modules[i].list; i++)
+        pango_module_register (&_pango_included_lang_modules[i]);
+      read_modules ();
 
-  for (i = 0; _pango_included_lang_modules[i].list; i++)
-    pango_module_register (&_pango_included_lang_modules[i]);
-  read_modules ();
+      g_once_init_leave (&init, 1);
+    }
 }
 
 static void
@@ -643,7 +699,7 @@ build_map (PangoMapInfo *info)
 
   if (!dlloaded_engines && !registered_engines)
     {
-      static gboolean no_module_warning = FALSE;
+      static gboolean no_module_warning = FALSE; /* MT-safe */
       if (!no_module_warning)
 	{
 	  gchar *filename = g_build_filename (pango_get_sysconf_subdirectory (),

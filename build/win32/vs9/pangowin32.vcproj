@@ -20,9 +20,9 @@
 	</ToolFiles>
 	<Configurations>
 		<Configuration
-			Name="Debug_FC|Win32"
+			Name="Debug|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops"
 			CharacterSet="2"
 			>
 			<Tool
@@ -35,7 +35,7 @@
 				PreprocessorDefinitions="_DEBUG;$(PangoDefines)"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="2"
+				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="4"
@@ -48,70 +48,6 @@
 				ModuleDefinitionFile="..\..\..\pango\pangowin32.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
-				ImportLibrary="$(TargetDir)$(ProjectName)-$(PangoApiVersion).lib"
-				TargetMachine="1"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Debug|Win32"
-			ConfigurationType="2"
-			InheritedPropertySheets=".\pango.vsprops"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				AdditionalIncludeDirectories="."
-				PreprocessorDefinitions="_DEBUG;$(PangoDefines);$(NoFCDef)"
-				MinimalRebuild="true"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="2"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="4"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="usp10.lib"
-				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
-				ModuleDefinitionFile="..\..\..\pango\pangowin32.def"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				ImportLibrary="$(TargetDir)$(ProjectName)-$(PangoApiVersion).lib"
-				TargetMachine="1"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release_FC|Win32"
-			ConfigurationType="2"
-			InheritedPropertySheets=".\pango.vsprops"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				PreprocessorDefinitions="$(PangoDefines)"
-				RuntimeLibrary="2"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="usp10.lib"
-				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
-				ModuleDefinitionFile="..\..\..\pango\pangowin32.def"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
 				ImportLibrary="$(TargetDir)$(ProjectName)-$(PangoApiVersion).lib"
 				TargetMachine="1"
 			/>
@@ -119,15 +55,16 @@
 		<Configuration
 			Name="Release|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops"
 			CharacterSet="2"
+			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				PreprocessorDefinitions="$(PangoDefines);$(NoFCDef)"
+				PreprocessorDefinitions="$(PangoDefines)"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
@@ -137,7 +74,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="usp10.lib"
 				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
+				LinkIncremental="1"
 				ModuleDefinitionFile="..\..\..\pango\pangowin32.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -148,8 +85,8 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Debug_FC|x64"
-			InheritedPropertySheets=".\pango.vsprops"
+			Name="Debug|x64"
+			InheritedPropertySheets=".\pango-build-defines.vsprops"
 			ConfigurationType="2"
 			CharacterSet="2"
 			>
@@ -177,39 +114,11 @@
 			/>
 		</Configuration>
 		<Configuration
-			Name="Debug|x64"
-			InheritedPropertySheets=".\pango.vsprops"
+			Name="Release|x64"
+			InheritedPropertySheets=".\pango-build-defines.vsprops"
 			ConfigurationType="2"
 			CharacterSet="2"
-			>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				PreprocessorDefinitions="_DEBUG;$(PangoDefines);$(NoFCDef)"
-				MinimalRebuild="true"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="usp10.lib"
-				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
-				ModuleDefinitionFile="..\..\..\pango\pangowin32.def"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				ImportLibrary="$(TargetDir)$(ProjectName)-$(PangoApiVersion).lib"
-				TargetMachine="17"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release_FC|x64"
-			InheritedPropertySheets=".\pango.vsprops"
-			ConfigurationType="2"
-			CharacterSet="2"
+			WholeProgramOptimization="1"
 			>
 			<Tool
 				Name="VCCLCompilerTool"
@@ -223,35 +132,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="usp10.lib"
 				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
-				ModuleDefinitionFile="..\..\..\pango\pangowin32.def"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				ImportLibrary="$(TargetDir)$(ProjectName)-$(PangoApiVersion).lib"
-				TargetMachine="17"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release|x64"
-			InheritedPropertySheets=".\pango.vsprops"
-			ConfigurationType="2"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCCLCompilerTool"
-				PreprocessorDefinitions="$(PangoDefines);$(NoFCDef)"
-				RuntimeLibrary="2"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				AdditionalDependencies="usp10.lib"
-				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
+				LinkIncremental="1"
 				ModuleDefinitionFile="..\..\..\pango\pangowin32.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -284,13 +165,9 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File RelativePath="..\..\..\modules\basic\basic-win32.c" >
-				<FileConfiguration Name="Debug_FC|Win32"><Tool Name="VCCLCompilerTool"	PreprocessorDefinitions="PANGO_MODULE_PREFIX=_pango_basic_win32" /></FileConfiguration>
 				<FileConfiguration Name="Debug|Win32"><Tool Name="VCCLCompilerTool"	PreprocessorDefinitions="PANGO_MODULE_PREFIX=_pango_basic_win32" /></FileConfiguration>
-				<FileConfiguration Name="Release_FC|Win32"><Tool Name="VCCLCompilerTool" PreprocessorDefinitions="PANGO_MODULE_PREFIX=_pango_basic_win32" /></FileConfiguration>
 				<FileConfiguration Name="Release|Win32"><Tool Name="VCCLCompilerTool" PreprocessorDefinitions="PANGO_MODULE_PREFIX=_pango_basic_win32" /></FileConfiguration>
-				<FileConfiguration Name="Debug_FC|x64"><Tool Name="VCCLCompilerTool" PreprocessorDefinitions="PANGO_MODULE_PREFIX=_pango_basic_win32" /></FileConfiguration>
 				<FileConfiguration Name="Debug|x64"><Tool Name="VCCLCompilerTool" PreprocessorDefinitions="PANGO_MODULE_PREFIX=_pango_basic_win32" /></FileConfiguration>
-				<FileConfiguration Name="Release_FC|x64"><Tool Name="VCCLCompilerTool" PreprocessorDefinitions="PANGO_MODULE_PREFIX=_pango_basic_win32" /></FileConfiguration>
 				<FileConfiguration Name="Release|x64"><Tool Name="VCCLCompilerTool" PreprocessorDefinitions="PANGO_MODULE_PREFIX=_pango_basic_win32" /></FileConfiguration>
 			</File>
 			<File RelativePath="..\..\..\pango\module-defs-win32.c" />

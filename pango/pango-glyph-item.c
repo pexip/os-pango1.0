@@ -564,9 +564,10 @@ split_before_cluster_start (ApplyAttrsState *state)
  * This function takes ownership of @glyph_item; it will be reused
  * as one of the elements in the list.
  *
- * Return value: (transfer full): a list of glyph items resulting
- *   from splitting @glyph_item. Free the elements using
- *   pango_glyph_item_free(), the list using g_slist_free().
+ * Return value: (transfer full) (element-type Pango.GlyphItem): a
+ *   list of glyph items resulting from splitting @glyph_item. Free
+ *   the elements using pango_glyph_item_free(), the list using
+ *   g_slist_free().
  *
  * Since: 1.2
  **/
@@ -581,6 +582,7 @@ pango_glyph_item_apply_attrs (PangoGlyphItem   *glyph_item,
   gboolean start_new_segment = FALSE;
   gboolean have_cluster;
   int range_start, range_end;
+  gboolean is_ellipsis;
 
   /* This routine works by iterating through the item cluster by
    * cluster; we accumulate the attributes that we need to
@@ -607,11 +609,14 @@ pango_glyph_item_apply_attrs (PangoGlyphItem   *glyph_item,
 
   state.segment_attrs = pango_attr_iterator_get_attrs (iter);
 
+  is_ellipsis = (glyph_item->item->analysis.flags & PANGO_ANALYSIS_FLAG_IS_ELLIPSIS) != 0;
+
   /* Short circuit the case when we don't actually need to
    * split the item
    */
-  if (range_start <= glyph_item->item->offset &&
-      range_end >= glyph_item->item->offset + glyph_item->item->length)
+  if (is_ellipsis ||
+      (range_start <= glyph_item->item->offset &&
+       range_end >= glyph_item->item->offset + glyph_item->item->length))
     goto out;
 
   for (have_cluster = pango_glyph_item_iter_init_start (&state.iter, glyph_item, text);
@@ -700,8 +705,8 @@ pango_glyph_item_apply_attrs (PangoGlyphItem   *glyph_item,
  * @text: text that @glyph_item corresponds to
  *   (glyph_item->item->offset is an offset from the
  *    start of @text)
- * @log_attrs: logical attributes for the item (the
- *   first logical attribute refers to the position
+ * @log_attrs: (array): logical attributes for the item
+ *   (the first logical attribute refers to the position
  *   before the first character in the item)
  * @letter_spacing: amount of letter spacing to add
  *   in Pango units. May be negative, though too large
@@ -773,9 +778,10 @@ pango_glyph_item_letter_space (PangoGlyphItem *glyph_item,
  * @text: text that @glyph_item corresponds to
  *   (glyph_item->item->offset is an offset from the
  *    start of @text)
- * @logical_widths: an array whose length is the number of characters in
- *                  glyph_item (equal to glyph_item->item->num_chars)
- *                  to be filled in with the resulting character widths.
+ * @logical_widths: (array): an array whose length is the number of
+ *                  characters in glyph_item (equal to
+ *                  glyph_item->item->num_chars) to be filled in with
+ *                  the resulting character widths.
  *
  * Given a #PangoGlyphItem and the corresponding
  * text, determine the screen width corresponding to each character. When

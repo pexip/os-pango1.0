@@ -1,8 +1,8 @@
-Index: pango1.0-1.30.0/pango/modules.c
+Index: pango-1.36.6/pango/modules.c
 ===================================================================
---- pango1.0-1.30.0.orig/pango/modules.c	2012-03-29 11:20:58.054438454 +1100
-+++ pango1.0-1.30.0/pango/modules.c	2012-03-29 11:25:20.402429369 +1100
-@@ -40,6 +40,9 @@
+--- pango-1.36.6.orig/pango/modules.c	2014-08-16 17:49:11.237303402 +0200
++++ pango-1.36.6/pango/modules.c	2014-08-16 17:49:11.233303342 +0200
+@@ -48,6 +48,9 @@
  #define PANGO_MODULE(module) (G_TYPE_CHECK_INSTANCE_CAST ((module), PANGO_TYPE_MODULE, PangoModule))
  #define PANGO_IS_MODULE(module)  (G_TYPE_CHECK_INSTANCE_TYPE ((module), PANGO_TYPE_MODULE))
  
@@ -12,7 +12,7 @@ Index: pango1.0-1.30.0/pango/modules.c
  typedef struct _PangoMapInfo PangoMapInfo;
  typedef struct _PangoEnginePair PangoEnginePair;
  typedef struct _PangoSubmap PangoSubmap;
-@@ -545,13 +548,40 @@
+@@ -599,13 +602,40 @@
  
    while (n-- > 0)
      {
@@ -32,9 +32,9 @@ Index: pango1.0-1.30.0/pango/modules.c
 +		  module_file = g_fopen (pathname, "r");
 +		  if (module_file)
 +		    {
-+			  const gchar *module_file_dir = g_path_get_dirname (files[n]);
++		      const gchar *module_file_dir = g_path_get_dirname (files[n]);
 +		      process_module_file(module_file, module_file_dir);
-+			  g_free ((gpointer) module_file_dir);
++		      g_free ((gpointer) module_file_dir);
 +		      fclose(module_file);
 +		    }
 +		  g_free (pathname);
@@ -45,15 +45,15 @@ Index: pango1.0-1.30.0/pango/modules.c
 +      else
  	{
 -	  const gchar *module_file_dir = g_path_get_dirname (files[n]);
--	  process_module_file(module_file, module_file_dir);
+-	  process_module_file (module_file, module_file_dir);
 -	  g_free ((gpointer) module_file_dir);
 -	  fclose(module_file);
 +	  module_file = g_fopen (files[n], "r");
 +	  if (module_file)
 +	    {
-+		  const gchar *module_file_dir = g_path_get_dirname (files[n]);
++	      const gchar *module_file_dir = g_path_get_dirname (files[n]);
 +	      process_module_file(module_file, module_file_dir);
-+		  g_free ((gpointer) module_file_dir);
++	      g_free ((gpointer) module_file_dir);
 +	      fclose(module_file);
 +	    }
  	}

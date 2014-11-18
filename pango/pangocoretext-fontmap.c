@@ -111,17 +111,18 @@ typedef struct
     PangoWeight weight;
 } PangoCTWeight;
 
-static const float ct_weight_min = -1.00f;
-static const float ct_weight_max = 1.00f;
+const float ct_weight_min = -1.00f;
+const float ct_weight_max = 1.00f;
 
 static const PangoCTWeight ct_weight_limits[] = {
-    { -0.70, PANGO_WEIGHT_THIN},
-    { -0.50, PANGO_WEIGHT_ULTRALIGHT },
-    { -0.35, PANGO_WEIGHT_LIGHT },
+    { -0.00, PANGO_WEIGHT_THIN },
+    { -0.75, PANGO_WEIGHT_ULTRALIGHT },
+    { -0.50, PANGO_WEIGHT_LIGHT },
+    { -0.25, PANGO_WEIGHT_SEMILIGHT },
     { -0.10, PANGO_WEIGHT_BOOK },
-    {  0.10, PANGO_WEIGHT_NORMAL },
-    {  0.24, PANGO_WEIGHT_MEDIUM },
-    {  0.36, PANGO_WEIGHT_SEMIBOLD },
+    {  0.00, PANGO_WEIGHT_NORMAL },
+    {  0.10, PANGO_WEIGHT_MEDIUM },
+    {  0.25, PANGO_WEIGHT_SEMIBOLD },
     {  0.50, PANGO_WEIGHT_BOLD },
     {  0.75, PANGO_WEIGHT_ULTRABOLD },
     {  1.00, PANGO_WEIGHT_HEAVY }
@@ -167,7 +168,8 @@ gchar_from_cf_string (CFStringRef str)
 }
 
 static char *
-ct_font_descriptor_get_family_name (CTFontDescriptorRef desc)
+ct_font_descriptor_get_family_name (CTFontDescriptorRef desc,
+                                    gboolean            may_fail)
 {
   CFStringRef cf_str;
   char *buffer;
@@ -183,6 +185,9 @@ ct_font_descriptor_get_family_name (CTFontDescriptorRef desc)
       cf_str = CTFontDescriptorCopyAttribute (desc, kCTFontNameAttribute);
       if (!cf_str)
         {
+          if (may_fail)
+            return NULL;
+
           /* This font is likely broken, return a default family name ... */
           return g_strdup ("Sans");
         }
@@ -306,6 +311,7 @@ ct_font_descriptor_get_weight (CTFontDescriptorRef desc)
 	  for (i = 0; i < G_N_ELEMENTS(ct_weight_limits); i++)
 	    if (value < ct_weight_limits[i].bound)
 	      {
+	        /* TODO interpolate weight. */
                 weight = ct_weight_limits[i].weight;
                 break;
 	      }
@@ -317,6 +323,51 @@ ct_font_descriptor_get_weight (CTFontDescriptorRef desc)
   CFRelease (dict);
 
   return weight;
+}
+
+static gboolean
+ct_font_descriptor_is_small_caps (CTFontDescriptorRef desc)
+{
+  CFIndex i, count;
+  CFArrayRef array;
+  CFStringRef str;
+  gboolean retval = FALSE;
+
+  /* See http://stackoverflow.com/a/4811371 for why this works and an
+   * explanation of the magic number "3" used below.
+   */
+  array = CTFontDescriptorCopyAttribute (desc, kCTFontFeaturesAttribute);
+  if (!array)
+    return FALSE;
+
+  str = CFStringCreateWithCString (NULL, "CTFeatureTypeIdentifier",
+                                   kCFStringEncodingASCII);
+
+  count = CFArrayGetCount (array);
+  for (i = 0; i < count; i++)
+    {
+      CFDictionaryRef dict = CFArrayGetValueAtIndex (array, i);
+      CFNumberRef num;
+
+      num = (CFNumberRef)CFDictionaryGetValue (dict, str);
+      if (num)
+        {
+          int value = 0;
+
+          if (CFNumberGetValue (num, kCFNumberSInt32Type, &value) &&
+              value == 3)
+            {
+              /* This font supports small caps. */
+              retval = TRUE;
+              break;
+            }
+        }
+    }
+
+  CFRelease (str);
+  CFRelease (array);
+
+  return retval;
 }
 
 static inline gboolean
@@ -343,7 +394,7 @@ _pango_core_text_font_description_from_ct_font_descriptor (CTFontDescriptorRef d
   /* FIXME: Should we actually retrieve the family name from the list of
    * families in a font map?
    */
-  family_name = ct_font_descriptor_get_family_name (desc);
+  family_name = ct_font_descriptor_get_family_name (desc, FALSE);
   pango_font_description_set_family (font_desc, family_name);
   g_free (family_name);
 
@@ -362,12 +413,9 @@ _pango_core_text_font_description_from_ct_font_descriptor (CTFontDescriptorRef d
   else
     pango_font_description_set_style (font_desc, PANGO_STYLE_NORMAL);
 
-  /* FIXME: How can this be figured using CoreText? */
-#if 0
-  if (font_traits & NSSmallCapsFontMask)
+  if (ct_font_descriptor_is_small_caps (desc))
     pango_font_description_set_variant (font_desc, PANGO_VARIANT_SMALL_CAPS);
   else
-#endif
     pango_font_description_set_variant (font_desc, PANGO_VARIANT_NORMAL);
 
   g_free (style_name);
@@ -734,7 +782,7 @@ get_context_matrix (PangoContext *context,
 		    PangoMatrix *matrix)
 {
   const PangoMatrix *set_matrix;
-  static const PangoMatrix identity = PANGO_MATRIX_INIT;
+  const PangoMatrix identity = PANGO_MATRIX_INIT;
 
   if (context)
     set_matrix = pango_context_get_matrix (context);
@@ -1145,6 +1193,24 @@ get_first_font (PangoFontset *fontset G_GNUC_UNUSED,
   return TRUE;
 }
 
+static guint
+pango_core_text_font_map_get_serial (PangoFontMap *fontmap)
+{
+  PangoCoreTextFontMap *ctfontmap = PANGO_CORE_TEXT_FONT_MAP (fontmap);
+
+  return ctfontmap->serial;
+}
+
+static void
+pango_core_text_font_map_changed (PangoFontMap *fontmap)
+{
+  PangoCoreTextFontMap *ctfontmap = PANGO_CORE_TEXT_FONT_MAP (fontmap);
+
+  ctfontmap->serial++;
+  if (ctfontmap->serial == 0)
+    ctfontmap->serial++;
+}
+
 static PangoFont *
 pango_core_text_font_map_load_font (PangoFontMap               *fontmap,
                                     PangoContext               *context,
@@ -1229,6 +1295,7 @@ pango_core_text_font_map_load_fontset (PangoFontMap               *fontmap,
   PangoCoreTextFontset *fontset;
   PangoCoreTextFontsetKey key;
   PangoCoreTextFontMap *ctfontmap = PANGO_CORE_TEXT_FONT_MAP (fontmap);
+  static gboolean warned_full_fallback = FALSE; /* MT-safe */
 
   pango_core_text_fontset_key_init (&key, ctfontmap,
                                     context, desc, language);
@@ -1237,16 +1304,15 @@ pango_core_text_font_map_load_fontset (PangoFontMap               *fontmap,
 
   if (G_UNLIKELY (!fontset))
     {
+      gboolean insert_in_hash = TRUE;
+
       fontset = pango_core_text_fontset_new (&key, desc);
 
-      if (G_LIKELY (fontset))
-        g_hash_table_insert (ctfontmap->fontset_hash,
-                             pango_core_text_fontset_get_key (fontset),
-                             fontset);
-      else
+      if (G_UNLIKELY (!fontset))
         {
           /* If no font(set) could be loaded, we fallback to "Sans",
-           * which should always work on Mac.
+           * which should always work on Mac. We try to adhere to the
+           * requested style at first.
            */
           PangoFontDescription *tmp_desc;
 
@@ -1260,15 +1326,54 @@ pango_core_text_font_map_load_fontset (PangoFontMap               *fontmap,
                                             language);
 
           fontset = g_hash_table_lookup (ctfontmap->fontset_hash, &key);
+          if (G_LIKELY (fontset))
+            insert_in_hash = FALSE;
+          else
+            fontset = pango_core_text_fontset_new (&key, tmp_desc);
+
           if (G_UNLIKELY (!fontset))
             {
-              fontset = pango_core_text_fontset_new (&key, tmp_desc);
-              g_hash_table_insert (ctfontmap->fontset_hash,
-                                   pango_core_text_fontset_get_key (fontset),
-                                   fontset);
+              /* We could not load Sans in the requested style; reset
+               * variant, weight and stretch to sensible defaults (we should
+               * be able to adhere the PangoStyle with "Sans").
+               */
+              pango_font_description_set_variant (tmp_desc, PANGO_VARIANT_NORMAL);
+              pango_font_description_set_weight (tmp_desc, PANGO_WEIGHT_NORMAL);
+              pango_font_description_set_stretch (tmp_desc, PANGO_STRETCH_NORMAL);
 
+              if (!warned_full_fallback)
+                {
+                  char *ctmp;
+
+                  warned_full_fallback = TRUE;
+
+                  ctmp = pango_font_description_to_string (desc);
+                  g_warning ("couldn't load font \"%s\", modified variant/"
+                             "weight/stretch as fallback, expect ugly output.",
+                             ctmp);
+                  g_free (ctmp);
+                }
+
+              fontset = g_hash_table_lookup (ctfontmap->fontset_hash, &key);
+              if (G_LIKELY (fontset))
+                insert_in_hash = FALSE;
+              else
+                fontset = pango_core_text_fontset_new (&key, tmp_desc);
+
+              if (G_UNLIKELY (!fontset))
+                {
+                  /* If even that failed, display a sensible error message
+                   * and bail out, in contrast to failing randomly.
+                   */
+                  g_error ("Could not load fallback font, bailing out.");
+                }
             }
         }
+
+      if (insert_in_hash)
+        g_hash_table_insert (ctfontmap->fontset_hash,
+                             pango_core_text_fontset_get_key (fontset),
+                             fontset);
     }
 
   /* Cannot use pango_core_text_fontset_key_free() here */
@@ -1285,6 +1390,7 @@ pango_core_text_font_map_init (PangoCoreTextFontMap *ctfontmap)
   CFArrayRef ctfaces;
   CFIndex i, count;
 
+  ctfontmap->serial = 1;
   ctfontmap->families = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                g_free, g_object_unref);
 
@@ -1308,13 +1414,13 @@ pango_core_text_font_map_init (PangoCoreTextFontMap *ctfontmap)
       SInt64 font_traits;
       char *buffer;
       char *family_name;
-      CFStringRef str;
       CFNumberRef number;
       CFDictionaryRef dict;
       CTFontDescriptorRef desc = CFArrayGetValueAtIndex (ctfaces, i);
 
-      str = CTFontDescriptorCopyAttribute (desc, kCTFontFamilyNameAttribute);
-      buffer = gchar_from_cf_string (str);
+      buffer = ct_font_descriptor_get_family_name (desc, TRUE);
+      if (!buffer)
+        continue;
 
       family_name = g_utf8_casefold (buffer, -1);
 
@@ -1328,7 +1434,6 @@ pango_core_text_font_map_init (PangoCoreTextFontMap *ctfontmap)
           family->family_name = g_strdup (buffer);
         }
 
-      CFRelease (str);
       g_free (buffer);
 
       g_free (family_name);
@@ -1377,6 +1482,8 @@ pango_core_text_font_map_class_init (PangoCoreTextFontMapClass *class)
   fontmap_class->list_families = pango_core_text_font_map_list_families;
   fontmap_class->load_fontset = pango_core_text_font_map_load_fontset;
   fontmap_class->shape_engine_type = PANGO_RENDER_TYPE_CORE_TEXT;
+  fontmap_class->get_serial = pango_core_text_font_map_get_serial;
+  fontmap_class->changed = pango_core_text_font_map_changed;
 }
 
 /*
@@ -1406,10 +1513,16 @@ struct _PangoCoreTextFontset
   GPtrArray *coverages;
 };
 
-typedef PangoFontsetClass PangoCoreTextFontsetClass;
+struct _PangoCoreTextFontsetClass
+{
+  PangoFontsetClass parent_instance;
+};
 
-static PangoFontsetClass *core_text_fontset_parent_class;
+typedef struct _PangoCoreTextFontsetClass PangoCoreTextFontsetClass;
 
+G_DEFINE_TYPE (PangoCoreTextFontset,
+               pango_core_text_fontset,
+               PANGO_TYPE_FONTSET);
 
 /* This symbol does exist in the CoreText library shipped with Snow
  * Leopard and Lion, however, it is not found in the public header files.
@@ -1535,8 +1648,6 @@ pango_core_text_fontset_class_init (PangoCoreTextFontsetClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   PangoFontsetClass *fontset_class = PANGO_FONTSET_CLASS (klass);
 
-  core_text_fontset_parent_class = g_type_class_peek_parent (klass);
-
   object_class->finalize = pango_core_text_fontset_finalize;
 
   fontset_class->get_font = pango_core_text_fontset_get_font;
@@ -1582,7 +1693,7 @@ pango_core_text_fontset_finalize (GObject *object)
   if (ctfontset->key)
     pango_core_text_fontset_key_free (ctfontset->key);
 
-  G_OBJECT_CLASS (core_text_fontset_parent_class)->finalize (object);
+  G_OBJECT_CLASS (pango_core_text_fontset_parent_class)->finalize (object);
 }
 
 static PangoCoreTextFontsetKey *
@@ -1664,6 +1775,3 @@ pango_core_text_fontset_foreach (PangoFontset *fontset,
     }
 }
 
-G_DEFINE_TYPE (PangoCoreTextFontset,
-               pango_core_text_fontset,
-               PANGO_TYPE_FONTSET);

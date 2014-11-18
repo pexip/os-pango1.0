@@ -1,0 +1,5 @@
+Tests: build
+Depends: build-essential, libpango1.0-dev, pkg-config
+
+Tests: installed-tests
+Depends: pango1.0-tests, dbus-x11, xauth, xvfb, gnome-desktop-testing

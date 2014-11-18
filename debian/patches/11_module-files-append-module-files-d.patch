@@ -1,39 +1,26 @@
-Index: pango1.0-1.30.0/pango/modules.c
+Index: pango-1.36.6/pango/modules.c
 ===================================================================
---- pango1.0-1.30.0.orig/pango/modules.c	2012-03-29 11:25:20.402429369 +1100
-+++ pango1.0-1.30.0/pango/modules.c	2012-03-29 11:25:24.030429242 +1100
-@@ -530,6 +530,11 @@
-   FILE *module_file;
+--- pango-1.36.6.orig/pango/modules.c	2014-08-16 17:49:17.937405157 +0200
++++ pango-1.36.6/pango/modules.c	2014-08-16 17:49:17.933405097 +0200
+@@ -582,7 +582,7 @@
  
-   char *file_str =  pango_config_key_get ("Pango/ModuleFiles");
-+  char *module_files_d_str = g_build_filename (pango_get_lib_subdirectory (),
-+					       MODULE_VERSION,
-+					       "module-files.d",
-+					       NULL);
-+  char *list_str;
-   char **files;
-   int n;
+   if (!file_str)
+     {
+-      files = g_new (char *, 3);
++      files = g_new (char *, 4);
  
-@@ -540,7 +545,12 @@
- 				 "pango.modules",
- 				 NULL);
- 
--  files = pango_split_file_list (file_str);
-+  list_str = g_strjoin (G_SEARCHPATH_SEPARATOR_S,
-+			file_str,
-+			module_files_d_str,
-+			NULL);
-+
-+  files = pango_split_file_list (list_str);
- 
-   n = 0;
-   while (files[n])
-@@ -586,6 +596,8 @@
+       files[0] = g_build_filename (pango_get_sysconf_subdirectory (),
+                                    "pango.modules",
+@@ -591,7 +591,11 @@
+                                    MODULE_VERSION,
+                                    "modules.cache",
+                                    NULL);
+-      files[2] = NULL;
++      files[2] = g_build_filename (pango_get_lib_subdirectory (),
++                                   MODULE_VERSION,
++                                   "module-files.d",
++                                   NULL);
++      files[3] = NULL;
      }
- 
-   g_strfreev (files);
-+  g_free (list_str);
-+  g_free (module_files_d_str);
-   g_free (file_str);
- 
-   dlloaded_engines = g_slist_reverse (dlloaded_engines);
+   else
+     files = pango_split_file_list (file_str);

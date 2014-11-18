@@ -20,7 +20,7 @@
 		<Configuration
 			Name="Debug_FC|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops"
 			CharacterSet="2"
 			>
 			<Tool
@@ -33,7 +33,7 @@
 				PreprocessorDefinitions="_DEBUG;$(PangoDefines)"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="2"
+				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="4"
@@ -53,7 +53,7 @@
 		<Configuration
 			Name="Debug|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops;.\pango-ignore-fc.vsprops"
 			CharacterSet="2"
 			>
 			<Tool
@@ -66,7 +66,7 @@
 				PreprocessorDefinitions="_DEBUG;$(PangoDefines);$(NoFCDef)"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="2"
+				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="4"
@@ -87,7 +87,7 @@
 		<Configuration
 			Name="Release_FC|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops"
 			CharacterSet="2"
 			>
 			<Tool
@@ -106,7 +106,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="cairo.lib fontconfig.lib freetype.lib"
 				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
+				LinkIncremental="1"
 				ModuleDefinitionFile="..\..\..\pango\pangocairo.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -119,7 +119,7 @@
 		<Configuration
 			Name="Release|Win32"
 			ConfigurationType="2"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops;.\pango-ignore-fc.vsprops"
 			CharacterSet="2"
 			>
 			<Tool
@@ -138,7 +138,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="cairo.lib"
 				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
+				LinkIncremental="1"
 				IgnoreDefaultLibraryNames="$(OutDir)\pangoft2-$(PangoApiVersion).lib"
 				ModuleDefinitionFile="..\..\..\pango\pangocairo.def"
 				GenerateDebugInformation="true"
@@ -151,7 +151,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug_FC|x64"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops"
 			ConfigurationType="2"
 			CharacterSet="2"
 			>
@@ -162,7 +162,7 @@
 				PreprocessorDefinitions="_DEBUG;$(PangoDefines)"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="2"
+				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="3"
@@ -181,7 +181,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops;.\pango-ignore-fc.vsprops"
 			ConfigurationType="2"
 			CharacterSet="2"
 			>
@@ -192,7 +192,7 @@
 				PreprocessorDefinitions="_DEBUG;$(PangoDefines);$(NoFCDef)"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="2"
+				RuntimeLibrary="3"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="3"
@@ -212,7 +212,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release_FC|x64"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops"
 			ConfigurationType="2"
 			CharacterSet="2"
 			>
@@ -229,7 +229,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="cairo.lib fontconfig.lib freetype.lib"
 				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
+				LinkIncremental="1"
 				ModuleDefinitionFile="..\..\..\pango\pangocairo.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -241,7 +241,7 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			InheritedPropertySheets=".\pango.vsprops"
+			InheritedPropertySheets=".\pango-build-defines.vsprops;.\pango-ignore-fc.vsprops"
 			ConfigurationType="2"
 			CharacterSet="2"
 			>
@@ -258,7 +258,7 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="cairo.lib"
 				OutputFile="$(OutDir)\$(PangoDllPrefix)$(ProjectName)$(PangoDllSuffix).dll"
-				LinkIncremental="2"
+				LinkIncremental="1"
 				ModuleDefinitionFile="..\..\..\pango\pangocairo.def"
 				GenerateDebugInformation="true"
 				SubSystem="2"

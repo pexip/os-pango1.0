@@ -20,6 +20,14 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * SECTION:coretext-fonts
+ * @short_description:Font handling with CoreText fonts
+ * @title:CoreText Fonts
+ *
+ * The macros and functions in this section are used to access fonts natively on
+ * OS X using the CoreText text rendering subsystem.
+ */
 #include "config.h"
 
 #include "pangocoretext.h"
@@ -45,10 +53,12 @@ pango_core_text_font_finalize (GObject *object)
 {
   PangoCoreTextFont *ctfont = (PangoCoreTextFont *)object;
   PangoCoreTextFontPrivate *priv = ctfont->priv;
-
-  g_assert (priv->fontmap != NULL);
-  g_object_remove_weak_pointer (G_OBJECT (priv->fontmap), (gpointer *) (gpointer) &priv->fontmap);
-  priv->fontmap = NULL;
+  PangoCoreTextFontMap* fontmap = g_weak_ref_get ((GWeakRef *)&priv->fontmap);
+  if (fontmap)
+    {
+      g_weak_ref_clear ((GWeakRef *)&priv->fontmap);
+      g_object_unref (fontmap);
+    }
 
   if (priv->coverage)
     pango_coverage_unref (priv->coverage);
@@ -140,7 +150,7 @@ static PangoFontMap *
 pango_core_text_font_get_font_map (PangoFont *font)
 {
   PangoCoreTextFont *ctfont = (PangoCoreTextFont *)font;
-
+  /* FIXME: Not thread safe! */
   return ctfont->priv->fontmap;
 }
 
@@ -174,9 +184,8 @@ _pango_core_text_font_set_font_map (PangoCoreTextFont    *font,
 {
   PangoCoreTextFontPrivate *priv = font->priv;
 
-  g_assert (priv->fontmap == NULL);
-  priv->fontmap = (PangoFontMap *) fontmap;
-  g_object_add_weak_pointer (G_OBJECT (priv->fontmap), (gpointer *) (gpointer) &priv->fontmap);
+  g_return_if_fail (priv->fontmap == NULL);
+  g_weak_ref_set((GWeakRef *) &priv->fontmap, fontmap);
 }
 
 void

@@ -25,21 +25,30 @@
 #include <glib-object.h>
 
 #include <pango/pango-ot.h>
-#include "opentype/hb-ot.h"
-#include "opentype/hb-glib.h"
+#include <hb-ot.h>
+#include <hb-ft.h>
+#include <hb-glib.h>
+
+#include "pangofc-private.h"
 
 G_BEGIN_DECLS
 
 typedef struct _PangoOTInfoClass PangoOTInfoClass;
 
+/**
+ * PangoOTInfo:
+ *
+ * The #PangoOTInfo struct contains the various
+ * tables associated with an OpenType font. It contains only private fields and
+ * should only be accessed via the <function>pango_ot_info_*</function> functions
+ * which are documented below. To obtain a #PangoOTInfo,
+ * use pango_ot_info_get().
+ */
 struct _PangoOTInfo
 {
   GObject parent_instance;
 
-  guint loaded;
-
   FT_Face face;
-
   hb_face_t *hb_face;
 };
 
@@ -49,28 +58,11 @@ struct _PangoOTInfoClass
 };
 
 
-typedef struct _PangoOTRule PangoOTRule;
-
-struct _PangoOTRule
-{
-  gulong property_bit;
-  guint  feature_index;
-  guint  table_type : 1;
-};
-
 typedef struct _PangoOTRulesetClass PangoOTRulesetClass;
 
 struct _PangoOTRuleset
 {
   GObject parent_instance;
-
-  GArray *rules;
-  PangoOTInfo *info;
-
-  /* the index into these arrays is a PangoOTTableType */
-  guint n_features[2];
-  guint script_index[2];
-  guint language_index[2];
 };
 
 struct _PangoOTRulesetClass
@@ -78,23 +70,19 @@ struct _PangoOTRulesetClass
   GObjectClass parent_class;
 };
 
+/**
+ * PangoOTBuffer:
+ *
+ * The #PangoOTBuffer structure is used to store strings of glyphs associated
+ * with a #PangoFcFont, suitable for OpenType layout processing.  It contains
+ * only private fields and should only be accessed via the
+ * <function>pango_ot_buffer_*</function> functions which are documented below.
+ * To obtain a #PangoOTBuffer, use pango_ot_buffer_new().
+ */
 struct _PangoOTBuffer
 {
   hb_buffer_t *buffer;
-  gboolean should_free_hb_buffer;
-  PangoFcFont *font;
-  guint rtl : 1;
-  guint zero_width_marks : 1;
-  guint applied_gpos : 1;
 };
-
-hb_face_t *_pango_ot_info_get_hb_face (PangoOTInfo *info);
-void _pango_ot_info_substitute  (const PangoOTInfo    *info,
-				 const PangoOTRuleset *ruleset,
-				 PangoOTBuffer        *buffer);
-void _pango_ot_info_position    (const PangoOTInfo    *info,
-				 const PangoOTRuleset *ruleset,
-				 PangoOTBuffer        *buffer);
 
 G_END_DECLS
 
