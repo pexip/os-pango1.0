@@ -65,7 +65,7 @@ Package: libpango-1.0-0
 Architecture: any
 Depends: fontconfig (>= 2.1.91), ${misc:Depends}, ${shlibs:Depends}
 Replaces: libpango1.0-0 (<< 1.32.5-2)
-Breaks: libpango1.0-0 (<< 1.32.5-2), plymouth (<< 0.8.3-19)
+Breaks: libpango1.0-0 (<< 1.32.5-2)
 Provides: pango1.0-multiarch-modver-1.8.0
 Pre-Depends: ${misc:Pre-Depends}
 Multi-Arch: same

@@ -1,8 +1,9 @@
 Source: pango1.0
 Section: libs
 Priority: optional
-Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
-Uploaders: @GNOME_TEAM@
+Maintainer: Pexip AS <packaging@pexip.com>
+XSBC-Pexip-Original-Maintainer: Debian GNOME Maintainers <pkg-gnome-maintainers@lists.alioth.debian.org>
+XSBC-Pexip-Original-Uploaders: @GNOME_TEAM@
 Build-Depends: autotools-dev,
                cdbs (>= 0.4.93),
                debhelper (>= 8.1.3),
@@ -29,6 +30,7 @@ Standards-Version: 3.9.5
 Vcs-Svn: svn://anonscm.debian.org/pkg-gnome/desktop/unstable/pango1.0
 Vcs-Browser: http://anonscm.debian.org/viewvc/pkg-gnome/desktop/unstable/pango1.0
 XS-Testsuite: autopkgtest
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
 
 Package: libpango1.0-0
 Section: oldlibs
@@ -63,7 +65,7 @@ Package: libpango-1.0-@SONAME@
 Architecture: any
 Depends: fontconfig (>= 2.1.91), ${misc:Depends}, ${shlibs:Depends}
 Replaces: libpango1.0-0 (<< 1.32.5-2)
-Breaks: libpango1.0-0 (<< 1.32.5-2), plymouth (<< 0.8.3-19)
+Breaks: libpango1.0-0 (<< 1.32.5-2)
 Provides: @PANGO_MODVER_DEP@
 Pre-Depends: ${misc:Pre-Depends}
 Multi-Arch: same

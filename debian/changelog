@@ -1,6 +1,8 @@
 pango1.0 (1.36.8-3pexip1) pexip; urgency=low
 
   * New upstream release; migrate to Jessie
+  * debian/control{,.in}: remove breaks on plymouth (our version is
+    already multi-arch aware)
 
  -- John-Mark Bell <jmb@pexip.com>  Wed, 03 Jun 2015 16:57:12 +0100
 
