@@ -144,10 +144,28 @@ pango_color_to_string (const PangoColor *color)
 
 #include "pango-color-table.h"
 
+#define ISUPPER(c)              ((c) >= 'A' && (c) <= 'Z')
+#define TOLOWER(c)              (ISUPPER (c) ? (c) - 'A' + 'a' : (c))
+
 static int
 compare_xcolor_entries (const void *a, const void *b)
 {
-  return g_ascii_strcasecmp ((const char *) a, color_names + ((const ColorEntry *) b)->name_offset);
+  const guchar *s1 = (const guchar *) a;
+  const guchar *s2 = (const guchar *) (color_names + ((const ColorEntry *) b)->name_offset);
+
+  while (*s1 && *s2)
+    {
+      int c1, c2;
+      while (*s1 == ' ') s1++;
+      while (*s2 == ' ') s1++;
+      c1 = (gint)(guchar) TOLOWER (*s1);
+      c2 = (gint)(guchar) TOLOWER (*s2);
+      if (c1 != c2)
+        return (c1 - c2);
+      s1++; s2++;
+    }
+
+  return ((gint) *s1) - ((gint) *s2);
 }
 
 static gboolean
@@ -194,7 +212,8 @@ hex (const char *spec,
  *
  * Fill in the fields of a color from a string specification. The
  * string can either one of a large set of standard names. (Taken
- * from the X11 <filename>rgb.txt</filename> file), or it can be a hex value in the
+ * from the CSS <ulink url="http://dev.w3.org/csswg/css-color/#named-colors">specification</ulink>), or it can be a hexadecimal
+ * value in the
  * form '&num;rgb' '&num;rrggbb' '&num;rrrgggbbb' or '&num;rrrrggggbbbb' where
  * 'r', 'g' and 'b' are hex digits of the red, green, and blue
  * components of the color, respectively. (White in the four

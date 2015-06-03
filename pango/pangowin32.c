@@ -22,6 +22,14 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * SECTION:win32-fonts
+ * @short_description:Functions for shape engines to manipulate Win32 fonts
+ * @title:Win32 Fonts and Rendering
+ *
+ * The macros and functions in this section are used to access fonts natively on
+ * Win32 systems and to render text in conjunction with Win32 APIs.
+ */
 #include "config.h"
 
 #include <string.h>
@@ -93,6 +101,8 @@ _pango_win32_font_get_hfont (PangoFont *font)
   if (!win32font->hfont)
     {
       cache = pango_win32_font_map_get_font_cache (win32font->fontmap);
+      if (G_UNLIKELY (!cache))
+        return NULL;
 
       win32font->hfont = pango_win32_font_cache_loadw (cache, &win32font->logfontw);
       if (!win32font->hfont)
@@ -816,6 +826,10 @@ pango_win32_font_finalize (GObject *object)
 {
   PangoWin32Font *win32font = (PangoWin32Font *)object;
   PangoWin32FontCache *cache = pango_win32_font_map_get_font_cache (win32font->fontmap);
+  PangoWin32Font *fontmap;
+
+  if (G_UNLIKELY (!cache))
+    return;
 
   if (win32font->hfont != NULL)
     pango_win32_font_cache_unload (cache, win32font->hfont);
@@ -828,9 +842,9 @@ pango_win32_font_finalize (GObject *object)
 
   g_hash_table_destroy (win32font->glyph_info);
 
-  g_assert (win32font->fontmap != NULL);
-  g_object_remove_weak_pointer (G_OBJECT (win32font->fontmap), (gpointer *) (gpointer) &win32font->fontmap);
-  win32font->fontmap = NULL;
+  fontmap = g_weak_ref_get ((GWeakRef *) &win32font->fontmap);
+  if (fontmap)
+    g_object_unref (fontmap);
 
   G_OBJECT_CLASS (_pango_win32_font_parent_class)->finalize (object);
 }
@@ -862,14 +876,13 @@ pango_win32_font_describe_absolute (PangoFont *font)
 static PangoMap *
 pango_win32_get_shaper_map (PangoLanguage *lang)
 {
-  static guint engine_type_id = 0;
-  static guint render_type_id = 0;
+  static guint engine_type_id = 0; /* MT-safe */
+  static guint render_type_id = 0; /* MT-safe */
 
   if (engine_type_id == 0)
-    {
-      engine_type_id = g_quark_from_static_string (PANGO_ENGINE_TYPE_SHAPE);
-      render_type_id = g_quark_from_static_string (PANGO_RENDER_TYPE_WIN32);
-    }
+    engine_type_id = g_quark_from_static_string (PANGO_ENGINE_TYPE_SHAPE);
+  if (render_type_id == 0)
+    render_type_id = g_quark_from_static_string (PANGO_RENDER_TYPE_WIN32);
 
   return pango_find_map (lang, engine_type_id, render_type_id);
 }
@@ -1323,7 +1336,7 @@ find_segment (struct format_4_cmap *table,
   guint16 seg_count = table->seg_count_x_2/2;
   guint16 *end_count = get_end_count (table);
   guint16 *start_count = get_start_count (table);
-  static guint last = 0; /* Cache of one */
+  static guint last = 0; /* Cache of one */ /* MT-safe */
 
   if (last < seg_count &&
       wc >= start_count[last] &&

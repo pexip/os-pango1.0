@@ -62,12 +62,13 @@ static PangoCairoContextInfo *
 get_context_info (PangoContext *context,
 		  gboolean      create)
 {
-  static GQuark context_info_quark;
+  static GQuark context_info_quark; /* MT-safe */
   PangoCairoContextInfo *info;
 
   if (G_UNLIKELY (!context_info_quark))
     context_info_quark = g_quark_from_static_string ("pango-cairo-context-info");
 
+retry:
   info = g_object_get_qdata (G_OBJECT (context), context_info_quark);
 
   if (G_UNLIKELY (!info) && create)
@@ -75,14 +76,19 @@ get_context_info (PangoContext *context,
       info = g_slice_new0 (PangoCairoContextInfo);
       info->dpi = -1.0;
 
-      g_object_set_qdata_full (G_OBJECT (context), context_info_quark,
-			       info, (GDestroyNotify)free_context_info);
+      if (!g_object_replace_qdata (G_OBJECT (context), context_info_quark, NULL,
+                                   info, (GDestroyNotify)free_context_info,
+                                   NULL))
+        {
+          free_context_info (info);
+          goto retry;
+        }
     }
 
   return info;
 }
 
-static gboolean
+static void
 _pango_cairo_update_context (cairo_t      *cr,
 			     PangoContext *context)
 {
@@ -138,8 +144,8 @@ _pango_cairo_update_context (cairo_t      *cr,
 
   pango_context_set_matrix (context, &pango_matrix);
 
-
-  return changed;
+  if (changed)
+    pango_context_changed (context);
 }
 
 /**
@@ -162,7 +168,7 @@ pango_cairo_update_context (cairo_t      *cr,
   g_return_if_fail (cr != NULL);
   g_return_if_fail (PANGO_IS_CONTEXT (context));
 
-  (void) _pango_cairo_update_context (cr, context);
+  _pango_cairo_update_context (cr, context);
 }
 
 /**
@@ -231,7 +237,10 @@ pango_cairo_context_set_font_options (PangoContext               *context,
 
   info  = get_context_info (context, TRUE);
 
-  if (info->set_options)
+  if (info->set_options || options)
+    pango_context_changed (context);
+
+ if (info->set_options)
     cairo_font_options_destroy (info->set_options);
 
   if (options)
@@ -251,7 +260,7 @@ pango_cairo_context_set_font_options (PangoContext               *context,
  * @context: a #PangoContext, from a pangocairo font map
  *
  * Retrieves any font rendering options previously set with
- * pango_cairo_font_map_set_font_options(). This function does not report options
+ * pango_cairo_context_set_font_options(). This function does not report options
  * that are derived from the target surface by pango_cairo_update_context()
  *
  * Return value: the font options previously set on the context, or %NULL
@@ -468,7 +477,6 @@ pango_cairo_update_layout (cairo_t     *cr,
   g_return_if_fail (cr != NULL);
   g_return_if_fail (PANGO_IS_LAYOUT (layout));
 
-  if (_pango_cairo_update_context (cr, pango_layout_get_context (layout)))
-    pango_layout_context_changed (layout);
+  _pango_cairo_update_context (cr, pango_layout_get_context (layout));
 }
 

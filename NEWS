@@ -1,3 +1,207 @@
+Overview of changes between 1.36.7 and 1.36.8
+=============================================
+- Make tests not fail on build.gnome.org
+
+Overview of changes between 1.36.6 and 1.36.7
+=============================================
+- Add tests for pango markup
+- Add tests for PangoLayout
+- Add an analysis flag for ellipsis (#735719)
+- Treat attributes in ellipsis better (#735732)
+
+Overview of changes between 1.36.5 and 1.36.6
+=============================================
+- Cope with lack of LC_CTYPE (#732276)
+- Prevent harfbuzz from using replacement char
+- Don't force static builds on win32 (#733137)
+- Allow backend selection via PANGOCAIRO_BACKEND
+- Support more font weights (#733764)
+- Fix vertical positioning on win32
+- Don't break in the middle of jamo (#705727)
+
+Overview of changes between 1.36.4 and 1.36.5
+=============================================
+- Lower the harfbuzz requirement
+
+Overview of changes between 1.36.3 and 1.36.4
+=============================================
+- Improve thread-safety on Windows (#695913)
+- Add missing annotations (#729840)
+- Update PangoWeight documentation
+- Require harfbuzz 0.9.29
+
+Overview of changes between 1.36.2 and 1.36.3
+=============================================
+- Fix builddir != srdir builds
+- Avoid a crash when FT_Face is NULL (#724006)
+- Win32 build fixes
+- Update pango_color_parse docs (#711061)
+
+Overview of changes between 1.36.1 and 1.36.2
+=============================================
+- Win32 build fixes
+- Fix a possible strtol(NULL) (#719549)
+- Fix --with-included-modules
+- Fix a FPE in pango_layout_iter_get_char_extents (#720379)
+- Use 96 dpi for CoreText by default
+
+Overview of changes between 1.36.0 and 1.36.1
+=============================================
+- Handle scaling absolute font sizes (#708778)
+- Small documentation fixes
+
+Overview of changes between 1.35.3 and 1.36.0
+=============================================
+- Remove a useless test (#707131)
+- Never return NULL from pango_layout_get_test (#707659)
+- Correct an annotation (#707874)
+- Fix gravity map (#708432)
+
+Overview of changes between 1.35.2 and 1.35.3
+============================================
+- Compiler warnings about strict aliasing (#703995)
+- Getting rid of the arbitrary MAX_SIZE for font (707131)
+
+Overview of changes between 1.35.0 and 1.35.2
+============================================
+- Bypass line reordering in some cases (#705007)
+
+Overview of changes between 1.34 and 1.35.0
+===========================================
+- Requires cairo 1.12.10
+- Add a --with-cairo option
+- Handle invalid utf8 better (#700577)
+- Install some tests
+- Don't change fonts for space (#701652)
+
+Overview of changes between 1.34.0 and 1.34.1
+=============================================
+- 96238 - PangoAttrFilterFunc vs pango_attr_list_filter docs
+- Update win32/CoreText shaper signature
+- Fix CoreText scaling (again)
+- Align word breaking with newer Unicode specs
+
+Overview of changes between 1.33.9 and 1.34.0
+=============================================
+No changes
+
+Overview of changes between 1.33.8 and 1.33.9
+=============================================
+- Port PangoWin32 to use GWeakRef
+- 682846 - Use G_DEFINE_TYPE in pangowin32-fontmap
+- Fix scale in pangocairo-threads test
+- Misc Win32 build fixes
+
+Overview of changes between 1.33.7 and 1.33.8
+=============================================
+- 694095 - Fails make check: -pango_cairo_win32_font_map_get_type
+- 668154 - GTK+ Crashes on Non BMP utf-8 charpoints
+- 694626 - Add pango_font_map_changed
+- 694626 - PangoFc: change FontMap in pango_fc_font_map_clear_cache
+- 694830 - Fails make check: +pango_font_map_change
+- 694918 - Pango layout is misrendered with non-identity transformation
+- 694882 - build broken - introspection of pangoxft2 and pangoxft
+
+Overview of changes between 1.32.6 and 1.33.7
+=============================================
+- Allow enabling font features through fontconfig snipplets
+- Fix an infinite loop when starting Inkscape
+
+Overview of changes between 1.32.5 and 1.32.6
+=============================================
+- Make pango threadsafe
+- Pass down BOT/EOT flags to HarfBuzz
+- 690279 - broken relocation of modules
+- 691263 - Build with automake-1.13 broken
+
+Overview of changes between 1.32.4 and 1.32.5
+=============================================
+- 689843 - Drop last ues of G_CONST_RETURN
+- 689864 - build failure
+- 689882 - pango-font.h:381: error: comma at end of enumerator list
+- 686512 - pango_cairo_font_get_scaled_font failed under wine
+- 690081 - pangofc-fontmap: Remove bad use of the comma operator
+- 679299 - Allow incrementally parsing pango markup
+
+Overview of changes between 1.32.3 and 1.32.4
+=============================================
+- Require harfbuzz 0.9.9
+- 340066 - Add serials tracking changes in PangoFontMap/PangoContext/PangoLayout
+- Automatically relayout PangoLayout if PangoContext has changed
+- Fix rendering of rotated frames
+- 576156 - Remove Thai/Lao Prepend/Extend properties
+- Fix grapheme properties of joiner / nonjoiner
+- Fix grapheme properties of U+FFxx range
+- Fix line break of surrogate characters
+- Fix grapheme boundaries of surrogates and unassigned default ignorables
+- Update bidi tables to Unicode 6.2.0
+- 689648 - Use -Bsymbolic-functions by default if available
+- Fix Win32 and CoreText cairo backends to take cairo CTM into account
+
+Overview of changes between 1.32.2 and 1.32.3
+=============================================
+- make gobject-introspection PANGO_GLYPH happy
+- provide a phony define for LANGUAGE
+- adjust to harfbuzz 0.97 api
+
+Overview of changes between 1.32.1 and 1.32.2
+=============================================
+- 685021 - Fix load_fontset() for Win32 backend
+- pango-viewer: Flush cairo surface when done
+- 687470 - Xft: Fix a deadlock on display close
+- Add missing colors from the web palette
+- Rename configure.in to configure.ac
+
+Overview of changes between 1.32.0 and 1.32.1
+=============================================
+- Fixup grapheme clusters
+- 684959 - crash after "Add pango_shape_full()"
+
+Overview of changes between 1.31.2 and 1.32.0
+=============================================
+- Add a --without-xfg configure option
+- Add pango_shape_full()
+
+Overview of changes between 1.31.1 and 1.31.2
+=============================================
+- More work on towards thread-safety
+- Build fixes on OS X
+
+Overview of changes between 1.31.0 and 1.31.1
+=============================================
+- The module cache file can now be located in libdir
+- Initial work towards making pango thread-safe
+- Update to Unicode 6.1.
+- 682421 - Fix vertical text, gravity, etc, with HarfBuzz
+- 678721 - Don't need to get item properties...
+- 678997 - Colors aqua, silver and indigo missing...
+- 653347 - rise units documented incorrectly
+- 682952 - remove old glib check
+- Deprecate pango-ot.h.
+- Deprecate pango_fc_font_kern_glyphs
+- Deprecate pango_lookup_aliases
+
+Overview of changes between 1.30.1 and 1.31.0
+=============================================
+- Port to harfbuzz 0.9.x, use external harfbuzz
+- Remove Arabic, Syriac, Hangul Hebrew, Khmer,
+  Tibetan and Thai shapers (replaced by harfbuzz)
+- Remove Indic module (replaced by harfbuzz)
+- Remove Atsui support (superseded by CoreText)
+- Remove PangoX
+- 679654 - Crash for PangoContext.list_families
+- 680965 - missing language strings for ...
+- 681423 - introspection: assorted fixes...
+
+Overview of changes between 1.30.0 and 1.30.1
+=============================================
+- Update Arabic joining classes to 6.1.0
+- Build fixes
+- Annotation fixes
+- 667960 - add --system option to querymodules
+- 675400 - respect XDG_CONFIG_HOME for rc files
+- 673497 - Fix corefont fallback
+
 Overview of changes between 1.29.5 and 1.30.0
 =============================================
 - 667799 - Fix cross-compiling bug in configure.in

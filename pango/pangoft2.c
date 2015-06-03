@@ -20,6 +20,14 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * SECTION:freetype-fonts
+ * @short_description:Functions for shape engines to manipulate FreeType fonts
+ * @title:FreeType Fonts and Rendering
+ *
+ * The macros and functions in this section are used to access fonts and render
+ * text to bitmaps using the FreeType 2 library.
+ */
 #include "config.h"
 
 #include <string.h>
@@ -467,12 +475,13 @@ pango_ft2_font_finalize (GObject *object)
 
 /**
  * pango_ft2_font_get_coverage:
- * @font: a #PangoFT2Font.
+ * @font: a <type>PangoFT2Font</type>.
  * @language: a language tag.
- * @returns: a #PangoCoverage.
  *
- * Gets the #PangoCoverage for a #PangoFT2Font. Use
+ * Gets the #PangoCoverage for a <type>PangoFT2Font</type>. Use
  * pango_font_get_coverage() instead.
+ *
+ * Return value: a #PangoCoverage.
  **/
 PangoCoverage *
 pango_ft2_font_get_coverage (PangoFont     *font,
@@ -542,10 +551,10 @@ _pango_ft2_ft_strerror (FT_Error error)
     return found->msg;
   else
     {
-      static char *default_msg = NULL;
+      static char *default_msg = NULL; /* MT-safe */
 
-      if (!default_msg)
-	default_msg = g_malloc (60);
+      if (g_once_init_enter (&default_msg))
+	g_once_init_leave (&default_msg, g_malloc (60));
 
       g_sprintf (default_msg, "Unknown FreeType2 error %#x", error);
       return default_msg;

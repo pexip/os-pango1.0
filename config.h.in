@@ -1,10 +1,7 @@
-/* config.h.in.  Generated from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Have usable Cairo library and font backend */
 #undef HAVE_CAIRO
-
-/* Whether Cairo can use ATSUI for fonts */
-#undef HAVE_CAIRO_ATSUI
 
 /* Whether Cairo can use FreeType for fonts */
 #undef HAVE_CAIRO_FREETYPE
@@ -17,6 +14,9 @@
 
 /* Whether Cairo has PS support */
 #undef HAVE_CAIRO_PS
+
+/* Whether Cairo can use Quartz for fonts */
+#undef HAVE_CAIRO_QUARTZ
 
 /* Whether Cairo can use the Win32 GDI for fonts */
 #undef HAVE_CAIRO_WIN32
@@ -34,6 +34,9 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* Define to 1 if you have the `FcWeightFromOpenType' function. */
+#undef HAVE_FCWEIGHTFROMOPENTYPE
+
 /* Define to 1 if you have the `flockfile' function. */
 #undef HAVE_FLOCKFILE
 
@@ -48,9 +51,6 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
-
-/* Define to 1 if you have the `mprotect' function. */
-#undef HAVE_MPROTECT
 
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 #undef HAVE_NDIR_H
@@ -92,9 +92,6 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
-
-/* Have X libraries */
-#undef HAVE_X
 
 /* Have Xft library */
 #undef HAVE_XFT
@@ -150,6 +147,3 @@
 
 /* Version number of package */
 #undef VERSION
-
-/* Define to 1 if the X Window System is missing or not being used. */
-#undef X_DISPLAY_MISSING

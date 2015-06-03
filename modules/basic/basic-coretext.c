@@ -29,6 +29,7 @@
 #include "pango-utils.h"
 #include "pango-fontmap.h"
 #include "pangocoretext.h"
+#include "pango-impl-utils.h"
 
 /* No extra fields needed */
 typedef PangoEngineShape      BasicEngineCoreText;
@@ -92,6 +93,7 @@ struct RunIterator
   CTRunRef current_run;
   CFIndex *current_indices;
   const CGGlyph *current_cgglyphs;
+  CGGlyph *current_cgglyphs_buffer;
   CTRunStatus current_run_status;
 };
 
@@ -101,6 +103,9 @@ run_iterator_free_current_run (struct RunIterator *iter)
   iter->current_run_number = -1;
   iter->current_run = NULL;
   iter->current_cgglyphs = NULL;
+  if (iter->current_cgglyphs_buffer)
+    free (iter->current_cgglyphs_buffer);
+  iter->current_cgglyphs_buffer = NULL;
   if (iter->current_indices)
     free (iter->current_indices);
   iter->current_indices = NULL;
@@ -116,11 +121,19 @@ run_iterator_set_current_run (struct RunIterator *iter,
 
   iter->current_run_number = run_number;
   iter->current_run = CFArrayGetValueAtIndex (iter->runs, run_number);
+  ct_glyph_count = CTRunGetGlyphCount (iter->current_run);
+
   iter->current_run_status = CTRunGetStatus (iter->current_run);
   iter->current_cgglyphs = CTRunGetGlyphsPtr (iter->current_run);
+  if (!iter->current_cgglyphs)
+    {
+      iter->current_cgglyphs_buffer = (CGGlyph *)malloc (sizeof (CGGlyph) * ct_glyph_count);
+      CTRunGetGlyphs (iter->current_run, CFRangeMake (0, ct_glyph_count),
+                      iter->current_cgglyphs_buffer);
+      iter->current_cgglyphs = iter->current_cgglyphs_buffer;
+    }
 
-  ct_glyph_count = CTRunGetGlyphCount (iter->current_run);
-  iter->current_indices = malloc (sizeof (CFIndex *) * ct_glyph_count);
+  iter->current_indices = malloc (sizeof (CFIndex) * ct_glyph_count);
   CTRunGetStringIndices (iter->current_run, CFRangeMake (0, ct_glyph_count),
                          iter->current_indices);
 
@@ -139,6 +152,12 @@ run_iterator_get_glyph_count (struct RunIterator *iter)
   return accumulator;
 }
 
+/* These functions are commented out to silence the compiler, but
+ * kept around because they might be of use when fixing the more
+ * intricate issues noted in the comment in the function
+ * basic_engine_shape() below.
+ */
+#if 0
 static gboolean
 run_iterator_is_rtl (struct RunIterator *iter)
 {
@@ -155,6 +174,7 @@ run_iterator_run_is_non_monotonic (struct RunIterator *iter)
 
   return run_status & kCTRunStatusNonMonotonic;
 }
+#endif
 
 static gunichar
 run_iterator_get_character (struct RunIterator *iter)
@@ -174,7 +194,7 @@ run_iterator_get_index (struct RunIterator *iter)
   return iter->current_indices[iter->ct_i];
 }
 
-static void
+static gboolean
 run_iterator_create (struct RunIterator *iter,
                      const char         *text,
                      const gint          length,
@@ -197,6 +217,7 @@ run_iterator_create (struct RunIterator *iter,
   iter->current_run = NULL;
   iter->current_indices = NULL;
   iter->current_cgglyphs = NULL;
+  iter->current_cgglyphs_buffer = NULL;
 
   /* Create CTLine */
   attributes = CFDictionaryCreate (kCFAllocatorDefault,
@@ -212,6 +233,12 @@ run_iterator_create (struct RunIterator *iter,
   iter->cstr = CFStringCreateWithCString (kCFAllocatorDefault, copy,
                                           kCFStringEncodingUTF8);
   g_free (copy);
+
+  if (!iter->cstr)
+    /* Creating a CFString can fail if the input string does not
+     * adhere to the specified encoding (i.e. it contains invalid UTF8).
+     */
+    return FALSE;
 
   attstr = CFAttributedStringCreate (kCFAllocatorDefault,
                                      iter->cstr,
@@ -234,6 +261,8 @@ run_iterator_create (struct RunIterator *iter,
     run_iterator_set_current_run (iter, 0);
   else
     iter->total_ct_i = -1;
+
+  return TRUE;
 }
 
 static void
@@ -313,7 +342,8 @@ create_core_text_glyph_list (const char *text,
   GSList *glyph_list = NULL;
   struct RunIterator riter;
 
-  run_iterator_create (&riter, text, length, ctfont);
+  if (!run_iterator_create (&riter, text, length, ctfont))
+    return NULL;
 
   while (!run_iterator_at_end (&riter))
     {
@@ -343,7 +373,9 @@ basic_engine_shape (PangoEngineShape    *engine,
 		    const char          *text,
 		    gint                 length,
 		    const PangoAnalysis *analysis,
-		    PangoGlyphString    *glyphs)
+		    PangoGlyphString    *glyphs,
+		    const char          *paragraph_text G_GNUC_UNUSED,
+		    unsigned int         paragraph_length G_GNUC_UNUSED)
 {
   const char *p;
   gulong n_chars, gs_i, gs_prev_i;
@@ -388,6 +420,8 @@ basic_engine_shape (PangoEngineShape    *engine,
 
   glyph_list = create_core_text_glyph_list (text, length,
                                             pango_core_text_font_get_ctfont (cfont));
+  if (!glyph_list)
+    return;
 
   /* Translate the glyph list to a PangoGlyphString */
   n_chars = g_utf8_strlen (text, length);
@@ -469,6 +503,9 @@ basic_engine_shape (PangoEngineShape    *engine,
   pango_coverage_unref (coverage);
   g_slist_foreach (glyph_list, glyph_info_free, NULL);
   g_slist_free (glyph_list);
+
+  if (analysis->level & 1)
+    pango_glyph_string_reverse_range (glyphs, 0, glyphs->num_glyphs);
 }
 
 static void

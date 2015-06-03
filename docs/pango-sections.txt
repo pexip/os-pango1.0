@@ -17,6 +17,8 @@ pango_item_split
 pango_reorder_items
 <SUBSECTION>
 pango_context_new
+pango_context_changed
+pango_context_get_serial
 pango_context_set_font_map
 pango_context_get_font_map
 pango_context_get_font_description
@@ -53,6 +55,7 @@ pango_default_break
 PangoLogAttr
 <SUBSECTION>
 pango_shape
+pango_shape_full
 
 <SUBSECTION Private>
 pango_context_get_type
@@ -258,6 +261,8 @@ pango_font_map_load_font
 pango_font_map_load_fontset
 pango_font_map_list_families
 pango_font_map_get_shape_engine_type
+pango_font_map_get_serial
+pango_font_map_changed
 <SUBSECTION>
 PangoFontset
 PANGO_TYPE_FONTSET
@@ -331,6 +336,8 @@ PangoAttrFontDesc
 PangoAttrShape
 PangoAttrSize
 pango_parse_markup
+pango_markup_parser_new
+pango_markup_parser_finish
 pango_attr_type_register
 pango_attr_type_get_name
 pango_attribute_init
@@ -439,6 +446,7 @@ pango_layout_copy
 
 pango_layout_get_context
 pango_layout_context_changed
+pango_layout_get_serial
 
 pango_layout_set_text
 pango_layout_get_text
@@ -692,40 +700,6 @@ PangoRendererPrivate
 </SECTION>
 
 <SECTION>
-<TITLE>X Fonts and Rendering</TITLE>
-<FILE>x-fonts</FILE>
-PANGO_RENDER_TYPE_X
-pango_x_get_context
-pango_x_context_set_funcs
-PangoGetGCFunc
-PangoFreeGCFunc
-pango_x_render
-pango_x_render_layout_line
-pango_x_render_layout
-PangoXSubfont
-PANGO_X_MAKE_GLYPH
-PANGO_X_GLYPH_SUBFONT
-PANGO_X_GLYPH_INDEX
-pango_x_load_font
-pango_x_get_unknown_glyph
-pango_x_has_glyph
-pango_x_list_subfonts
-pango_x_font_map_for_display
-pango_x_shutdown_display
-pango_x_font_map_get_font_cache
-pango_x_font_subfont_xlfd
-pango_x_find_first_subfont
-pango_x_font_get_unknown_glyph
-pango_x_apply_ligatures
-pango_x_fallback_shape
-PangoXFontCache
-pango_x_font_cache_new
-pango_x_font_cache_free
-pango_x_font_cache_load
-pango_x_font_cache_unload
-</SECTION>
-
-<SECTION>
 <TITLE>Win32 Fonts and Rendering</TITLE>
 <FILE>win32-fonts</FILE>
 PANGO_RENDER_TYPE_WIN32
@@ -889,33 +863,6 @@ pango_cairo_font_map_get_type
 </SECTION>
 
 <SECTION>
-<TITLE>ATSUI Fonts</TITLE>
-<FILE>atsui-fonts</FILE>
-PANGO_RENDER_TYPE_ATSUI
-pango_atsui_font_get_cgfont
-pango_atsui_font_get_atsfont
-<SUBSECTION Standard>
-PANGO_ATSUI_FONT
-PANGO_ATSUI_FONT_CLASS
-PANGO_ATSUI_FONT_GET_CLASS
-PANGO_CAIRO_ATSUI_FONT
-PANGO_CAIRO_ATSUI_FONT_CLASS
-PANGO_CAIRO_ATSUI_FONT_GET_CLASS
-PANGO_IS_ATSUI_FONT
-PANGO_IS_ATSUI_FONT_CLASS
-PANGO_IS_CAIRO_ATSUI_FONT_CLASS
-PANGO_TYPE_ATSUI_FONT
-PANGO_TYPE_CAIRO_ATSUI_FONT
-PangoATSUIFont
-PangoATSUIFontClass
-PangoATSUIFontPrivate
-PangoCairoATSUIFont
-PangoCairoATSUIFontClass
-pango_atsui_font_get_type
-pango_cairo_atsui_font_get_type
-</SECTION>
-
-<SECTION>
 <TITLE>CoreText Fonts</TITLE>
 <FILE>coretext-fonts</FILE>
 PANGO_RENDER_TYPE_CORE_TEXT
@@ -969,6 +916,7 @@ pango_fc_font_map_find_decoder
 pango_fc_font_map_cache_clear
 pango_fc_font_map_shutdown
 pango_fc_font_description_from_pattern
+PANGO_FC_FONT_FEATURES
 PANGO_FC_GRAVITY
 PANGO_FC_VERSION
 PANGO_FC_PRGNAME
@@ -1114,6 +1062,7 @@ pango_scan_word
 pango_scan_string
 pango_scan_int
 pango_config_key_get
+pango_config_key_get_system
 pango_lookup_aliases
 pango_parse_enum
 pango_parse_style
@@ -1147,6 +1096,7 @@ pango_version_check
 <FILE>vertical</FILE>
 PangoGravity
 PangoGravityHint
+PANGO_GRAVITY_IS_IMPROPER
 PANGO_GRAVITY_IS_VERTICAL
 pango_gravity_get_for_matrix
 pango_gravity_get_for_script

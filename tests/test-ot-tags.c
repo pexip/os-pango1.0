@@ -35,6 +35,8 @@
       }									\
 } G_STMT_END
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+
 static void
 test_script_tags (void)
 {
@@ -55,12 +57,7 @@ test_script_tags (void)
       PangoOTTag tag = pango_ot_tag_from_script (i);
       PangoScript j  = pango_ot_tag_to_script (tag);
 
-      if (i <= PANGO_SCRIPT_INHERITED || i == PANGO_SCRIPT_UNKNOWN)
-        {
-	  ASSERT (tag == PANGO_OT_TAG_DEFAULT_SCRIPT);
-	  ASSERT (j == PANGO_SCRIPT_COMMON);
-        }
-      else if (tag == FT_MAKE_TAG ('k', 'a', 'n', 'a'))
+      if (tag == FT_MAKE_TAG ('k', 'a', 'n', 'a'))
         {
 	  /* Hiragana and Katakana both map to tag 'kana' */
 	 ASSERT (i == PANGO_SCRIPT_HIRAGANA || i == PANGO_SCRIPT_KATAKANA);
@@ -99,22 +96,27 @@ test_language_tags (void)
     {
       PangoLanguage *l = pango_language_from_string (languages[i]);
       PangoOTTag tag   = pango_ot_tag_from_language (l);
+#if 0
       PangoLanguage *m = pango_ot_tag_to_language (tag);
+#endif
 
       if (i == 0)
         {
 	  ASSERT (tag == PANGO_OT_TAG_DEFAULT_LANGUAGE);
-	  ASSERT (strcmp (pango_language_to_string (m), "xx") == 0);
 	}
       else
         {
 	  if (tag == PANGO_OT_TAG_DEFAULT_LANGUAGE)
 	    g_error ("Got PANGO_OT_TAG_DEFAULT_LANGUAGE for language '%s'", pango_language_to_string (l));
 
+	  /* The following test can't work without proper BCP 47 language tag
+	   * support.  So, disable it. */
+#if 0
 	  if (!pango_language_matches (l, pango_language_to_string (m)))
 	    g_error ("Got back %s for language %s (OT tag '%c%c%c%c')",
 		     pango_language_to_string (m), pango_language_to_string (l),
 		     tag>>24, (tag>>16)&255, (tag>>8)&255, tag&255);
+#endif
 	}
     }
 }
@@ -122,10 +124,12 @@ test_language_tags (void)
 int
 main (int argc, char **argv)
 {
-  g_setenv ("PANGO_RC_FILE", "./pangorc", TRUE);
+  g_test_init (&argc, &argv, NULL);
 
-  test_script_tags ();
-  test_language_tags ();
+  g_test_add_func ("/tags/script", test_script_tags);
+  g_test_add_func ("/tags/language", test_language_tags);
 
-  return 0;
+  return g_test_run ();
 }
+
+G_GNUC_END_IGNORE_DEPRECATIONS
