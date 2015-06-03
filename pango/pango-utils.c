@@ -19,6 +19,24 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * SECTION:pango-version
+ * @short_description:Tools for checking Pango version at compile- and run-time.
+ * @title:Version Checking
+ *
+ * The capital-letter macros defined here can be used to check the version of Pango
+ * at compile-time, and to <firstterm>encode</firstterm> Pango versions into integers.
+ *
+ * The functions can be used to check the version of the linked Pango library at run-time.
+ */
+/**
+ * SECTION:utils
+ * @short_description:Various convenience and utility functions
+ * @title: Miscellaneous Utilities
+ *
+ * The functions and utilities in this section are mostly used from Pango
+ * backends and modules, but may be useful for other purposes too.
+ */
 #include "config.h"
 #include <errno.h>
 #include <string.h>
@@ -46,16 +64,6 @@
 #include <windows.h>
 
 #endif
-
-struct PangoAlias
-{
-  char *alias;
-  int n_families;
-  char **families;
-  gboolean visible; /* Do we want/need this? */
-};
-
-static GHashTable *pango_aliases_ht = NULL;
 
 /**
  * pango_version:
@@ -531,10 +539,9 @@ pango_scan_int (const char **pos, int *out)
   return TRUE;
 }
 
-static GHashTable *config_hash = NULL;
 
 static void
-read_config_file (const char *filename, gboolean enoent_error)
+read_config_file (const char *filename, gboolean enoent_error, GHashTable *ht)
 {
   GKeyFile *key_file = g_key_file_new();
   GError *key_file_error = NULL;
@@ -578,7 +585,7 @@ read_config_file (const char *filename, gboolean enoent_error)
 	      gchar *value =  g_key_file_get_value(key_file, group, key, &key_error);
 	      if (value != NULL)
 		{
-		  g_hash_table_insert (config_hash,
+		  g_hash_table_insert (ht,
 				       g_strdup_printf ("%s/%s", group, key),
 				       value);
 		}
@@ -603,36 +610,78 @@ read_config_file (const char *filename, gboolean enoent_error)
   g_key_file_free(key_file);
 }
 
-static void
+static GHashTable *
+read_config_system (void)
+{
+  char *filename;
+  GHashTable *config_hash;
+
+  config_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                       (GDestroyNotify)g_free,
+                                       (GDestroyNotify)g_free);
+
+  filename = g_build_filename (pango_get_sysconf_subdirectory (),
+                               "pangorc",
+			       NULL);
+  read_config_file (filename, FALSE, config_hash);
+  g_free (filename);
+
+  return config_hash;
+}
+
+static GHashTable *
 read_config (void)
 {
-  if (!config_hash)
+  static GHashTable *config_hash = NULL;
+
+  if (g_once_init_enter (&config_hash))
     {
+      GHashTable *tmp_hash;
       char *filename;
-      const char *home;
       const char *envvar;
 
-      config_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
-					   (GDestroyNotify)g_free,
-					   (GDestroyNotify)g_free);
-      filename = g_build_filename (pango_get_sysconf_subdirectory (),
-				   "pangorc",
-				   NULL);
-      read_config_file (filename, FALSE);
-      g_free (filename);
+      tmp_hash = read_config_system ();
 
-      home = g_get_home_dir ();
-      if (home && *home)
-	{
-	  filename = g_build_filename (home, ".pangorc", NULL);
-	  read_config_file (filename, FALSE);
-	  g_free (filename);
-	}
+      filename = g_build_filename (g_get_user_config_dir (),
+                                   "pango",
+                                   "pangorc",
+                                   NULL);
+      read_config_file (filename, FALSE, tmp_hash);
+      g_free (filename);
 
       envvar = g_getenv ("PANGO_RC_FILE");
       if (envvar)
-	read_config_file (envvar, TRUE);
+        read_config_file (envvar, TRUE, tmp_hash);
+
+      g_once_init_leave (&config_hash, tmp_hash);
     }
+
+  return config_hash;
+}
+
+/**
+ * pango_config_key_get_system:
+ * @key: Key to look up, in the form "SECTION/KEY".
+ *
+ * Looks up a key, consulting only the Pango system config database
+ * in $sysconfdir/pango/pangorc.
+ *
+ * Return value: the value, if found, otherwise %NULL. The value is a
+ * newly-allocated string and must be freed with g_free().
+ **/
+char *
+pango_config_key_get_system (const char *key)
+{
+  GHashTable *config_hash;
+  gchar *ret;
+
+  g_return_val_if_fail (key != NULL, NULL);
+
+  config_hash = read_config_system ();
+  ret = g_strdup (g_hash_table_lookup (config_hash, key));
+  g_hash_table_unref (config_hash);
+
+  return ret;
 }
 
 /**
@@ -641,7 +690,7 @@ read_config (void)
  *
  * Looks up a key in the Pango config database
  * (pseudo-win.ini style, read from $sysconfdir/pango/pangorc,
- *  ~/.pangorc, and getenv (PANGO_RC_FILE).)
+ *  $XDG_CONFIG_HOME/pango/pangorc, and getenv (PANGO_RC_FILE).)
  *
  * Return value: the value, if found, otherwise %NULL. The value is a
  * newly-allocated string and must be freed with g_free().
@@ -649,9 +698,11 @@ read_config (void)
 char *
 pango_config_key_get (const char *key)
 {
+  GHashTable *config_hash;
+
   g_return_val_if_fail (key != NULL, NULL);
 
-  read_config ();
+  config_hash = read_config ();
 
   return g_strdup (g_hash_table_lookup (config_hash, key));
 }
@@ -660,7 +711,7 @@ pango_config_key_get (const char *key)
 
 /* DllMain function needed to tuck away the DLL handle */
 
-static HMODULE pango_dll;
+static HMODULE pango_dll; /* MT-safe */
 
 BOOL WINAPI
 DllMain (HINSTANCE hinstDLL,
@@ -693,21 +744,23 @@ DllMain (HINSTANCE hinstDLL,
 const char *
 pango_get_sysconf_subdirectory (void)
 {
-  static const gchar *result = NULL;
+  static const gchar *result = NULL; /* MT-safe */
 
-  if (result == NULL)
+  if (g_once_init_enter (&result))
     {
+      const char *tmp_result = NULL;
 #ifdef G_OS_WIN32
       gchar *root = g_win32_get_package_installation_directory_of_module (pango_dll);
-      result = g_build_filename (root, "etc\\pango", NULL);
+      tmp_result = g_build_filename (root, "etc\\pango", NULL);
       g_free (root);
 #else
       const char *sysconfdir = g_getenv ("PANGO_SYSCONFDIR");
       if (sysconfdir != NULL)
-	result = g_build_filename (sysconfdir, "pango", NULL);
+	tmp_result = g_build_filename (sysconfdir, "pango", NULL);
       else
-	result = SYSCONFDIR "/pango";
+	tmp_result = SYSCONFDIR "/pango";
 #endif
+      g_once_init_leave(&result, tmp_result);
     }
   return result;
 }
@@ -726,27 +779,29 @@ pango_get_sysconf_subdirectory (void)
 const char *
 pango_get_lib_subdirectory (void)
 {
-  static const gchar *result = NULL;
+  static const gchar *result = NULL; /* MT-safe */
 
-  if (result == NULL)
+  if (g_once_init_enter (&result))
     {
+      const gchar *tmp_result = NULL;
 #ifdef G_OS_WIN32
       gchar *root = g_win32_get_package_installation_directory_of_module (pango_dll);
       /* If we are running against an uninstalled copy of the Pango DLL,
        * use the compile-time installation prefix.
        */
       if (g_str_has_suffix (root, "\\.libs"))
-	result = g_strdup (LIBDIR "/pango");
+	tmp_result = g_strdup (LIBDIR "/pango");
       else
-	result = g_build_filename (root, "lib\\pango", NULL);
+	tmp_result = g_build_filename (root, "lib\\pango", NULL);
       g_free (root);
 #else
       const char *libdir = g_getenv ("PANGO_LIBDIR");
       if (libdir != NULL)
-	result = g_build_filename (libdir, "pango", NULL);
+	tmp_result = g_build_filename (libdir, "pango", NULL);
       else
-	result = LIBDIR "/pango";
+	tmp_result = LIBDIR "/pango";
 #endif
+      g_once_init_leave(&result, tmp_result);
     }
   return result;
 }
@@ -757,8 +812,14 @@ parse_int (const char *word,
 	   int        *out)
 {
   char *end;
-  long val = strtol (word, &end, 10);
-  int i = val;
+  long val;
+  int i;
+
+  if (word == NULL)
+    return FALSE;
+
+  val = strtol (word, &end, 10);
+  i = val;
 
   if (end != word && *end == '\0' && val >= 0 && val == i)
     {
@@ -847,251 +908,6 @@ pango_parse_enum (GType       type,
   return ret;
 }
 
-
-static guint
-alias_hash (struct PangoAlias *alias)
-{
-  return g_str_hash (alias->alias);
-}
-
-static gboolean
-alias_equal (struct PangoAlias *alias1,
-	     struct PangoAlias *alias2)
-{
-  return g_str_equal (alias1->alias,
-		      alias2->alias);
-}
-
-
-static void
-alias_free (struct PangoAlias *alias)
-{
-  int i;
-  g_free (alias->alias);
-
-  for (i = 0; i < alias->n_families; i++)
-    g_free (alias->families[i]);
-
-  g_free (alias->families);
-
-  g_slice_free (struct PangoAlias, alias);
-}
-
-static void
-handle_alias_line (GString  *line_buffer,
-		   char    **errstring)
-{
-  GString *tmp_buffer1;
-  GString *tmp_buffer2;
-  const char *pos;
-  struct PangoAlias alias_key;
-  struct PangoAlias *alias;
-  gboolean append = FALSE;
-  char **new_families;
-  int n_new;
-  int i;
-
-  tmp_buffer1 = g_string_new (NULL);
-  tmp_buffer2 = g_string_new (NULL);
-
-
-  pos = line_buffer->str;
-  if (!pango_skip_space (&pos))
-    return;
-
-  if (!pango_scan_string (&pos, tmp_buffer1) ||
-      !pango_skip_space (&pos))
-    {
-      *errstring = g_strdup ("Line is not of the form KEY=VALUE or KEY+=VALUE");
-      goto error;
-    }
-
-  if (*pos == '+')
-    {
-      append = TRUE;
-      pos++;
-    }
-
-  if (*(pos++) != '=')
-    {
-      *errstring = g_strdup ("Line is not of the form KEY=VALUE or KEY+=VALUE");
-      goto error;
-    }
-
-  if (!pango_scan_string (&pos, tmp_buffer2))
-    {
-      *errstring = g_strdup ("Error parsing value string");
-      goto error;
-    }
-  if (pango_skip_space (&pos))
-    {
-      *errstring = g_strdup ("Junk after value string");
-      goto error;
-    }
-
-  alias_key.alias = g_ascii_strdown (tmp_buffer1->str, -1);
-
-  /* Remove any existing values */
-  alias = g_hash_table_lookup (pango_aliases_ht, &alias_key);
-
-  if (!alias)
-    {
-      alias = g_slice_new0 (struct PangoAlias);
-      alias->alias = alias_key.alias;
-      
-      g_hash_table_insert (pango_aliases_ht,
-			   alias, alias);
-    }
-  else
-    g_free (alias_key.alias);
-
-  new_families = g_strsplit (tmp_buffer2->str, ",", -1);
-
-  n_new = 0;
-  while (new_families[n_new])
-    n_new++;
-
-  if (alias->families && append)
-    {
-      alias->families = g_realloc (alias->families,
-				   sizeof (char *) *(n_new + alias->n_families));
-      for (i = 0; i < n_new; i++)
-	alias->families[alias->n_families + i] = new_families[i];
-      g_free (new_families);
-      alias->n_families += n_new;
-    }
-  else
-    {
-      for (i = 0; i < alias->n_families; i++)
-	g_free (alias->families[i]);
-      g_free (alias->families);
-      
-      alias->families = new_families;
-      alias->n_families = n_new;
-    }
-
- error:
-  
-  g_string_free (tmp_buffer1, TRUE);
-  g_string_free (tmp_buffer2, TRUE);
-}
-
-#ifdef HAVE_CAIRO_WIN32
-
-static const char * const builtin_aliases[] = {
-  "courier = \"courier new\"",
-  "\"segoe ui\" = \"segoe ui,meiryo,malgun gothic,microsoft jhenghei,microsoft yahei,gisha,leelawadee,arial unicode ms,browallia new,mingliu,simhei,gulimche,ms gothic,sylfaen,kartika,latha,mangal,raavi\"",
-  "tahoma = \"tahoma,arial unicode ms,lucida sans unicode,browallia new,mingliu,simhei,gulimche,ms gothic,sylfaen,kartika,latha,mangal,raavi\"",
-  /* It sucks to use the same GulimChe, MS Gothic, Sylfaen, Kartika,
-   * Latha, Mangal and Raavi fonts for all three of sans, serif and
-   * mono, but it isn't like there would be much choice. For most
-   * non-Latin scripts that Windows includes any font at all for, it
-   * has ony one. One solution is to install the free DejaVu fonts
-   * that are popular on Linux. They are listed here first.
-   */
-  "sans = \"dejavu sans,tahoma,arial unicode ms,lucida sans unicode,browallia new,mingliu,simhei,gulimche,ms gothic,sylfaen,kartika,latha,mangal,raavi\"",
-  "sans-serif = \"dejavu sans,tahoma,arial unicode ms,lucida sans unicode,browallia new,mingliu,simhei,gulimche,ms gothic,sylfaen,kartika,latha,mangal,raavi\"",
-  "serif = \"dejavu serif,georgia,angsana new,mingliu,simsun,gulimche,ms gothic,sylfaen,kartika,latha,mangal,raavi\"",
-  "mono = \"dejavu sans mono,courier new,lucida console,courier monothai,mingliu,simsun,gulimche,ms gothic,sylfaen,kartika,latha,mangal,raavi\"",
-  "monospace = \"dejavu sans mono,courier new,lucida console,courier monothai,mingliu,simsun,gulimche,ms gothic,sylfaen,kartika,latha,mangal,raavi\""
-};
-
-static void
-read_builtin_aliases (void)
-{
-
-  GString *line_buffer;
-  char *errstring = NULL;
-  int line;
-
-  line_buffer = g_string_new (NULL);
-
-  for (line = 0; line < G_N_ELEMENTS (builtin_aliases) && errstring == NULL; line++)
-    {
-      g_string_assign (line_buffer, builtin_aliases[line]);
-      handle_alias_line (line_buffer, &errstring);
-    }
-
-  if (errstring)
-    {
-      g_error ("error in built-in aliases:%d: %s\n", line, errstring);
-      g_free (errstring);
-    }
-
-  g_string_free (line_buffer, TRUE);
-}
-
-#endif
-
-static void
-read_alias_file (const char *filename)
-{
-  FILE *file;
-
-  GString *line_buffer;
-  char *errstring = NULL;
-  int line = 0;
-
-  file = g_fopen (filename, "r");
-  if (!file)
-    return;
-
-  line_buffer = g_string_new (NULL);
-
-  while (pango_read_line (file, line_buffer) &&
-	 errstring == NULL)
-    {
-      line++;
-      handle_alias_line (line_buffer, &errstring);
-    }
-
-  if (errstring == NULL && ferror (file))
-    errstring = g_strdup (g_strerror(errno));
-
-  if (errstring)
-    {
-      g_warning ("error reading alias file: %s:%d: %s\n", filename, line, errstring);
-      g_free (errstring);
-    }
-
-  g_string_free (line_buffer, TRUE);
-
-  fclose (file);
-}
-
-static void
-pango_load_aliases (void)
-{
-  char *filename;
-  const char *home;
-
-  pango_aliases_ht = g_hash_table_new_full ((GHashFunc)alias_hash,
-					    (GEqualFunc)alias_equal,
-					    (GDestroyNotify)alias_free,
-					    NULL);
-
-#ifdef HAVE_CAIRO_WIN32
-  read_builtin_aliases ();
-#endif
-
-  filename = g_strconcat (pango_get_sysconf_subdirectory (),
-			  G_DIR_SEPARATOR_S "pango.aliases",
-			  NULL);
-  read_alias_file (filename);
-  g_free (filename);
-
-  home = g_get_home_dir ();
-  if (home && *home)
-    {
-      filename = g_strconcat (home,
-			      G_DIR_SEPARATOR_S ".pango.aliases",
-			      NULL);
-      read_alias_file (filename);
-      g_free (filename);
-    }
-}
-
-
 /**
  * pango_lookup_aliases:
  * @fontname: an ascii string
@@ -1102,32 +918,16 @@ pango_load_aliases (void)
  * Look up all user defined aliases for the alias @fontname.
  * The resulting font family names will be stored in @families,
  * and the number of families in @n_families.
- **/
+ *
+ * Deprecated: 1.32: This function is not thread-safe.
+ */
 void
 pango_lookup_aliases (const char   *fontname,
 		      char       ***families,
 		      int          *n_families)
 {
-  struct PangoAlias alias_key;
-  struct PangoAlias *alias;
-
-  if (pango_aliases_ht == NULL)
-    pango_load_aliases ();
-
-  alias_key.alias = g_ascii_strdown (fontname, -1);
-  alias = g_hash_table_lookup (pango_aliases_ht, &alias_key);
-  g_free (alias_key.alias);
-
-  if (alias)
-    {
-      *families = alias->families;
-      *n_families = alias->n_families;
-    }
-  else
-    {
-      *families = NULL;
-      *n_families = 0;
-    }
+  *families = NULL;
+  *n_families = 0;
 }
 
 /**
@@ -1355,7 +1155,7 @@ pango_extents_to_pixels (PangoRectangle *inclusive,
 
 void
 _pango_shape_shape (const char       *text,
-		    gint              n_chars,
+		    unsigned int      n_chars,
 		    PangoRectangle   *shape_ink G_GNUC_UNUSED,
 		    PangoRectangle   *shape_logical,
 		    PangoGlyphString *glyphs)

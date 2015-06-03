@@ -5,9 +5,6 @@
 /* Have usable Cairo library and font backend */
 #define HAVE_CAIRO 1
 
-/* Whether Cairo can use ATSUI for fonts */
-/* #undef HAVE_CAIRO_ATSUI */
-
 /* Whether Cairo can use FreeType for fonts */
 #ifndef PANGO_VISUALC_NO_FC
 #define HAVE_CAIRO_FREETYPE 1
@@ -21,6 +18,9 @@
 
 /* Whether Cairo has PS support */
 #define HAVE_CAIRO_PS 1
+
+/* Whether Cairo can use Quartz for fonts */
+/* #undef HAVE_CAIRO_QUARTZ */
 
 /* Whether Cairo can use the Win32 GDI for fonts */
 #define HAVE_CAIRO_WIN32 1
@@ -55,14 +55,11 @@
 /* Define to 1 if you have the <memory.h> header file. */
 /* #undef HAVE_MEMORY_H */
 
-/* Define to 1 if you have the `mprotect' function. */
-/* #undef HAVE_MPROTECT */
-
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 /* #undef HAVE_NDIR_H */
 
 /* Define to 1 if you have the <stdint.h> header file. */
-#if (_MSC_VER >= 1600)
+#if (!defined (_MSC_VER) || (_MSC_VER >= 1600))
 #define HAVE_STDINT_H 1
 #endif
 
@@ -101,9 +98,6 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 /* #undef HAVE_UNISTD_H */
 
-/* Have X libraries */
-/* #undef HAVE_X */
-
 /* Have Xft library */
 /* #undef HAVE_XFT */
 
@@ -112,7 +106,7 @@
 #define LT_OBJDIR ".libs/"
 
 /* Module interface version */
-#define MODULE_VERSION "1.6.0"
+#define MODULE_VERSION "1.8.0"
 
 /* Name of package */
 #define PACKAGE "pango"
@@ -128,6 +122,9 @@
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "pango"
+
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION "@PANGO_VERSION@"
@@ -155,6 +152,3 @@
 
 /* Version number of package */
 #define VERSION "@PANGO_VERSION@"
-
-/* Define to 1 if the X Window System is missing or not being used. */
-#define X_DISPLAY_MISSING 1

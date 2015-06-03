@@ -978,7 +978,7 @@ pango_renderer_default_draw_error_underline (PangoRenderer *renderer,
   int square = height / HEIGHT_SQUARES;
   int unit_width = (HEIGHT_SQUARES - 1) * square;
   int width_units = (width + unit_width / 2) / unit_width;
-  static const PangoMatrix identity = PANGO_MATRIX_INIT;
+  const PangoMatrix identity = PANGO_MATRIX_INIT;
   const PangoMatrix *matrix;
   double dx, dx0, dy0;
   PangoMatrix total;
@@ -1181,8 +1181,8 @@ pango_renderer_set_color (PangoRenderer    *renderer,
  *
  * Gets the current rendering color for the specified part.
  *
- * Return value: the color for the specified part, or %NULL
- *  if it hasn't been set and should be inherited from the
+ * Return value: (transfer none): the color for the specified part, or
+ *  %NULL if it hasn't been set and should be inherited from the
  *  environment.
  *
  * Since: 1.8
@@ -1391,8 +1391,8 @@ pango_renderer_get_layout (PangoRenderer *renderer)
  * The returned layout line should not be modified while still being
  * rendered.
  *
- * Return value: the layout line, or %NULL if no layout line is being
- *  rendered using @renderer at this time.
+ * Return value: (transfer none): the layout line, or %NULL if no
+ *   layout line is being rendered using @renderer at this time.
  *
  * Since: 1.20
  **/

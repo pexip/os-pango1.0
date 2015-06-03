@@ -117,7 +117,7 @@ struct _PangoFcFontMap
  *  may be null.
  * @context_key_get: Gets an opaque key holding backend
  *  specific options for the context that will affect
- *  fonts created by create_font(). The result must point to
+ *  fonts created by @create_font(). The result must point to
  *  persistant storage owned by the fontmap. This key
  *  is used to index hash tables used to look up fontsets
  *  and fonts.
@@ -225,7 +225,7 @@ PangoFontDescription *pango_fc_font_description_from_pattern (FcPattern *pattern
  *
  * String representing a fontconfig property name that Pango sets on any
  * fontconfig pattern it passes to fontconfig if a #PangoGravity other
- * than %PangoGravitySouth is desired.
+ * than %PANGO_GRAVITY_SOUTH is desired.
  *
  * The property will have a #PangoGravity value as a string, like "east".
  * This can be used to write fontconfig configuration rules to choose
@@ -262,9 +262,27 @@ PangoFontDescription *pango_fc_font_description_from_pattern (FcPattern *pattern
  * This can be used to write fontconfig configuration rules that only affect
  * certain applications.
  *
+ * This is equivalent to FC_PRGNAME in versions of fontconfig that have that.
+ *
  * Since: 1.24
  */
-#define PANGO_FC_PRGNAME "pangoprgname"
+#define PANGO_FC_PRGNAME "prgname"
+
+/**
+ * PANGO_FC_FONT_FEATURES:
+ *
+ * String representing a fontconfig property name that Pango reads from font
+ * patterns to populate list of OpenType features to be enabled for the font
+ * by default.
+ *
+ * The property will have a number of string elements, each of which is the
+ * OpenType feature tag of one feature to enable.
+ *
+ * This is equivalent to FC_FONT_FEATURES in versions of fontconfig that have that.
+ *
+ * Since: 1.34
+ */
+#define PANGO_FC_FONT_FEATURES "fontfeatures"
 
 G_END_DECLS
 

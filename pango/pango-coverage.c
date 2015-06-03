@@ -19,6 +19,16 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * SECTION:coverage-maps
+ * @short_description:Unicode character range coverage storage
+ * @title:Coverage Maps
+ *
+ * It is often necessary in Pango to determine if a particular font can
+ * represent a particular character, and also how well it can represent
+ * that character. The #PangoCoverage is a data structure that is used
+ * to represent that information.
+ */
 #include "config.h"
 #include <string.h>
 
@@ -75,9 +85,9 @@ pango_coverage_new (void)
  * Copy an existing #PangoCoverage. (This function may now be unnecessary
  * since we refcount the structure. File a bug if you use it.)
  *
- * Return value: the newly allocated #PangoCoverage,
- *               with a reference count of one, which
- *               should be freed with pango_coverage_unref().
+ * Return value: (transfer full): the newly allocated #PangoCoverage,
+ *               with a reference count of one, which should be freed
+ *               with pango_coverage_unref().
  **/
 PangoCoverage *
 pango_coverage_copy (PangoCoverage *coverage)
@@ -352,8 +362,9 @@ pango_coverage_max (PangoCoverage *coverage,
 /**
  * pango_coverage_to_bytes:
  * @coverage: a #PangoCoverage
- * @bytes: location to store result (must be freed with g_free())
- * @n_bytes: location to store size of result
+ * @bytes: (out) (array length=n_bytes) (element-type guint8):
+ *   location to store result (must be freed with g_free())
+ * @n_bytes: (out): location to store size of result
  *
  * Convert a #PangoCoverage structure into a flat binary format
  **/
@@ -439,14 +450,15 @@ pango_coverage_get_uint32 (guchar **ptr)
 
 /**
  * pango_coverage_from_bytes:
- * @bytes: binary data representing a #PangoCoverage
+ * @bytes: (array length=n_bytes) (element-type guint8): binary data
+ *   representing a #PangoCoverage
  * @n_bytes: the size of @bytes in bytes
  *
- * Convert data generated from pango_converage_to_bytes() back
+ * Convert data generated from pango_coverage_to_bytes() back
  * to a #PangoCoverage
  *
- * Return value: a newly allocated #PangoCoverage, or %NULL if
- *               the data was invalid.
+ * Return value: (transfer full): a newly allocated #PangoCoverage, or
+ *               %NULL if the data was invalid.
  **/
 PangoCoverage *
 pango_coverage_from_bytes (guchar *bytes,

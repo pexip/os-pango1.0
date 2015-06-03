@@ -1,0 +1,29 @@
+libtool: link:  gcc -shared  -fPIC -DPIC  .libs/basic-fc.o   -Wl,-rpath -Wl,/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/debian/build/shared/pango/.libs -lgobject-2.0 -lgmodule-2.0 -lrt -lglib-2.0 ../../pango/.libs/libpango-1.0.so ../../pango/.libs/libpangoft2-1.0.so /usr/lib/x86_64-linux-gnu/libfreetype.so -lfontconfig  -O2 -Wl,-z -Wl,relro -Wl,-z -Wl,defs -Wl,-O1 -pthread   -pthread -Wl,-soname -Wl,pango-basic-fc.so -Wl,-version-script -Wl,.libs/pango-basic-fc.ver -o .libs/pango-basic-fc.so
+.libs/basic-fc.o: In function `basic_engine_shape':
+/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/./modules/basic/basic-fc.c:335: undefined reference to `hb_ft_face_create_cached'
+/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/./modules/basic/basic-fc.c:336: undefined reference to `hb_font_create'
+/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/./modules/basic/basic-fc.c:337: undefined reference to `hb_font_set_funcs'
+/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/./modules/basic/basic-fc.c:341: undefined reference to `hb_font_set_scale'
+/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/./modules/basic/basic-fc.c:348: undefined reference to `hb_font_set_ppem'
+/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/./modules/basic/basic-fc.c:362: undefined reference to `hb_buffer_set_direction'
+/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/./modules/basic/basic-fc.c:363: undefined reference to `hb_glib_script_to_script'
+/home/gem/opt/pkg-gnome/build-area/pango1.0-1.32.4/./modules/basic/basic-fc.c:363: undefined reference to `hb_buffer_set_script'
+[....]
+
+Add $(HARFBUZZ_LIBS) to pangoft2libs in modules/Modules.mk to get
+basic-fc, which uses hb_*, to link (just like in pango/Makefile.am
+as done in git commit 1a9072ec14c).
+
+
+diff --git a/modules/Module.mk b/modules/Module.mk
+index aa50470..ca6787e 100644
+--- a/modules/Module.mk
++++ b/modules/Module.mk
+@@ -8,6 +8,7 @@ pangoxlibs =								\
+ pangoft2libs =								\
+ 	$(pangolibs)							\
+ 	$(top_builddir)/pango/libpangoft2-$(PANGO_API_VERSION).la	\
++	$(HARFBUZZ_LIBS)						\
+ 	$(FREETYPE_LIBS)
+ pangowin32libs =							\
+ 	$(pangolibs)							\

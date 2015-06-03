@@ -1,0 +1,26 @@
+------------------------------------------------------------------------
+checking modules to link statically... arabic-lang,basic-fc,basic-win32,basic-coretext,indic-lang,,thai-lang
+checking dynamic modules to build... arabic-lang,basic-fc,basic-win32,basic-coretext,indic-lang,,thai-lang (those built into Pango will be excluded)
+configure: error: specified module  not recognized
+------------------------------------------------------------------------
+
+Complains about empty module name ^^^
+Avoid adding extra , when appending to empty thai_modules.
+
+Index: pango-1.36.0/configure.ac
+===================================================================
+--- pango-1.36.0.orig/configure.ac	2013-10-21 13:31:01.137252696 +0200
++++ pango-1.36.0/configure.ac	2013-10-21 13:31:01.133252618 +0200
+@@ -494,7 +494,11 @@
+ thai_modules=""
+ 
+ if $have_libthai ; then
+-  thai_modules="$thai_modules,thai-lang"
++  if test "$thai_modules" = "" ; then
++    thai_modules="thai-lang"
++  else
++    thai_modules="$thai_modules,thai-lang"
++  fi
+ fi
+ 
+ all_modules="$arabic_modules,$basic_modules,$indic_modules,$thai_modules"

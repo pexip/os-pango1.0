@@ -1,60 +1,267 @@
-pango1.0 (1.30.0-0ubuntu3.1pexip1) pexip; urgency=low
+pango1.0 (1.36.8-3pexip1) pexip; urgency=low
 
-  * Prepare Pexip packaging
+  * New upstream release; migrate to Jessie
 
- -- John-Mark Bell <jmb@pexip.com>  Tue, 07 Jan 2014 11:23:44 +0000
+ -- John-Mark Bell <jmb@pexip.com>  Wed, 03 Jun 2015 16:57:12 +0100
 
-pango1.0 (1.30.0-0ubuntu3.1) precise-proposed; urgency=low
+pango1.0 (1.36.8-3) unstable; urgency=medium
 
-  * debian/patches/git_memory_leak.patch:
-    - Fix memory leak (LP: #837145)
+  * debian/control{,.in}: The testsuite depends on Cantarell. Fixes DEP8 test
+    failure.
 
- -- Robert Ancell <robert.ancell@canonical.com>  Fri, 15 Jun 2012 10:10:12 +1200
+ -- Iain Lane <laney@debian.org>  Tue, 18 Nov 2014 16:39:59 +0000
 
-pango1.0 (1.30.0-0ubuntu3) precise-proposed; urgency=low
+pango1.0 (1.36.8-2) unstable; urgency=medium
 
-  * debian/patches/git_thai_zero_width_spaces.patch:
-    - correctly handle zero width spaces in thai (lp: #986008)
+  * Drop Multi-Arch: same for libpango1.0-dev. The libpango1.0-dev package
+    ships architecture specific binaries in /usr/bin. While those binaries
+    could eventually be split off into a separate binary package, we just
+    revert the change for now and defer it until there is actual need for it.
+    (Closes: #763851)
 
- -- Sebastien Bacher <seb128@ubuntu.com>  Wed, 30 May 2012 18:02:05 +0200
+ -- Michael Biebl <biebl@debian.org>  Mon, 06 Oct 2014 01:20:45 +0200
 
-pango1.0 (1.30.0-0ubuntu2) precise-proposed; urgency=low
+pango1.0 (1.36.8-1) unstable; urgency=medium
 
-  * Drop spurious Recommends: on x-ttcidfont-conf; this was added as an
-    option for managing a config file that no longer exists, and nothing
-    uses x-ttcidfont-conf or defoma any more for managing fonts.  LP: #983274.
+  * New upstream release.
+  * Install typelib files into multiarch paths now that gobject-introspection
+    supports multiarch.
+  * Mark gir and dev packages as Multi-Arch: same.
 
- -- Steve Langasek <steve.langasek@ubuntu.com>  Mon, 16 Apr 2012 10:40:26 -0700
+ -- Michael Biebl <biebl@debian.org>  Thu, 02 Oct 2014 17:36:14 +0200
 
-pango1.0 (1.30.0-0ubuntu1) precise-proposed; urgency=low
+pango1.0 (1.36.7-1) unstable; urgency=medium
 
-  * New upstream release:
-    - Fix cross-compiling bug in configure.in
-    - Zero-width spaces cause missing characters
-    - CoreText backend: implement font fallbacks
-    - CoreText backend: make more robust against broken fonts
-    - CoreText backend: make shaping engine more robust
-    - CoreText backend: Guard against glyph count of zero
+  * New upstream release.
+  * Add build-dependency on fonts-cantarell to avoid test failure.
+    - We rely on gnome-core pulling this in for us in normal operations.
+  * Run wrap-and-sort
 
- -- Robert Ancell <robert.ancell@canonical.com>  Thu, 29 Mar 2012 10:54:21 +1100
+ -- Andreas Henriksson <andreas@fatal.se>  Sat, 06 Sep 2014 09:57:33 -0700
 
-pango1.0 (1.29.5-0ubuntu1) precise; urgency=low
+pango1.0 (1.36.6-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Refresh patches.
+  * Update install path for installed-tests.
+  * Bump Standards-Version to 3.9.5.
+  * Drop Suggests ttf-baekmuk and ttf-arphic-*. Those font packages have been
+    renamed in the mean time and nobody seems to remember why they were added
+    in the first place. (Closes: #741672, #711292)
+
+ -- Michael Biebl <biebl@debian.org>  Sun, 17 Aug 2014 18:46:55 +0200
+
+pango1.0 (1.36.3-1) unstable; urgency=medium
+
+  * Add xauth test-dep, needed for xvfb-run
+  * New upstream release
+    - Fix builddir != srdir builds
+      + Drop 0001-Fix-tests-for-builddir-srcdir-by-setting-G_TEST_-SRC.patch,
+        which was a cherry-pick of this fix.
+    - Avoid a crash when FT_Face is NULL
+    - Update pango_color_parse docs
+
+ -- Iain Lane <laney@debian.org>  Thu, 20 Mar 2014 18:01:45 +0000
+
+pango1.0 (1.36.2-2) unstable; urgency=medium
+
+  * Copyright cleanups (thanks Thorsten Alteholz)
+    + harfbuzz isn't shipped here any more; remove mention of it
+    + mini-fribidi is LGPL-2.1+
+    + test/GraphemeBreakTest.txt is under the "Unicode License" (see package
+      unicode-data).
+
+ -- Iain Lane <laney@debian.org>  Mon, 24 Feb 2014 12:14:07 +0000
+
+pango1.0 (1.36.2-1) unstable; urgency=low
+
+  [ Emilio Pozuelo Monfort ]
+  * debian/rules:
+    + Set VERBOSE so we get more information about test failures.
+    + Enable parallel builds.
+
+  [ Iain Lane ]
+  * New upstream release 1.36.2
+   + Fix a possible strtol(NULL)
+   + Fix --with-included-modules
+   + Fix a FPE in pango_layout_iter_get_char_extents
+   + Use 96 dpi for CoreText by default
+   + Handle scaling absolute font sizes
+  * Bump gtk-doc build-depend to 1.15 per configure. 
+  * debian/patches/0001-Fix-tests-for-builddir-srcdir-by-setting-G_TEST_-SRC.patch:
+    Add new patch to fix make check causing FTBFS. (Closes: #727174)
+  * Add an installed test package and a DEP-8 test to run them. 
+  * Clean up build and install dirs. Thanks, Steve Langasek. 
+
+ -- Iain Lane <laney@debian.org>  Tue, 11 Feb 2014 15:17:58 +0000
+
+pango1.0 (1.36.0-1) unstable; urgency=low
+
+  [ Michael Biebl ]
+  * Use Breaks instead of Conflicts since that is recommended nowadays for
+    moving files between packages.
+  * Use the official field for udebs: Package-Type.
+
+  [ Andreas Henriksson ]
+  * New upstream release.
+  * Update debian/libpango-1.0-0.symbols with one added symbol.
+
+  [ Michael Biebl ]
+  * Refresh patches.
+  * Bump minimum required version of libcairo2-dev to >= 1.12.10 and
+    libfontconfig1-dev to >= 2.10.91 to get the thread-safe version.
+
+ -- Michael Biebl <biebl@debian.org>  Mon, 21 Oct 2013 13:45:21 +0200
+
+pango1.0 (1.32.5-5) unstable; urgency=low
+
+  * Upload to unstable.
+  * Drop explicit Build-Depends on gir1.2-glib-2.0 and gir1.2-freedesktop.
+  * Bump Standards-Version to 3.9.4. No further changes.
+
+ -- Michael Biebl <biebl@debian.org>  Tue, 21 May 2013 21:53:37 +0200
+
+pango1.0 (1.32.5-4) experimental; urgency=low
+
+  * debian/control.in:
+    + Make libpango1.0-0 arch:any and M-A:same to fix the upgrade
+      path when libpango1.0-0:$arch has been installed.
+      Closes: #704795, #704850.
+    + Since libpango1.0-0 is arch:any now, tighten its dependencies
+      on the new library packages.
+    + Make libpango1.0-0 depend on libpangox-1.0-0 to keep backwards
+      compatibility with packages that link to libpangox-1.0.so.0
+      and depend on libpango1.0-0.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Tue, 09 Apr 2013 20:59:29 +0200
+
+pango1.0 (1.32.5-3) experimental; urgency=low
+
+  * debian/control.in:
+    + Add missing breaks/replaces.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Fri, 29 Mar 2013 13:42:58 +0100
+
+pango1.0 (1.32.5-2) experimental; urgency=low
+
+  * debian/libpango1.0-0.install.opt,
+    debian/rules:
+    - We don't have an optimized flavor anymore.
+  * debian/rules:
+    - Pass -V without a version to dh_makeshlibs. We have symbol files
+      for fine-grained versioning, and for shlibs this avoids problems
+      if the version is not updated.
+  * debian/control.in,
+    debian/rules,
+    debian/libpango*.symbols,
+    debian/libpango*.install.in:
+    - Split libpango in several packages, one per shared library. Keep
+      libpango1.0-0 as a transitional package that depends on all the
+      other packages to keep backwards compatibility. libpango1.0-0 will
+      also grow a dependency on libpangox-1.0-0 once that package lands
+      in the archive, as libpangox-1.0.so was previously shipped in
+      libpango1.0-0 but is not shipped as part of pango1.0 anymore.
+  * debian/libpango-1.0-0.install.in,
+    debian/rules:
+    - Make the pango modules be included in the shared libraries.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Tue, 26 Mar 2013 22:43:51 +0100
+
+pango1.0 (1.32.5-1) experimental; urgency=low
+
+  [ Andreas Henriksson ]
+  * New upstream release.
+    - bump glib build-dependency to >= 2.33.12 according to configure.ac
+    - add build-dependency on libharfbuzz-dev (>= 0.9.9-1)
+  * Drop patches from upstream, now part of release:
+    - 00git_memory_leak.patch
+    - 00git_missing_prototype.patch
+    - 00git_thai_zero_width_spaces.patch
+  * Update patches to apply:
+    - 10_scan-module-files-in-dirs.patch
+    - 11_module-files-append-module-files-d.patch
+    - 12_module-files-append-compat-module-files-d.patch
+  * Add patch to fix build error during configure:
+    - 13_configure-thai-modules.patch
+  * Add patch to fix build during linking of module basic-fc:
+    - 14_makefile_modules_ft2_link_harfbuzz.patch
+  * debian/rules: bump MODVER to 1.8.0
+  * Update libpango1.0-0.symbols
+    - some new additions
+    - libpangox-1.0.so.0 (pango_x_* symbols) removed
+
+  [ Martin Pitt ]
+  * debian/control.in: Fix misplaced XS-Testsuite header.
+
+  [ Emilio Pozuelo Monfort ]
+  * New upstream release.
+    + debian/control.in:
+      - Update build dependencies.
+    + debian/libpango1.0-0.symbols:
+      - Update for new symbols.
+  * debian/control.in:
+    - libpango1.0-dev needs to depend on libharfbuzz-dev.
+  * debian/patches/12_module-files-append-compat-module-files-d.patch:
+    - Removed, we no longer need to provide compatibility for ia32-libs.
+  * debian/patches/11_module-files-append-module-files-d.patch:
+    - Updated from Ubuntu, thanks Iain Lane and Rico Tzschichholz.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Sat, 23 Feb 2013 20:32:09 +0100
+
+pango1.0 (1.30.1-1) experimental; urgency=low
 
   * New upstream bug fix release.
-  * debian/control.in: Bump glib build dependency as per upstream
-    configure.ac.
-  * Drop 00git_transfer_annotations.patch, upstream now.
+  * debian/libpango1.0-0.symbols: Add new symbol from this release.
+  * Grab a few fixes from upstream (via Ubuntu package, thanks Robert Ancell):
+    - 00git_missing_prototype.patch: Add missing method prototype.
+    - 00git_memory_leak.patch: Fix memory leak (LP: #837145)
+    - 00git_thai_zero_width_spaces.patch: correctly handle zero width spaces
+      in Thai (LP: #986008)
+  * Add debian/tests: Simple compile/link/run autopkg test. Thanks to Rafał
+    Cieślak! (LP: #1073637)
+  * debian/control.in: Set Vcs-* to experimental branch.
 
- -- Martin Pitt <martin.pitt@ubuntu.com>  Wed, 08 Feb 2012 08:35:54 +0100
+ -- Martin Pitt <mpitt@debian.org>  Mon, 12 Nov 2012 13:23:16 +0100
 
-pango1.0 (1.29.4-2ubuntu1) precise; urgency=low
+pango1.0 (1.30.0-1) unstable; urgency=low
 
-  * Merge with Debian unstable; remaining Ubuntu changes:
-    - debian/control.in: Lower the Breaks: to plymouth to the Ubuntu version
-      that got multi-arch compatible. This can be dropped as soon as we merge
-      plymouth.
+  * New upstream release.
+  * debian/watch: Track stable releases again.
+  * Refreshed and updated patches.
+  * Bump Standards-Version to 3.9.3.
 
- -- Martin Pitt <martin.pitt@ubuntu.com>  Thu, 20 Oct 2011 10:08:49 +0200
+ -- Michael Biebl <biebl@debian.org>  Sat, 31 Mar 2012 22:00:53 +0200
+
+pango1.0 (1.29.5-1) experimental; urgency=low
+
+  * New upstream release.
+    - Fix GI annotation syntax. Closes: #640855
+  * debian/control.in: Bump Build-Depends on libglib2.0-dev to (>= 2.31.0).
+  * debian/patches/00git_transfer_annotations.patch: Removed, merged upstream.
+  * Set pkg-gnome-maintainers@lists.alioth.debian.org as Maintainer.
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 09 Mar 2012 10:39:11 +0100
+
+pango1.0 (1.29.4-3) unstable; urgency=low
+
+  [ Josselin Mouette ]
+  * Remove incorrect M-A: same statement for the debug package.
+
+  [ Michael Biebl ]
+  * Change section of gir1.2-pango-1.0 to introspection.
+  * debian/watch: Track .xz tarballs.
+
+  [ Martin Pitt ]
+  * debian/watch: Watch for odd version numbers as well, since we already have
+    1.29.x.
+
+  [ Josselin Mouette ]
+  * Drop x-ttcidfont-conf. Closes: #660062.
+
+  [ Michael Biebl ]
+  * debian/control.in: Drop obsolete Conflicts against pango-libthai.
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 09 Mar 2012 10:06:03 +0100
 
 pango1.0 (1.29.4-2) unstable; urgency=low
 

@@ -22,46 +22,6 @@
 #include "config.h"
 
 #include "pango-ot-private.h"
-#include "pangofc-private.h"
-#include "pango-impl-utils.h"
-
-/* cache a single hb_buffer_t */
-static hb_buffer_t *cached_buffer = NULL;
-G_LOCK_DEFINE_STATIC (cached_buffer);
-
-static hb_buffer_t *
-acquire_buffer (gboolean *free_buffer)
-{
-  hb_buffer_t *buffer;
-
-  if (G_LIKELY (G_TRYLOCK (cached_buffer)))
-    {
-      if (G_UNLIKELY (!cached_buffer))
-	cached_buffer = hb_buffer_create (64);
-
-      buffer = cached_buffer;
-      *free_buffer = FALSE;
-    }
-  else
-    {
-      buffer = hb_buffer_create (32);
-      *free_buffer = TRUE;
-    }
-
-  return buffer;
-}
-
-static void
-release_buffer (hb_buffer_t *buffer, gboolean free_buffer)
-{
-  if (G_LIKELY (!free_buffer) && hb_buffer_get_reference_count (buffer) == 1)
-    {
-      hb_buffer_clear (buffer);
-      G_UNLOCK (cached_buffer);
-    }
-  else
-    hb_buffer_destroy (buffer);
-}
 
 /**
  * pango_ot_buffer_new
@@ -79,11 +39,8 @@ pango_ot_buffer_new (PangoFcFont *font)
 {
   PangoOTBuffer *buffer = g_slice_new (PangoOTBuffer);
 
-  buffer->buffer = acquire_buffer (&buffer->should_free_hb_buffer);
-  buffer->font = g_object_ref (font);
-  buffer->applied_gpos = FALSE;
-  buffer->rtl = FALSE;
-  buffer->zero_width_marks = FALSE;
+  buffer->buffer = hb_buffer_create ();
+  hb_buffer_set_unicode_funcs (buffer->buffer, hb_glib_get_unicode_funcs ());
 
   return buffer;
 }
@@ -99,8 +56,7 @@ pango_ot_buffer_new (PangoFcFont *font)
 void
 pango_ot_buffer_destroy (PangoOTBuffer *buffer)
 {
-  release_buffer (buffer->buffer, buffer->should_free_hb_buffer);
-  g_object_unref (buffer->font);
+  hb_buffer_destroy (buffer->buffer);
   g_slice_free (PangoOTBuffer, buffer);
 }
 
@@ -115,8 +71,7 @@ pango_ot_buffer_destroy (PangoOTBuffer *buffer)
 void
 pango_ot_buffer_clear (PangoOTBuffer *buffer)
 {
-  hb_buffer_clear (buffer->buffer);
-  buffer->applied_gpos = FALSE;
+  hb_buffer_reset (buffer->buffer);
 }
 
 /**
@@ -127,7 +82,7 @@ pango_ot_buffer_clear (PangoOTBuffer *buffer)
  * @cluster: the cluster that this glyph belongs to
  *
  * Appends a glyph to a #PangoOTBuffer, with @properties identifying which
- * features should be applied on this glyph.  See pango_ruleset_add_feature().
+ * features should be applied on this glyph.  See pango_ot_ruleset_add_feature().
  *
  * Since: 1.4
  **/
@@ -137,8 +92,7 @@ pango_ot_buffer_add_glyph (PangoOTBuffer *buffer,
 			   guint          properties,
 			   guint          cluster)
 {
-  hb_buffer_add_glyph (buffer->buffer,
-			glyph, properties, cluster);
+  hb_buffer_add (buffer->buffer, glyph, cluster);
 }
 
 /**
@@ -155,9 +109,7 @@ void
 pango_ot_buffer_set_rtl (PangoOTBuffer *buffer,
 			 gboolean       rtl)
 {
-  buffer->rtl = rtl != FALSE;
-  hb_buffer_set_direction (buffer->buffer,
-			   buffer->rtl ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
+  hb_buffer_set_direction (buffer->buffer, rtl ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
 }
 
 /**
@@ -177,7 +129,6 @@ void
 pango_ot_buffer_set_zero_width_marks (PangoOTBuffer     *buffer,
 				      gboolean           zero_width_marks)
 {
-  buffer->zero_width_marks = zero_width_marks != FALSE;
 }
 
 /**
@@ -198,124 +149,10 @@ pango_ot_buffer_get_glyphs (const PangoOTBuffer  *buffer,
 			    int                  *n_glyphs)
 {
   if (glyphs)
-    *glyphs = (PangoOTGlyph *) hb_buffer_get_glyph_infos (buffer->buffer);
+    *glyphs = (PangoOTGlyph *) hb_buffer_get_glyph_infos (buffer->buffer, NULL);
 
   if (n_glyphs)
-    *n_glyphs = hb_buffer_get_len (buffer->buffer);
-}
-
-static void
-apply_gpos_ltr (PangoGlyphString    *glyphs,
-		hb_glyph_position_t *positions,
-		gboolean             scale,
-		double               xscale,
-		double               yscale,
-		gboolean             is_hinted)
-{
-  int i;
-
-  for (i = 0; i < glyphs->num_glyphs; i++)
-    {
-      FT_Pos x_pos = positions[i].x_pos;
-      FT_Pos y_pos = positions[i].y_pos;
-      int back = i;
-      int j;
-      int adjustment;
-
-
-      adjustment = PANGO_UNITS_26_6(positions[i].x_advance);
-
-      if (is_hinted)
-	adjustment = PANGO_UNITS_ROUND (adjustment);
-      if (G_UNLIKELY (scale))
-	adjustment *= xscale;
-
-      if (positions[i].new_advance)
-	glyphs->glyphs[i].geometry.width  = adjustment;
-      else
-	glyphs->glyphs[i].geometry.width += adjustment;
-
-
-      while (positions[back].back != 0)
-	{
-	  back  -= positions[back].back;
-	  x_pos += positions[back].x_pos;
-	  y_pos += positions[back].y_pos;
-	}
-
-      for (j = back; j < i; j++)
-	glyphs->glyphs[i].geometry.x_offset -= glyphs->glyphs[j].geometry.width;
-
-      if (G_UNLIKELY (scale))
-        {
-	  glyphs->glyphs[i].geometry.x_offset += xscale * PANGO_UNITS_26_6(x_pos);
-	  glyphs->glyphs[i].geometry.y_offset -= yscale * PANGO_UNITS_26_6(y_pos);
-	}
-      else
-        {
-	  glyphs->glyphs[i].geometry.x_offset += PANGO_UNITS_26_6(x_pos);
-	  glyphs->glyphs[i].geometry.y_offset -= PANGO_UNITS_26_6(y_pos);
-	}
-    }
-}
-
-static void
-apply_gpos_rtl (PangoGlyphString    *glyphs,
-		hb_glyph_position_t *positions,
-		gboolean             scale,
-		double               xscale,
-		double               yscale,
-		gboolean             is_hinted)
-{
-  int i;
-
-  for (i = 0; i < glyphs->num_glyphs; i++)
-    {
-      int i_rev = glyphs->num_glyphs - i - 1;
-      int back_rev = i_rev;
-      int back;
-      FT_Pos x_pos = positions[i_rev].x_pos;
-      FT_Pos y_pos = positions[i_rev].y_pos;
-      int j;
-      int adjustment;
-
-
-      adjustment = PANGO_UNITS_26_6(positions[i_rev].x_advance);
-
-      if (is_hinted)
-	adjustment = PANGO_UNITS_ROUND (adjustment);
-      if (G_UNLIKELY (scale))
-	adjustment *= xscale;
-
-      if (positions[i_rev].new_advance)
-	glyphs->glyphs[i].geometry.width  = adjustment;
-      else
-	glyphs->glyphs[i].geometry.width += adjustment;
-
-
-      while (positions[back_rev].back != 0)
-	{
-	  back_rev -= positions[back_rev].back;
-	  x_pos += positions[back_rev].x_pos;
-	  y_pos += positions[back_rev].y_pos;
-	}
-
-      back = glyphs->num_glyphs - back_rev - 1;
-
-      for (j = i; j < back; j++)
-	glyphs->glyphs[i].geometry.x_offset += glyphs->glyphs[j].geometry.width;
-
-      if (G_UNLIKELY (scale))
-        {
-	  glyphs->glyphs[i].geometry.x_offset += xscale * PANGO_UNITS_26_6(x_pos);
-	  glyphs->glyphs[i].geometry.y_offset -= yscale * PANGO_UNITS_26_6(y_pos);
-	}
-      else
-        {
-	  glyphs->glyphs[i].geometry.x_offset += PANGO_UNITS_26_6(x_pos);
-	  glyphs->glyphs[i].geometry.y_offset -= PANGO_UNITS_26_6(y_pos);
-	}
-    }
+    *n_glyphs = hb_buffer_get_length (buffer->buffer);
 }
 
 /**
@@ -333,103 +170,38 @@ void
 pango_ot_buffer_output (const PangoOTBuffer *buffer,
 			PangoGlyphString    *glyphs)
 {
-  FT_Face face;
-  hb_face_t *hb_face;
   unsigned int i;
   int last_cluster;
 
-  unsigned int len;
-  PangoOTGlyph *otglyphs;
-  hb_glyph_position_t *positions;
+  unsigned int num_glyphs;
+  hb_buffer_t *hb_buffer = buffer->buffer;
+  hb_glyph_info_t *hb_glyph;
+  hb_glyph_position_t *hb_position;
 
-  face = pango_fc_font_lock_face (buffer->font);
-  g_assert (face);
-
-  pango_ot_buffer_get_glyphs (buffer, &otglyphs, (int *) &len);
+  if (HB_DIRECTION_IS_BACKWARD (hb_buffer_get_direction (buffer->buffer)))
+    hb_buffer_reverse (buffer->buffer);
 
   /* Copy glyphs into output glyph string */
-  pango_glyph_string_set_size (glyphs, len);
-
+  num_glyphs = hb_buffer_get_length (hb_buffer);
+  hb_glyph = hb_buffer_get_glyph_infos (hb_buffer, NULL);
+  hb_position = hb_buffer_get_glyph_positions (hb_buffer, NULL);
+  pango_glyph_string_set_size (glyphs, num_glyphs);
   last_cluster = -1;
-  for (i = 0; i < len; i++)
+  for (i = 0; i < num_glyphs; i++)
     {
-      PangoOTGlyph *otglyph = &otglyphs[i];
-
-      glyphs->glyphs[i].glyph = otglyph->glyph;
-
-      glyphs->log_clusters[i] = otglyph->cluster;
-      if (glyphs->log_clusters[i] != last_cluster)
-	glyphs->glyphs[i].attr.is_cluster_start = 1;
-      else
-	glyphs->glyphs[i].attr.is_cluster_start = 0;
-
+      glyphs->glyphs[i].glyph = hb_glyph->codepoint;
+      glyphs->log_clusters[i] = hb_glyph->cluster;
+      glyphs->glyphs[i].attr.is_cluster_start = glyphs->log_clusters[i] != last_cluster;
       last_cluster = glyphs->log_clusters[i];
+
+      glyphs->glyphs[i].geometry.width = hb_position->x_advance;
+      glyphs->glyphs[i].geometry.x_offset = hb_position->x_offset;
+      glyphs->glyphs[i].geometry.y_offset = hb_position->y_offset;
+
+      hb_glyph++;
+      hb_position++;
     }
 
-  hb_face = _pango_ot_info_get_hb_face (pango_ot_info_get (face));
-
-  /* Apply default positioning */
-  for (i = 0; i < (unsigned int)glyphs->num_glyphs; i++)
-    {
-      if (glyphs->glyphs[i].glyph)
-	{
-	  PangoRectangle logical_rect;
-
-	  if (buffer->zero_width_marks &&
-	      hb_ot_layout_get_glyph_class (hb_face, glyphs->glyphs[i].glyph) == HB_OT_LAYOUT_GLYPH_CLASS_MARK)
-	    {
-	      glyphs->glyphs[i].geometry.width = 0;
-	    }
-	  else
-	    {
-	      pango_font_get_glyph_extents ((PangoFont *)buffer->font, glyphs->glyphs[i].glyph, NULL, &logical_rect);
-	      glyphs->glyphs[i].geometry.width = logical_rect.width;
-	    }
-	}
-      else
-	glyphs->glyphs[i].geometry.width = 0;
-
-      glyphs->glyphs[i].geometry.x_offset = 0;
-      glyphs->glyphs[i].geometry.y_offset = 0;
-    }
-
-  if (buffer->rtl)
-    {
-      /* Swap all glyphs */
-      pango_glyph_string_reverse_range (glyphs, 0, glyphs->num_glyphs);
-    }
-
-  positions = hb_buffer_get_glyph_positions (buffer->buffer);
-  if (buffer->applied_gpos)
-    {
-      gboolean scale = FALSE;
-      double xscale = 1, yscale = 1;
-      PangoFcFontKey *key = _pango_fc_font_get_font_key (buffer->font);
-
-      /* This is a kludge, and dupped in pango_fc_font_kern_glyphs().
-       * Should move the scale factor to PangoFcFont layer. */
-      if (key) {
-	const PangoMatrix *matrix = pango_fc_font_key_get_matrix (key);
-	PangoMatrix identity = PANGO_MATRIX_INIT;
-	if (G_UNLIKELY (matrix && 0 != memcmp (&identity, matrix, 4 * sizeof (double))))
-	  {
-	    scale = TRUE;
-	    pango_matrix_get_font_scale_factors (matrix, &xscale, &yscale);
-	    if (xscale) xscale = 1 / xscale;
-	    if (yscale) yscale = 1 / yscale;
-	  }
-      }
-
-      if (buffer->rtl)
-	apply_gpos_rtl (glyphs, positions, scale, xscale, yscale, buffer->font->is_hinted);
-      else
-	apply_gpos_ltr (glyphs, positions, scale, xscale, yscale, buffer->font->is_hinted);
-    }
-  else
-    {
-      /* FIXME we should only do this if the 'kern' feature was requested */
-      pango_fc_font_kern_glyphs (buffer->font, glyphs);
-    }
-
-  pango_fc_font_unlock_face (buffer->font);
+  if (HB_DIRECTION_IS_BACKWARD (hb_buffer_get_direction (buffer->buffer)))
+    hb_buffer_reverse (buffer->buffer);
 }

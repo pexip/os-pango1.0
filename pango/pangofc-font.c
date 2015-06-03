@@ -19,6 +19,24 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * SECTION:pangofc-font
+ * @short_description:Base font class for Fontconfig-based backends
+ * @title:PangoFcFont
+ * @see_also:
+ * <variablelist><varlistentry><term>#PangoFcFontMap</term> <listitem>The base class for font maps; creating a new
+ * Fontconfig-based backend involves deriving from both
+ * #PangoFcFontMap and #PangoFcFont.</listitem></varlistentry></variablelist>
+ *
+ * #PangoFcFont is a base class for font implementation using the
+ * Fontconfig and FreeType libraries. It is used in the
+ * <link linkend="pango-Xft-Fonts-and-Rendering">Xft</link> and
+ * <link linkend="pango-FreeType-Fonts-and-Rendering">FreeType</link>
+ * backends shipped with Pango, but can also be used when creating
+ * new backends. Any backend deriving from this base class will
+ * take advantage of the wide range of shapers implemented using
+ * FreeType that come with Pango.
+ */
 #include "config.h"
 
 #include "pangofc-font.h"
@@ -45,7 +63,6 @@ struct _PangoFcFontPrivate
   PangoFcDecoder *decoder;
   PangoFcFontKey *key;
   PangoFcCmapCache *cmap_cache;
-  gboolean has_weak_pointer; /* have set a weak_pointer from fontmap to us */
 };
 
 static gboolean pango_fc_font_real_has_char  (PangoFcFont *font,
@@ -136,19 +153,17 @@ pango_fc_font_finalize (GObject *object)
 {
   PangoFcFont *fcfont = PANGO_FC_FONT (object);
   PangoFcFontPrivate *priv = fcfont->priv;
+  PangoFcFontMap *fontmap;
 
   g_slist_foreach (fcfont->metrics_by_lang, (GFunc)free_metrics_info, NULL);
   g_slist_free (fcfont->metrics_by_lang);
 
-  if (fcfont->fontmap)
+  fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
+  if (fontmap)
     {
       _pango_fc_font_map_remove (PANGO_FC_FONT_MAP (fcfont->fontmap), fcfont);
-      if (priv->has_weak_pointer)
-        {
-	  priv->has_weak_pointer = FALSE;
-	  g_object_remove_weak_pointer (G_OBJECT (fcfont->fontmap), (gpointer *) (gpointer) &fcfont->fontmap);
-	}
-      fcfont->fontmap = NULL;
+      g_weak_ref_clear ((GWeakRef *) &fcfont->fontmap);
+      g_object_unref (fontmap);
     }
 
   FcPatternDestroy (fcfont->font_pattern);
@@ -227,13 +242,7 @@ pango_fc_font_set_property (GObject       *object,
 	PangoFcFontMap *fcfontmap = PANGO_FC_FONT_MAP (g_value_get_object (value));
 
 	g_return_if_fail (fcfont->fontmap == NULL);
-	fcfont->fontmap = (PangoFontMap *) fcfontmap;
-	if (fcfont->fontmap)
-	  {
-	    PangoFcFontPrivate *priv = fcfont->priv;
-	    priv->has_weak_pointer = TRUE;
-	    g_object_add_weak_pointer (G_OBJECT (fcfont->fontmap), (gpointer *) (gpointer) &fcfont->fontmap);
-	  }
+	g_weak_ref_set ((GWeakRef *) &fcfont->fontmap, fcfontmap);
       }
       goto set_decoder;
 
@@ -267,7 +276,8 @@ pango_fc_font_get_property (GObject       *object,
     case PROP_FONTMAP:
       {
 	PangoFcFont *fcfont = PANGO_FC_FONT (object);
-	g_value_set_object (value, fcfont->fontmap);
+	PangoFontMap *fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
+	g_value_take_object (value, fontmap);
       }
       break;
     default:
@@ -300,14 +310,13 @@ pango_fc_font_describe_absolute (PangoFont *font)
 static PangoMap *
 pango_fc_get_shaper_map (PangoLanguage *language)
 {
-  static guint engine_type_id = 0;
-  static guint render_type_id = 0;
+  static guint engine_type_id = 0; /* MT-safe */
+  static guint render_type_id = 0; /* MT-safe */
 
   if (engine_type_id == 0)
-    {
-      engine_type_id = g_quark_from_static_string (PANGO_ENGINE_TYPE_SHAPE);
-      render_type_id = g_quark_from_static_string (PANGO_RENDER_TYPE_FC);
-    }
+    engine_type_id = g_quark_from_static_string (PANGO_ENGINE_TYPE_SHAPE);
+  if (render_type_id == 0)
+    render_type_id = g_quark_from_static_string (PANGO_RENDER_TYPE_FC);
 
   return pango_find_map (language, engine_type_id, render_type_id);
 }
@@ -332,6 +341,8 @@ pango_fc_font_get_coverage (PangoFont     *font,
   PangoFcFont *fcfont = (PangoFcFont *)font;
   PangoFcFontPrivate *priv = fcfont->priv;
   FcCharSet *charset;
+  PangoFcFontMap *fontmap;
+  PangoCoverage *coverage;
 
   if (priv->decoder)
     {
@@ -339,11 +350,13 @@ pango_fc_font_get_coverage (PangoFont     *font,
       return _pango_fc_font_map_fc_to_coverage (charset);
     }
 
-  if (!fcfont->fontmap)
+  fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
+  if (!fontmap)
     return pango_coverage_new ();
 
-  return _pango_fc_font_map_get_coverage (PANGO_FC_FONT_MAP (fcfont->fontmap),
-					  fcfont);
+  coverage = _pango_fc_font_map_get_coverage (fontmap, fcfont);
+  g_object_unref (fontmap);
+  return coverage;
 }
 
 /* For Xft, it would be slightly more efficient to simply to
@@ -541,11 +554,9 @@ pango_fc_font_get_metrics (PangoFont     *font,
       PangoFontMap *fontmap;
       PangoContext *context;
 
-      /* XXX this is racy.  because weakref's are racy... */
-      fontmap = fcfont->fontmap;
+      fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
       if (!fontmap)
 	return pango_font_metrics_new ();
-      fontmap = g_object_ref (fontmap);
 
       info = g_slice_new0 (PangoFcMetricsInfo);
 
@@ -592,6 +603,7 @@ pango_fc_font_get_font_map (PangoFont *font)
 {
   PangoFcFont *fcfont = PANGO_FC_FONT (font);
 
+  /* MT-unsafe.  Oh well...  The API is unsafe. */
   return fcfont->fontmap;
 }
 
@@ -622,8 +634,13 @@ pango_fc_font_real_get_glyph (PangoFcFont *font,
 
   if (G_UNLIKELY (priv->cmap_cache == NULL))
     {
-      priv->cmap_cache = _pango_fc_font_map_get_cmap_cache ((PangoFcFontMap *) font->fontmap,
-							    font);
+      PangoFcFontMap *fontmap = g_weak_ref_get ((GWeakRef *) &font->fontmap);
+      if (G_UNLIKELY (!fontmap))
+        return 0;
+
+      priv->cmap_cache = _pango_fc_font_map_get_cmap_cache (fontmap, font);
+
+      g_object_unref (fontmap);
 
       if (G_UNLIKELY (!priv->cmap_cache))
 	return 0;
@@ -786,7 +803,7 @@ _pango_fc_font_shutdown (PangoFcFont *font)
 }
 
 /**
- * pango_fc_font_kern_glyphs
+ * pango_fc_font_kern_glyphs:
  * @font: a #PangoFcFont
  * @glyphs: a #PangoGlyphString
  *
@@ -794,6 +811,7 @@ _pango_fc_font_shutdown (PangoFcFont *font)
  * kerning information in @font.
  *
  * Since: 1.4
+ * Deprecated: 1.32
  **/
 void
 pango_fc_font_kern_glyphs (PangoFcFont      *font,
@@ -821,8 +839,6 @@ pango_fc_font_kern_glyphs (PangoFcFont      *font,
       return;
     }
 
-  /* This is a kludge, and dupped in pango_ot_buffer_output().
-   * Should move the scale factor to PangoFcFont layer. */
   key = _pango_fc_font_get_font_key (font);
   if (key) {
     const PangoMatrix *matrix = pango_fc_font_key_get_matrix (key);
@@ -859,7 +875,7 @@ pango_fc_font_kern_glyphs (PangoFcFont      *font,
 }
 
 /**
- * _pango_fc_font_get_decoder
+ * _pango_fc_font_get_decoder:
  * @font: a #PangoFcFont
  *
  * This will return any custom decoder set on this font.
@@ -878,7 +894,7 @@ _pango_fc_font_get_decoder (PangoFcFont *font)
 }
 
 /**
- * _pango_fc_font_set_decoder
+ * _pango_fc_font_set_decoder:
  * @font: a #PangoFcFont
  * @decoder: a #PangoFcDecoder to set for this font
  *

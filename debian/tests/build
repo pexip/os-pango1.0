@@ -1,0 +1,28 @@
+#!/bin/sh
+# autopkgtest check: Builds a small application against libcairo2-dev, checking
+# if it compiles, links and runs successfully.
+# Author: Rafał Cieślak <rafalcieslak256@ubuntu.com> 
+
+set -e
+
+WORKDIR=$(mktemp -d)
+trap "rm -rf $WORKDIR" 0 INT QUIT ABRT PIPE TERM
+cd $WORKDIR
+cat <<EOF > build_test.c
+
+#include <pango/pango.h>
+int main (int argc, char *argv[])
+{
+	PangoFontDescription* pfd = pango_font_description_new();
+	if(!pfd) return 1;
+	pango_font_description_set_size(pfd,12);
+	return 0;
+}
+EOF
+
+gcc -o build_test build_test.c `pkg-config --cflags --libs pango`
+echo "build: OK"
+[ -x build_test ]
+./build_test
+echo "run: OK"
+
