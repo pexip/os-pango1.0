@@ -2,13 +2,13 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Pango Reference Manual: Cairo Rendering</title>
-<meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
+<title>Cairo Rendering: Pango Reference Manual</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="index.html" title="Pango Reference Manual">
 <link rel="up" href="rendering.html" title="Rendering with Pango">
 <link rel="prev" href="pango-Xft-Fonts-and-Rendering.html" title="Xft Fonts and Rendering">
 <link rel="next" href="pango-CoreText-Fonts.html" title="CoreText Fonts">
-<meta name="generator" content="GTK-Doc V1.21.1 (XML mode)">
+<meta name="generator" content="GTK-Doc V1.25.1 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
@@ -35,7 +35,7 @@
 </tr></table></div>
 <div class="refsect1">
 <a name="pango-Cairo-Rendering.functions"></a><h2>Functions</h2>
-<div class="informaltable"><table width="100%" border="0">
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="functions_return">
 <col class="functions_name">
@@ -277,7 +277,7 @@
 </div>
 <a name="PangoCairoFont"></a><a name="PangoCairoFontMap"></a><div class="refsect1">
 <a name="pango-Cairo-Rendering.other"></a><h2>Types and Values</h2>
-<div class="informaltable"><table width="100%" border="0">
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="name">
 <col class="description">
@@ -296,7 +296,7 @@
 </div>
 <div class="refsect1">
 <a name="pango-Cairo-Rendering.object-hierarchy"></a><h2>Object Hierarchy</h2>
-<pre class="screen">    GInterface
+<pre class="screen">    <a href="https://developer.gnome.org/gobject/unstable/GTypeModule.html">GInterface</a>
     <span class="lineart">├──</span> PangoCairoFont
     <span class="lineart">╰──</span> PangoCairoFontMap
 </pre>
@@ -433,96 +433,96 @@ to the floating point units used in Cairo divide by <a class="link" href="pango-
 88
 89
 90</pre></td>
-        <td class="listing_code"><pre class="programlisting"><span class="preproc">#include</span><span class="normal"> </span><span class="string">&lt;math.h&gt;</span>
-<span class="preproc">#include</span><span class="normal"> </span><span class="string">&lt;pango/pangocairo.h&gt;</span>
+        <td class="listing_code"><pre class="programlisting"><span class="gtkdoc ppc">#include &lt;math.h&gt;</span>
+<span class="gtkdoc ppc">#include &lt;pango/pangocairo.h&gt;</span>
 
-<span class="keyword">static</span><span class="normal"> </span><span class="type">void</span>
-<span class="function">draw_text</span><span class="normal"> </span><span class="symbol">(</span><span class="usertype">cairo_t</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">cr</span><span class="symbol">)</span>
-<span class="cbracket">{</span>
-<span class="preproc">#define</span><span class="normal"> RADIUS </span><span class="number">150</span>
-<span class="preproc">#define</span><span class="normal"> N_WORDS </span><span class="number">10</span>
-<span class="preproc">#define</span><span class="normal"> FONT </span><span class="string">"Sans Bold 27"</span>
+<span class="gtkdoc kwb">static void</span>
+<span class="function">draw_text</span> <span class="gtkdoc opt">(</span>cairo_t <span class="gtkdoc opt">*</span>cr<span class="gtkdoc opt">)</span>
+<span class="gtkdoc opt">{</span>
+<span class="gtkdoc ppc">#define RADIUS 150</span>
+<span class="gtkdoc ppc">#define N_WORDS 10</span>
+<span class="gtkdoc ppc">#define FONT</span> <span class="gtkdoc pps">&quot;Sans Bold 27&quot;</span><span class="gtkdoc ppc"></span>
 
-<span class="normal">  </span><span class="usertype">PangoLayout</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">layout</span><span class="symbol">;</span>
-<span class="normal">  </span><span class="usertype">PangoFontDescription</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">desc</span><span class="symbol">;</span>
-<span class="normal">  </span><span class="type">int</span><span class="normal"> i</span><span class="symbol">;</span>
+  PangoLayout <span class="gtkdoc opt">*</span>layout<span class="gtkdoc opt">;</span>
+  PangoFontDescription <span class="gtkdoc opt">*</span>desc<span class="gtkdoc opt">;</span>
+  <span class="gtkdoc kwb">int</span> i<span class="gtkdoc opt">;</span>
 
-<span class="normal">  </span><span class="comment">/* Center coordinates on the middle of the region we are drawing</span>
+  <span class="comment">/* Center coordinates on the middle of the region we are drawing</span>
 <span class="comment">   */</span>
-<span class="normal">  </span><span class="function">cairo_translate</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">,</span><span class="normal"> RADIUS</span><span class="symbol">,</span><span class="normal"> RADIUS</span><span class="symbol">);</span>
+  <span class="function">cairo_translate</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">,</span> RADIUS<span class="gtkdoc opt">,</span> RADIUS<span class="gtkdoc opt">);</span>
 
-<span class="normal">  </span><span class="comment">/* Create a PangoLayout, set the font and text */</span>
-<span class="normal">  layout </span><span class="symbol">=</span><span class="normal"> </span><span class="function"><a href="pango-Cairo-Rendering.html#pango-cairo-create-layout">pango_cairo_create_layout</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">);</span>
+  <span class="comment">/* Create a PangoLayout, set the font and text */</span>
+  layout <span class="gtkdoc opt">=</span> <span class="function"><a href="pango-Cairo-Rendering.html#pango-cairo-create-layout">pango_cairo_create_layout</a></span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">);</span>
 
-<span class="normal">  </span><span class="function"><a href="pango-Layout-Objects.html#pango-layout-set-text">pango_layout_set_text</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">layout</span><span class="symbol">,</span><span class="normal"> </span><span class="string">"Text"</span><span class="symbol">,</span><span class="normal"> </span><span class="symbol">-</span><span class="number">1</span><span class="symbol">);</span>
-<span class="normal">  desc </span><span class="symbol">=</span><span class="normal"> </span><span class="function"><a href="pango-Fonts.html#pango-font-description-from-string">pango_font_description_from_string</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">FONT</span><span class="symbol">);</span>
-<span class="normal">  </span><span class="function"><a href="pango-Layout-Objects.html#pango-layout-set-font-description">pango_layout_set_font_description</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">layout</span><span class="symbol">,</span><span class="normal"> desc</span><span class="symbol">);</span>
-<span class="normal">  </span><span class="function"><a href="pango-Fonts.html#pango-font-description-free">pango_font_description_free</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">desc</span><span class="symbol">);</span>
+  <span class="function"><a href="pango-Layout-Objects.html#pango-layout-set-text">pango_layout_set_text</a></span> <span class="gtkdoc opt">(</span>layout<span class="gtkdoc opt">,</span> <span class="string">&quot;Text&quot;</span><span class="gtkdoc opt">, -</span><span class="number">1</span><span class="gtkdoc opt">);</span>
+  desc <span class="gtkdoc opt">=</span> <span class="function"><a href="pango-Fonts.html#pango-font-description-from-string">pango_font_description_from_string</a></span> <span class="gtkdoc opt">(</span>FONT<span class="gtkdoc opt">);</span>
+  <span class="function"><a href="pango-Layout-Objects.html#pango-layout-set-font-description">pango_layout_set_font_description</a></span> <span class="gtkdoc opt">(</span>layout<span class="gtkdoc opt">,</span> desc<span class="gtkdoc opt">);</span>
+  <span class="function"><a href="pango-Fonts.html#pango-font-description-free">pango_font_description_free</a></span> <span class="gtkdoc opt">(</span>desc<span class="gtkdoc opt">);</span>
 
-<span class="normal">  </span><span class="comment">/* Draw the layout N_WORDS times in a circle */</span>
-<span class="normal">  </span><span class="keyword">for</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">i </span><span class="symbol">=</span><span class="normal"> </span><span class="number">0</span><span class="symbol">;</span><span class="normal"> i </span><span class="symbol">&lt;</span><span class="normal"> N_WORDS</span><span class="symbol">;</span><span class="normal"> i</span><span class="symbol">++)</span>
-<span class="normal">    </span><span class="cbracket">{</span>
-<span class="normal">      </span><span class="type">int</span><span class="normal"> width</span><span class="symbol">,</span><span class="normal"> height</span><span class="symbol">;</span>
-<span class="normal">      </span><span class="type">double</span><span class="normal"> angle </span><span class="symbol">=</span><span class="normal"> </span><span class="symbol">(</span><span class="number">360</span><span class="symbol">.</span><span class="normal"> </span><span class="symbol">*</span><span class="normal"> i</span><span class="symbol">)</span><span class="normal"> </span><span class="symbol">/</span><span class="normal"> N_WORDS</span><span class="symbol">;</span>
-<span class="normal">      </span><span class="type">double</span><span class="normal"> red</span><span class="symbol">;</span>
+  <span class="comment">/* Draw the layout N_WORDS times in a circle */</span>
+  <span class="keyword">for</span> <span class="gtkdoc opt">(</span>i <span class="gtkdoc opt">=</span> <span class="number">0</span><span class="gtkdoc opt">;</span> i <span class="gtkdoc opt">&lt;</span> N_WORDS<span class="gtkdoc opt">;</span> i<span class="gtkdoc opt">++)</span>
+    <span class="gtkdoc opt">{</span>
+      <span class="gtkdoc kwb">int</span> width<span class="gtkdoc opt">,</span> height<span class="gtkdoc opt">;</span>
+      <span class="gtkdoc kwb">double</span> angle <span class="gtkdoc opt">= (</span><span class="number">360</span><span class="gtkdoc opt">. *</span> i<span class="gtkdoc opt">) /</span> N_WORDS<span class="gtkdoc opt">;</span>
+      <span class="gtkdoc kwb">double</span> red<span class="gtkdoc opt">;</span>
 
-<span class="normal">      </span><span class="function">cairo_save</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">);</span>
+      <span class="function">cairo_save</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">);</span>
 
-<span class="normal">      </span><span class="comment">/* Gradient from red at angle == 60 to blue at angle == 240 */</span>
-<span class="normal">      red   </span><span class="symbol">=</span><span class="normal"> </span><span class="symbol">(</span><span class="number">1</span><span class="normal"> </span><span class="symbol">+</span><span class="normal"> </span><span class="function">cos</span><span class="normal"> </span><span class="symbol">((</span><span class="normal">angle </span><span class="symbol">-</span><span class="normal"> </span><span class="number">60</span><span class="symbol">)</span><span class="normal"> </span><span class="symbol">*</span><span class="normal"> <a href="http://library.gnome.org/devel/glib/unstable/glib-Numerical-Definitions.html#G-PI:CAPS">G_PI</a> </span><span class="symbol">/</span><span class="normal"> </span><span class="number">180</span><span class="symbol">.))</span><span class="normal"> </span><span class="symbol">/</span><span class="normal"> </span><span class="number">2</span><span class="symbol">;</span>
-<span class="normal">      </span><span class="function">cairo_set_source_rgb</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">,</span><span class="normal"> red</span><span class="symbol">,</span><span class="normal"> </span><span class="number">0</span><span class="symbol">,</span><span class="normal"> </span><span class="number">1.0</span><span class="normal"> </span><span class="symbol">-</span><span class="normal"> red</span><span class="symbol">);</span>
+      <span class="comment">/* Gradient from red at angle == 60 to blue at angle == 240 */</span>
+      red   <span class="gtkdoc opt">= (</span><span class="number">1</span> <span class="gtkdoc opt">+</span> <span class="function">cos</span> <span class="gtkdoc opt">((</span>angle <span class="gtkdoc opt">-</span> <span class="number">60</span><span class="gtkdoc opt">) *</span> G_PI <span class="gtkdoc opt">/</span> <span class="number">180</span><span class="gtkdoc opt">.)) /</span> <span class="number">2</span><span class="gtkdoc opt">;</span>
+      <span class="function">cairo_set_source_rgb</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">,</span> red<span class="gtkdoc opt">,</span> <span class="number">0</span><span class="gtkdoc opt">,</span> <span class="number">1.0</span> <span class="gtkdoc opt">-</span> red<span class="gtkdoc opt">);</span>
 
-<span class="normal">      </span><span class="function">cairo_rotate</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">,</span><span class="normal"> angle </span><span class="symbol">*</span><span class="normal"> <a href="http://library.gnome.org/devel/glib/unstable/glib-Numerical-Definitions.html#G-PI:CAPS">G_PI</a> </span><span class="symbol">/</span><span class="normal"> </span><span class="number">180</span><span class="symbol">.);</span>
+      <span class="function">cairo_rotate</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">,</span> angle <span class="gtkdoc opt">*</span> G_PI <span class="gtkdoc opt">/</span> <span class="number">180</span><span class="gtkdoc opt">.);</span>
 
-<span class="normal">      </span><span class="comment">/* Inform Pango to re-layout the text with the new transformation */</span>
-<span class="normal">      </span><span class="function"><a href="pango-Cairo-Rendering.html#pango-cairo-update-layout">pango_cairo_update_layout</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">,</span><span class="normal"> layout</span><span class="symbol">);</span>
+      <span class="comment">/* Inform Pango to re-layout the text with the new transformation */</span>
+      <span class="function"><a href="pango-Cairo-Rendering.html#pango-cairo-update-layout">pango_cairo_update_layout</a></span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">,</span> layout<span class="gtkdoc opt">);</span>
 
-<span class="normal">      </span><span class="function"><a href="pango-Layout-Objects.html#pango-layout-get-size">pango_layout_get_size</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">layout</span><span class="symbol">,</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">width</span><span class="symbol">,</span><span class="normal"> </span><span class="symbol">&amp;</span><span class="normal">height</span><span class="symbol">);</span>
-<span class="normal">      </span><span class="function">cairo_move_to</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">,</span><span class="normal"> </span><span class="symbol">-</span><span class="normal"> </span><span class="symbol">((</span><span class="type">double</span><span class="symbol">)</span><span class="normal">width </span><span class="symbol">/</span><span class="normal"> <a href="pango-Glyph-Storage.html#PANGO-SCALE:CAPS">PANGO_SCALE</a></span><span class="symbol">)</span><span class="normal"> </span><span class="symbol">/</span><span class="normal"> </span><span class="number">2</span><span class="symbol">,</span><span class="normal"> </span><span class="symbol">-</span><span class="normal"> RADIUS</span><span class="symbol">);</span>
-<span class="normal">      </span><span class="function"><a href="pango-Cairo-Rendering.html#pango-cairo-show-layout">pango_cairo_show_layout</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">,</span><span class="normal"> layout</span><span class="symbol">);</span>
+      <span class="function"><a href="pango-Layout-Objects.html#pango-layout-get-size">pango_layout_get_size</a></span> <span class="gtkdoc opt">(</span>layout<span class="gtkdoc opt">, &amp;</span>width<span class="gtkdoc opt">, &amp;</span>height<span class="gtkdoc opt">);</span>
+      <span class="function">cairo_move_to</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">, - ((</span><span class="gtkdoc kwb">double</span><span class="gtkdoc opt">)</span>width <span class="gtkdoc opt">/</span> PANGO_SCALE<span class="gtkdoc opt">) /</span> <span class="number">2</span><span class="gtkdoc opt">, -</span> RADIUS<span class="gtkdoc opt">);</span>
+      <span class="function"><a href="pango-Cairo-Rendering.html#pango-cairo-show-layout">pango_cairo_show_layout</a></span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">,</span> layout<span class="gtkdoc opt">);</span>
 
-<span class="normal">      </span><span class="function">cairo_restore</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">);</span>
-<span class="normal">    </span><span class="cbracket">}</span>
+      <span class="function">cairo_restore</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">);</span>
+    <span class="gtkdoc opt">}</span>
 
-<span class="normal">  </span><span class="comment">/* free the layout object */</span>
-<span class="normal">  </span><span class="function"><a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref">g_object_unref</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">layout</span><span class="symbol">);</span>
-<span class="cbracket">}</span>
+  <span class="comment">/* free the layout object */</span>
+  <span class="function"><a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref">g_object_unref</a></span> <span class="gtkdoc opt">(</span>layout<span class="gtkdoc opt">);</span>
+<span class="gtkdoc opt">}</span>
 
-<span class="type">int</span><span class="normal"> </span><span class="function">main</span><span class="normal"> </span><span class="symbol">(</span><span class="type">int</span><span class="normal"> argc</span><span class="symbol">,</span><span class="normal"> </span><span class="type">char</span><span class="normal"> </span><span class="symbol">**</span><span class="normal">argv</span><span class="symbol">)</span>
-<span class="cbracket">{</span>
-<span class="normal">  </span><span class="usertype">cairo_t</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">cr</span><span class="symbol">;</span>
-<span class="normal">  </span><span class="type">char</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">filename</span><span class="symbol">;</span>
-<span class="normal">  </span><span class="usertype">cairo_status_t</span><span class="normal"> status</span><span class="symbol">;</span>
-<span class="normal">  </span><span class="usertype">cairo_surface_t</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">surface</span><span class="symbol">;</span>
+<span class="gtkdoc kwb">int</span> <span class="function">main</span> <span class="gtkdoc opt">(</span><span class="gtkdoc kwb">int</span> argc<span class="gtkdoc opt">,</span> <span class="gtkdoc kwb">char</span> <span class="gtkdoc opt">**</span>argv<span class="gtkdoc opt">)</span>
+<span class="gtkdoc opt">{</span>
+  cairo_t <span class="gtkdoc opt">*</span>cr<span class="gtkdoc opt">;</span>
+  <span class="gtkdoc kwb">char</span> <span class="gtkdoc opt">*</span>filename<span class="gtkdoc opt">;</span>
+  cairo_status_t status<span class="gtkdoc opt">;</span>
+  cairo_surface_t <span class="gtkdoc opt">*</span>surface<span class="gtkdoc opt">;</span>
 
-<span class="normal">  </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">argc </span><span class="symbol">!=</span><span class="normal"> </span><span class="number">2</span><span class="symbol">)</span>
-<span class="normal">    </span><span class="cbracket">{</span>
-<span class="normal">      </span><span class="function"><a href="http://library.gnome.org/devel/glib/unstable/glib-Warnings-and-Assertions.html#g-printerr">g_printerr</a></span><span class="normal"> </span><span class="symbol">(</span><span class="string">"Usage: cairosimple OUTPUT_FILENAME</span><span class="specialchar">\n</span><span class="string">"</span><span class="symbol">);</span>
-<span class="normal">      </span><span class="keyword">return</span><span class="normal"> </span><span class="number">1</span><span class="symbol">;</span>
-<span class="normal">    </span><span class="cbracket">}</span>
+  <span class="keyword">if</span> <span class="gtkdoc opt">(</span>argc <span class="gtkdoc opt">!=</span> <span class="number">2</span><span class="gtkdoc opt">)</span>
+    <span class="gtkdoc opt">{</span>
+      <span class="function"><a href="https://developer.gnome.org/glib/unstable/glib-Warnings-and-Assertions.html#g-printerr">g_printerr</a></span> <span class="gtkdoc opt">(</span><span class="string">&quot;Usage: cairosimple OUTPUT_FILENAME</span><span class="gtkdoc esc">\n</span><span class="string">&quot;</span><span class="gtkdoc opt">);</span>
+      <span class="keyword">return</span> <span class="number">1</span><span class="gtkdoc opt">;</span>
+    <span class="gtkdoc opt">}</span>
 
-<span class="normal">     filename </span><span class="symbol">=</span><span class="normal"> argv</span><span class="symbol">[</span><span class="number">1</span><span class="symbol">];</span>
+     filename <span class="gtkdoc opt">=</span> argv<span class="gtkdoc opt">[</span><span class="number">1</span><span class="gtkdoc opt">];</span>
 
-<span class="normal">  surface </span><span class="symbol">=</span><span class="normal"> </span><span class="function">cairo_image_surface_create</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">CAIRO_FORMAT_ARGB32</span><span class="symbol">,</span>
-<span class="normal">                                        </span><span class="number">2</span><span class="normal"> </span><span class="symbol">*</span><span class="normal"> RADIUS</span><span class="symbol">,</span><span class="normal"> </span><span class="number">2</span><span class="normal"> </span><span class="symbol">*</span><span class="normal"> RADIUS</span><span class="symbol">);</span>
-<span class="normal">  cr </span><span class="symbol">=</span><span class="normal"> </span><span class="function">cairo_create</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">surface</span><span class="symbol">);</span>
+  surface <span class="gtkdoc opt">=</span> <span class="function">cairo_image_surface_create</span> <span class="gtkdoc opt">(</span>CAIRO_FORMAT_ARGB32<span class="gtkdoc opt">,</span>
+                                        <span class="number">2</span> <span class="gtkdoc opt">*</span> RADIUS<span class="gtkdoc opt">,</span> <span class="number">2</span> <span class="gtkdoc opt">*</span> RADIUS<span class="gtkdoc opt">);</span>
+  cr <span class="gtkdoc opt">=</span> <span class="function">cairo_create</span> <span class="gtkdoc opt">(</span>surface<span class="gtkdoc opt">);</span>
 
-<span class="normal">  </span><span class="function">cairo_set_source_rgb</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">,</span><span class="normal"> </span><span class="number">1.0</span><span class="symbol">,</span><span class="normal"> </span><span class="number">1.0</span><span class="symbol">,</span><span class="normal"> </span><span class="number">1.0</span><span class="symbol">);</span>
-<span class="normal">  </span><span class="function">cairo_paint</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">);</span>
-<span class="normal">  </span><span class="function">draw_text</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">);</span>
-<span class="normal">  </span><span class="function">cairo_destroy</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">cr</span><span class="symbol">);</span>
+  <span class="function">cairo_set_source_rgb</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">,</span> <span class="number">1.0</span><span class="gtkdoc opt">,</span> <span class="number">1.0</span><span class="gtkdoc opt">,</span> <span class="number">1.0</span><span class="gtkdoc opt">);</span>
+  <span class="function">cairo_paint</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">);</span>
+  <span class="function">draw_text</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">);</span>
+  <span class="function">cairo_destroy</span> <span class="gtkdoc opt">(</span>cr<span class="gtkdoc opt">);</span>
 
-<span class="normal">  status </span><span class="symbol">=</span><span class="normal"> </span><span class="function">cairo_surface_write_to_png</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">surface</span><span class="symbol">,</span><span class="normal"> filename</span><span class="symbol">);</span>
-<span class="normal">  </span><span class="function">cairo_surface_destroy</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">surface</span><span class="symbol">);</span>
+  status <span class="gtkdoc opt">=</span> <span class="function">cairo_surface_write_to_png</span> <span class="gtkdoc opt">(</span>surface<span class="gtkdoc opt">,</span> filename<span class="gtkdoc opt">);</span>
+  <span class="function">cairo_surface_destroy</span> <span class="gtkdoc opt">(</span>surface<span class="gtkdoc opt">);</span>
 
-<span class="normal">  </span><span class="keyword">if</span><span class="normal"> </span><span class="symbol">(</span><span class="normal">status </span><span class="symbol">!=</span><span class="normal"> CAIRO_STATUS_SUCCESS</span><span class="symbol">)</span>
-<span class="normal">    </span><span class="cbracket">{</span>
-<span class="normal">      </span><span class="function"><a href="http://library.gnome.org/devel/glib/unstable/glib-Warnings-and-Assertions.html#g-printerr">g_printerr</a></span><span class="normal"> </span><span class="symbol">(</span><span class="string">"Could not save png to '%s'</span><span class="specialchar">\n</span><span class="string">"</span><span class="symbol">,</span><span class="normal"> filename</span><span class="symbol">);</span>
-<span class="normal">      </span><span class="keyword">return</span><span class="normal"> </span><span class="number">1</span><span class="symbol">;</span>
-<span class="normal">    </span><span class="cbracket">}</span>
+  <span class="keyword">if</span> <span class="gtkdoc opt">(</span>status <span class="gtkdoc opt">!=</span> CAIRO_STATUS_SUCCESS<span class="gtkdoc opt">)</span>
+    <span class="gtkdoc opt">{</span>
+      <span class="function"><a href="https://developer.gnome.org/glib/unstable/glib-Warnings-and-Assertions.html#g-printerr">g_printerr</a></span> <span class="gtkdoc opt">(</span><span class="string">&quot;Could not save png to &apos;%s&apos;</span><span class="gtkdoc esc">\n</span><span class="string">&quot;</span><span class="gtkdoc opt">,</span> filename<span class="gtkdoc opt">);</span>
+      <span class="keyword">return</span> <span class="number">1</span><span class="gtkdoc opt">;</span>
+    <span class="gtkdoc opt">}</span>
 
-<span class="normal">  </span><span class="keyword">return</span><span class="normal"> </span><span class="number">0</span><span class="symbol">;</span>
-<span class="cbracket">}</span></pre></td>
+  <span class="keyword">return</span> <span class="number">0</span><span class="gtkdoc opt">;</span>
+<span class="gtkdoc opt">}</span></pre></td>
       </tr>
     </tbody>
   </table>
@@ -554,12 +554,12 @@ uses for example.</p>
 Each thread gets its own default fontmap.  In this way,
 PangoCairo can be used safely from multiple threads.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.2.8"></a><h4>Returns</h4>
+<a name="pango-cairo-font-map-get-default.returns"></a><h4>Returns</h4>
 <p> the default PangoCairo fontmap
 for the current thread. This object is owned by Pango and must not be freed. </p>
 <p><span class="annotation">[<acronym title="Don't free data after the code is done."><span class="acronym">transfer none</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -575,13 +575,13 @@ This function only changes the default fontmap for
 the current thread.   Default fontmaps of exisiting threads
 are not changed.  Default fontmaps of any new threads will
 still be created using <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-font-map-new" title="pango_cairo_font_map_new ()"><code class="function">pango_cairo_font_map_new()</code></a>.</p>
-<p>A value of <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> for <em class="parameter"><code>fontmap</code></em>
+<p>A value of <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> for <em class="parameter"><code>fontmap</code></em>
  will cause the current default
 font map to be released and a new default font
 map to be created on demand, using <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-font-map-new" title="pango_cairo_font_map_new ()"><code class="function">pango_cairo_font_map_new()</code></a>.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.3.8"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-font-map-set-default.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -589,12 +589,12 @@ map to be created on demand, using <a class="link" href="pango-Cairo-Rendering.h
 </colgroup>
 <tbody><tr>
 <td class="parameter_name"><p>fontmap</p></td>
-<td class="parameter_description"><p>The new default font map, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a></p></td>
-<td class="parameter_annotations"> </td>
+<td class="parameter_description"><p> The new default font map, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></td>
 </tr></tbody>
 </table></div>
 </div>
-<p class="since">Since 1.22</p>
+<p class="since">Since: <a class="link" href="api-index-1-22.html#api-index-1.22">1.22</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -617,12 +617,12 @@ If requested type is not available, NULL is returned. Ie.
 this is only useful for testing, when at least two backends
 are compiled in.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.4.7"></a><h4>Returns</h4>
+<a name="pango-cairo-font-map-new.returns"></a><h4>Returns</h4>
 <p> the newly allocated <a class="link" href="pango-Fonts.html#PangoFontMap"><span class="type">PangoFontMap</span></a>,
-which should be freed with <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>. </p>
+which should be freed with <a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>. </p>
 <p><span class="annotation">[<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -639,8 +639,8 @@ or in fact in most of those cases, just use
 <em class="parameter"><code><a class="link" href="pango-Cairo-Rendering.html#pango-cairo-font-map-get-default" title="pango_cairo_font_map_get_default ()"><code class="function">pango_cairo_font_map_get_default()</code></a></code></em>
 .</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.5.6"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-font-map-new-for-font-type.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -654,14 +654,14 @@ or in fact in most of those cases, just use
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.5.7"></a><h4>Returns</h4>
-<p> (transfer full) : the newly allocated <a class="link" href="pango-Fonts.html#PangoFontMap"><span class="type">PangoFontMap</span></a>
-of suitable type which should be freed with
-<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if the requested cairo
-font backend is not supported / compiled in.</p>
-<p></p>
+<a name="pango-cairo-font-map-new-for-font-type.returns"></a><h4>Returns</h4>
+<p> the newly allocated
+<a class="link" href="pango-Fonts.html#PangoFontMap"><span class="type">PangoFontMap</span></a> of suitable type which should be freed
+with <a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if the requested
+cairo font backend is not supported / compiled in. </p>
+<p><span class="annotation">[<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>][<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.18</p>
+<p class="since">Since: <a class="link" href="api-index-1-18.html#api-index-1.18">1.18</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -671,8 +671,8 @@ pango_cairo_font_map_get_font_type (<em class="parameter"><code><a class="link" 
 <p>Gets the type of Cairo font backend that <em class="parameter"><code>fontmap</code></em>
  uses.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.6.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-font-map-get-font-type.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -686,11 +686,10 @@ pango_cairo_font_map_get_font_type (<em class="parameter"><code><a class="link" 
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.6.6"></a><h4>Returns</h4>
+<a name="pango-cairo-font-map-get-font-type.returns"></a><h4>Returns</h4>
 <p> the <span class="type">cairo_font_type_t</span> cairo font backend type</p>
-<p></p>
 </div>
-<p class="since">Since 1.18</p>
+<p class="since">Since: <a class="link" href="api-index-1-18.html#api-index-1.18">1.18</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -703,8 +702,8 @@ points specified in a <a class="link" href="pango-Fonts.html#PangoFontDescriptio
 default value is 96, meaning that a 10 point font will be 13
 units high. (10 * 96. / 72. = 13.3).</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.7.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-font-map-set-resolution.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -725,7 +724,7 @@ involved; the terminology is conventional.)</p></td>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -734,8 +733,8 @@ involved; the terminology is conventional.)</p></td>
 pango_cairo_font_map_get_resolution (<em class="parameter"><code><a class="link" href="pango-Cairo-Rendering.html#PangoCairoFontMap"><span class="type">PangoCairoFontMap</span></a> *fontmap</code></em>);</pre>
 <p>Gets the resolution for the fontmap. See <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-font-map-set-resolution" title="pango_cairo_font_map_set_resolution ()"><code class="function">pango_cairo_font_map_set_resolution()</code></a></p>
 <div class="refsect3">
-<a name="id-1.3.5.10.8.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-font-map-get-resolution.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -749,11 +748,10 @@ pango_cairo_font_map_get_resolution (<em class="parameter"><code><a class="link"
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.8.6"></a><h4>Returns</h4>
+<a name="pango-cairo-font-map-get-resolution.returns"></a><h4>Returns</h4>
 <p> the resolution in "dots per inch"</p>
-<p></p>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -765,9 +763,10 @@ pango_cairo_font_map_create_context (<em class="parameter"><code><a class="link"
 <p>Use <a class="link" href="pango-Fonts.html#pango-font-map-create-context" title="pango_font_map_create_context ()"><code class="function">pango_font_map_create_context()</code></a> instead.</p>
 </div>
 <p>Create a <a class="link" href="pango-Text-Processing.html#PangoContext"><span class="type">PangoContext</span></a> for the given fontmap.</p>
+<p><span class="annotation">[<acronym title="Exposed in C code, not necessarily available in other languages."><span class="acronym">skip</span></acronym>]</span></p>
 <div class="refsect3">
-<a name="id-1.3.5.10.9.7"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-font-map-create-context.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -781,11 +780,10 @@ pango_cairo_font_map_create_context (<em class="parameter"><code><a class="link"
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.9.8"></a><h4>Returns</h4>
-<p> the newly created context; free with <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>.</p>
-<p></p>
+<a name="pango-cairo-font-map-create-context.returns"></a><h4>Returns</h4>
+<p> the newly created context; free with <a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>.</p>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -797,8 +795,8 @@ pango_cairo_font_get_scaled_font (<em class="parameter"><code><a class="link" hr
 The scaled font can be referenced and kept using
 <code class="function">cairo_scaled_font_reference()</code>.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.10.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-font-get-scaled-font.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -812,14 +810,14 @@ The scaled font can be referenced and kept using
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.10.6"></a><h4>Returns</h4>
+<a name="pango-cairo-font-get-scaled-font.returns"></a><h4>Returns</h4>
 <p> the <span class="type">cairo_scaled_font_t</span> used by <em class="parameter"><code>font</code></em>
 ,
-or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if <em class="parameter"><code>font</code></em>
-is <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>.</p>
-<p></p>
+or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if <em class="parameter"><code>font</code></em>
+is <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. </p>
+<p><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.18</p>
+<p class="since">Since: <a class="link" href="api-index-1-18.html#api-index-1.18">1.18</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -832,8 +830,8 @@ points specified in a <a class="link" href="pango-Fonts.html#PangoFontDescriptio
 default value is 96, meaning that a 10 point font will be 13
 units high. (10 * 96. / 72. = 13.3).</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.11.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-context-set-resolution.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -855,7 +853,7 @@ means to use the resolution from the font map.</p></td>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -864,8 +862,8 @@ means to use the resolution from the font map.</p></td>
 pango_cairo_context_get_resolution (<em class="parameter"><code><a class="link" href="pango-Text-Processing.html#PangoContext"><span class="type">PangoContext</span></a> *context</code></em>);</pre>
 <p>Gets the resolution for the context. See <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-context-set-resolution" title="pango_cairo_context_set_resolution ()"><code class="function">pango_cairo_context_set_resolution()</code></a></p>
 <div class="refsect3">
-<a name="id-1.3.5.10.12.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-context-get-resolution.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -879,12 +877,11 @@ pango_cairo_context_get_resolution (<em class="parameter"><code><a class="link" 
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.12.6"></a><h4>Returns</h4>
+<a name="pango-cairo-context-get-resolution.returns"></a><h4>Returns</h4>
 <p> the resolution in "dots per inch". A negative value will
 be returned if no resolution has previously been set.</p>
-<p></p>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -896,8 +893,8 @@ pango_cairo_context_set_font_options (<em class="parameter"><code><a class="link
 These options override any options that <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-update-context" title="pango_cairo_update_context ()"><code class="function">pango_cairo_update_context()</code></a>
 derives from the target surface.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.13.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-context-set-font-options.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -911,14 +908,14 @@ derives from the target surface.</p>
 </tr>
 <tr>
 <td class="parameter_name"><p>options</p></td>
-<td class="parameter_description"><p>a <span class="type">cairo_font_options_t</span>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> to unset any previously set
-options. A copy is made.</p></td>
-<td class="parameter_annotations"> </td>
+<td class="parameter_description"><p> a <span class="type">cairo_font_options_t</span>, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> to unset
+any previously set options. A copy is made. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></td>
 </tr>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -929,8 +926,8 @@ pango_cairo_context_get_font_options (<em class="parameter"><code><a class="link
 <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-context-set-font-options" title="pango_cairo_context_set_font_options ()"><code class="function">pango_cairo_context_set_font_options()</code></a>. This function does not report options
 that are derived from the target surface by <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-update-context" title="pango_cairo_update_context ()"><code class="function">pango_cairo_update_context()</code></a></p>
 <div class="refsect3">
-<a name="id-1.3.5.10.14.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-context-get-font-options.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -944,13 +941,13 @@ that are derived from the target surface by <a class="link" href="pango-Cairo-Re
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.14.6"></a><h4>Returns</h4>
-<p> the font options previously set on the context, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
-if no options have been set. This value is owned by the context
-and must not be modified or freed.</p>
-<p></p>
+<a name="pango-cairo-context-get-font-options.returns"></a><h4>Returns</h4>
+<p> the font options previously set on the
+context, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if no options have been set. This value is
+owned by the context and must not be modified or freed. </p>
+<p><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -958,13 +955,13 @@ and must not be modified or freed.</p>
 <pre class="programlisting"><span class="returnvalue">void</span>
 <span class="c_punctuation">(</span>*PangoCairoShapeRendererFunc<span class="c_punctuation">)</span> (<em class="parameter"><code><span class="type">cairo_t</span> *cr</code></em>,
                                 <em class="parameter"><code><a class="link" href="pango-Text-Attributes.html#PangoAttrShape" title="struct PangoAttrShape"><span class="type">PangoAttrShape</span></a> *attr</code></em>,
-                                <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a> do_path</code></em>,
-                                <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> data</code></em>);</pre>
+                                <em class="parameter"><code><a href="https://developer.gnome.org/glib/unstable/glib-Basic-Types.html#gboolean"><span class="type">gboolean</span></a> do_path</code></em>,
+                                <em class="parameter"><code><a href="https://developer.gnome.org/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> data</code></em>);</pre>
 <p>Function type for rendering attributes of type <a class="link" href="pango-Text-Attributes.html#PANGO-ATTR-SHAPE:CAPS"><code class="literal">PANGO_ATTR_SHAPE</code></a>
 with Pango's Cairo renderer.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.15.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="PangoCairoShapeRendererFunc.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -987,7 +984,7 @@ be rendered</p></td>
 <td class="parameter_description"><p>whether only the shape path should be appended to current
 path of <em class="parameter"><code>cr</code></em>
 and no filling/stroking done.  This will be set
-to <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> when called from <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-layout-path" title="pango_cairo_layout_path ()"><code class="function">pango_cairo_layout_path()</code></a> and
+to <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#TRUE:CAPS"><code class="literal">TRUE</code></a> when called from <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-layout-path" title="pango_cairo_layout_path ()"><code class="function">pango_cairo_layout_path()</code></a> and
 <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-layout-line-path" title="pango_cairo_layout_line_path ()"><code class="function">pango_cairo_layout_line_path()</code></a> rendering functions.</p></td>
 <td class="parameter_annotations"> </td>
 </tr>
@@ -1007,14 +1004,14 @@ to <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.ht
 pango_cairo_context_set_shape_renderer
                                (<em class="parameter"><code><a class="link" href="pango-Text-Processing.html#PangoContext"><span class="type">PangoContext</span></a> *context</code></em>,
                                 <em class="parameter"><code><a class="link" href="pango-Cairo-Rendering.html#PangoCairoShapeRendererFunc" title="PangoCairoShapeRendererFunc ()"><span class="type">PangoCairoShapeRendererFunc</span></a> func</code></em>,
-                                <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> data</code></em>,
-                                <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Datasets.html#GDestroyNotify"><span class="type">GDestroyNotify</span></a> dnotify</code></em>);</pre>
+                                <em class="parameter"><code><a href="https://developer.gnome.org/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> data</code></em>,
+                                <em class="parameter"><code><a href="https://developer.gnome.org/glib/unstable/glib-Datasets.html#GDestroyNotify"><span class="type">GDestroyNotify</span></a> dnotify</code></em>);</pre>
 <p>Sets callback function for context to use for rendering attributes
 of type <a class="link" href="pango-Text-Attributes.html#PANGO-ATTR-SHAPE:CAPS"><code class="literal">PANGO_ATTR_SHAPE</code></a>.  See <a class="link" href="pango-Cairo-Rendering.html#PangoCairoShapeRendererFunc" title="PangoCairoShapeRendererFunc ()"><span class="type">PangoCairoShapeRendererFunc</span></a> for
 details.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.16.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-context-set-shape-renderer.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1028,9 +1025,9 @@ details.</p>
 </tr>
 <tr>
 <td class="parameter_name"><p>func</p></td>
-<td class="parameter_description"><p>Callback function for rendering attributes of type
-<a class="link" href="pango-Text-Attributes.html#PANGO-ATTR-SHAPE:CAPS"><code class="literal">PANGO_ATTR_SHAPE</code></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> to disable shape rendering.</p></td>
-<td class="parameter_annotations"> </td>
+<td class="parameter_description"><p> Callback function for rendering attributes of
+type <a class="link" href="pango-Text-Attributes.html#PANGO-ATTR-SHAPE:CAPS"><code class="literal">PANGO_ATTR_SHAPE</code></a>, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> to disable shape rendering. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></td>
 </tr>
 <tr>
 <td class="parameter_name"><p>data</p></td>
@@ -1042,13 +1039,13 @@ details.</p>
 <td class="parameter_name"><p>dnotify</p></td>
 <td class="parameter_description"><p>Callback that will be called when the
 context is freed to release <em class="parameter"><code>data</code></em>
-, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>.</p></td>
+, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>.</p></td>
 <td class="parameter_annotations"> </td>
 </tr>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.18</p>
+<p class="since">Since: <a class="link" href="api-index-1-18.html#api-index-1.18">1.18</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1056,16 +1053,17 @@ context is freed to release <em class="parameter"><code>data</code></em>
 <pre class="programlisting"><a class="link" href="pango-Cairo-Rendering.html#PangoCairoShapeRendererFunc" title="PangoCairoShapeRendererFunc ()"><span class="returnvalue">PangoCairoShapeRendererFunc</span></a>
 pango_cairo_context_get_shape_renderer
                                (<em class="parameter"><code><a class="link" href="pango-Text-Processing.html#PangoContext"><span class="type">PangoContext</span></a> *context</code></em>,
-                                <em class="parameter"><code><a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> *data</code></em>);</pre>
+                                <em class="parameter"><code><a href="https://developer.gnome.org/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> *data</code></em>);</pre>
 <p>Sets callback function for context to use for rendering attributes
 of type <a class="link" href="pango-Text-Attributes.html#PANGO-ATTR-SHAPE:CAPS"><code class="literal">PANGO_ATTR_SHAPE</code></a>.  See <a class="link" href="pango-Cairo-Rendering.html#PangoCairoShapeRendererFunc" title="PangoCairoShapeRendererFunc ()"><span class="type">PangoCairoShapeRendererFunc</span></a> for
 details.</p>
 <p>Retrieves callback function and associated user data for rendering
 attributes of type <a class="link" href="pango-Text-Attributes.html#PANGO-ATTR-SHAPE:CAPS"><code class="literal">PANGO_ATTR_SHAPE</code></a> as set by
 <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-context-set-shape-renderer" title="pango_cairo_context_set_shape_renderer ()"><code class="function">pango_cairo_context_set_shape_renderer()</code></a>, if any.</p>
+<p><span class="annotation">[<acronym title="Exposed in C code, not necessarily available in other languages."><span class="acronym">skip</span></acronym>]</span></p>
 <div class="refsect3">
-<a name="id-1.3.5.10.17.6"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-context-get-shape-renderer.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1079,19 +1077,20 @@ attributes of type <a class="link" href="pango-Text-Attributes.html#PANGO-ATTR-S
 </tr>
 <tr>
 <td class="parameter_name"><p>data</p></td>
-<td class="parameter_description"><p>Pointer to <a href="http://library.gnome.org/devel/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> to return user data</p></td>
+<td class="parameter_description"><p>Pointer to <a href="https://developer.gnome.org/glib/unstable/glib-Basic-Types.html#gpointer"><span class="type">gpointer</span></a> to return user data</p></td>
 <td class="parameter_annotations"> </td>
 </tr>
 </tbody>
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.17.7"></a><h4>Returns</h4>
-<p> the shape rendering callback previously set on the context, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
-if no shape rendering callback have been set.</p>
-<p></p>
+<a name="pango-cairo-context-get-shape-renderer.returns"></a><h4>Returns</h4>
+<p> the shape rendering callback previously
+set on the context, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if no shape rendering callback have
+been set. </p>
+<p><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.18</p>
+<p class="since">Since: <a class="link" href="api-index-1-18.html#api-index-1.18">1.18</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1108,8 +1107,8 @@ create a layout for use with <em class="parameter"><code>cr</code></em>
  and do not need to access <a class="link" href="pango-Text-Processing.html#PangoContext"><span class="type">PangoContext</span></a>
 directly, you can use <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-create-layout" title="pango_cairo_create_layout ()"><code class="function">pango_cairo_create_layout()</code></a> instead.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.18.6"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-create-context.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1123,12 +1122,12 @@ directly, you can use <a class="link" href="pango-Cairo-Rendering.html#pango-cai
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.18.7"></a><h4>Returns</h4>
+<a name="pango-cairo-create-context.returns"></a><h4>Returns</h4>
 <p> the newly created <a class="link" href="pango-Text-Processing.html#PangoContext"><span class="type">PangoContext</span></a>. Free with
-<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>. </p>
+<a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>. </p>
 <p><span class="annotation">[<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.22</p>
+<p class="since">Since: <a class="link" href="api-index-1-22.html#api-index-1.22">1.22</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1142,8 +1141,8 @@ context. If any layouts have been created for the context,
 it's necessary to call <a class="link" href="pango-Layout-Objects.html#pango-layout-context-changed" title="pango_layout_context_changed ()"><code class="function">pango_layout_context_changed()</code></a> on those
 layouts.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.19.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-update-context.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1163,7 +1162,7 @@ layouts.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1182,8 +1181,8 @@ however it is slightly inefficient since it creates a separate
 <a class="link" href="pango-Text-Processing.html#PangoContext"><span class="type">PangoContext</span></a> object for each layout. This might matter in an
 application that was laying out large amounts of text.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.20.6"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-create-layout.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1197,12 +1196,12 @@ application that was laying out large amounts of text.</p>
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.3.5.10.20.7"></a><h4>Returns</h4>
+<a name="pango-cairo-create-layout.returns"></a><h4>Returns</h4>
 <p> the newly created <a class="link" href="pango-Layout-Objects.html#PangoLayout"><span class="type">PangoLayout</span></a>. Free with
-<a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>. </p>
+<a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-unref"><code class="function">g_object_unref()</code></a>. </p>
 <p><span class="annotation">[<acronym title="Free data after the code is done."><span class="acronym">transfer full</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1214,8 +1213,8 @@ pango_cairo_update_layout (<em class="parameter"><code><span class="type">cairo_
 <a class="link" href="pango-Cairo-Rendering.html#pango-cairo-create-layout" title="pango_cairo_create_layout ()"><code class="function">pango_cairo_create_layout()</code></a> to match the current transformation
 and target surface of a Cairo context.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.21.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-update-layout.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1235,7 +1234,7 @@ and target surface of a Cairo context.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1249,8 +1248,8 @@ pango_cairo_show_glyph_string (<em class="parameter"><code><span class="type">ca
 The origin of the glyphs (the left edge of the baseline) will
 be drawn at the current point of the cairo context.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.22.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-show-glyph-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1275,7 +1274,7 @@ be drawn at the current point of the cairo context.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1296,8 +1295,8 @@ be drawn at the current point of the cairo context.</p>
 indexed by <code class="literal"><em class="parameter"><code>glyph_item-&gt;item-&gt;offset</code></em>
 </code>.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.23.7"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-show-glyph-item.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1323,7 +1322,7 @@ refers to</p></td>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.22</p>
+<p class="since">Since: <a class="link" href="api-index-1-22.html#api-index-1.22">1.22</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1335,8 +1334,8 @@ pango_cairo_show_layout_line (<em class="parameter"><code><span class="type">cai
 The origin of the glyphs (the left edge of the line) will
 be drawn at the current point of the cairo context.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.24.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-show-layout-line.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1356,7 +1355,7 @@ be drawn at the current point of the cairo context.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1368,8 +1367,8 @@ pango_cairo_show_layout (<em class="parameter"><code><span class="type">cairo_t<
 The top-left corner of the <a class="link" href="pango-Layout-Objects.html#PangoLayout"><span class="type">PangoLayout</span></a> will be drawn
 at the current point of the cairo context.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.25.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-show-layout.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1389,7 +1388,7 @@ at the current point of the cairo context.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1406,8 +1405,8 @@ spelling error.  (The width of the underline is rounded to an integer
 number of up/down segments and the resulting rectangle is centered in the
 original rectangle)</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.26.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-show-error-underline.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1442,7 +1441,7 @@ original rectangle)</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.14</p>
+<p class="since">Since: <a class="link" href="api-index-1-14.html#api-index-1.14">1.14</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1456,8 +1455,8 @@ pango_cairo_glyph_string_path (<em class="parameter"><code><span class="type">ca
 cairo context. The origin of the glyphs (the left edge of the baseline)
 will be at the current point of the cairo context.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.27.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-glyph-string-path.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1482,7 +1481,7 @@ will be at the current point of the cairo context.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1494,8 +1493,8 @@ pango_cairo_layout_line_path (<em class="parameter"><code><span class="type">cai
 specified cairo context.  The origin of the glyphs (the left edge
 of the line) will be at the current point of the cairo context.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.28.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-layout-line-path.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1515,7 +1514,7 @@ of the line) will be at the current point of the cairo context.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1527,8 +1526,8 @@ pango_cairo_layout_path (<em class="parameter"><code><span class="type">cairo_t<
 specified cairo context.  The top-left corner of the <a class="link" href="pango-Layout-Objects.html#PangoLayout"><span class="type">PangoLayout</span></a>
 will be at the current point of the cairo context.</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.29.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-layout-path.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1548,7 +1547,7 @@ will be at the current point of the cairo context.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1565,8 +1564,8 @@ to indicate a spelling error.  (The width of the underline is rounded to an
 integer number of up/down segments and the resulting rectangle is centered
 in the original rectangle)</p>
 <div class="refsect3">
-<a name="id-1.3.5.10.30.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-cairo-error-underline-path.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -1601,7 +1600,7 @@ in the original rectangle)</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.14</p>
+<p class="since">Since: <a class="link" href="api-index-1-14.html#api-index-1.14">1.14</a></p>
 </div>
 </div>
 <div class="refsect1">
@@ -1612,7 +1611,7 @@ in the original rectangle)</p>
 <p><a class="link" href="pango-Cairo-Rendering.html#PangoCairoFont"><span class="type">PangoCairoFont</span></a> is an interface exported by fonts for
 use with Cairo. The actual type of the font will depend
 on the particular font technology Cairo was compiled to use.</p>
-<p class="since">Since 1.18</p>
+<p class="since">Since: <a class="link" href="api-index-1-18.html#api-index-1.18">1.18</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1621,12 +1620,11 @@ on the particular font technology Cairo was compiled to use.</p>
 <p><a class="link" href="pango-Cairo-Rendering.html#PangoCairoFontMap"><span class="type">PangoCairoFontMap</span></a> is an interface exported by font maps for
 use with Cairo. The actual type of the font map will depend
 on the particular font technology Cairo was compiled to use.</p>
-<p class="since">Since 1.10</p>
+<p class="since">Since: <a class="link" href="api-index-1-10.html#api-index-1.10">1.10</a></p>
 </div>
 </div>
 </div>
 <div class="footer">
-<hr>
-          Generated by GTK-Doc V1.21.1</div>
+<hr>Generated by GTK-Doc V1.25.1</div>
 </body>
 </html>

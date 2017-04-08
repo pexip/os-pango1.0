@@ -110,7 +110,7 @@ load_fallback_face (PangoFT2Font *ft2font,
 
   _pango_ft2_font_map_default_substitute ((PangoFcFontMap *)fcfont->fontmap, sans);
 
-  matched = FcFontMatch (NULL, sans, &result);
+  matched = FcFontMatch (pango_fc_font_map_get_config (fcfont->fontmap), sans, &result);
 
   if (FcPatternGetString (matched, FC_FILE, 0, &filename2) != FcResultMatch)
     goto bail1;
@@ -169,8 +169,9 @@ set_transform (PangoFT2Font *ft2font)
  * face from pango_fc_font_lock_face() you must call
  * pango_fc_font_unlock_face().
  *
- * Return value: a pointer to a <type>FT_Face</type> structure, with the size set correctly,
- *               or %NULL if @font is %NULL.
+ * Return value: (nullable): a pointer to a <type>FT_Face</type>
+ *               structure, with the size set correctly, or %NULL if
+ *               @font is %NULL.
  **/
 FT_Face
 pango_ft2_font_get_face (PangoFont *font)

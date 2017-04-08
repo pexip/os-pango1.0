@@ -52,8 +52,7 @@
 #define PING(printlist)
 #endif
 
-#include <pango/pango-modules.h>
-#include <pango/pangowin32.h>
+#include "pangowin32.h"
 
 typedef enum
   {
@@ -255,25 +254,42 @@ struct name_record
   guint16 string_offset;
 };
 
+_PANGO_EXTERN
 GType           _pango_win32_font_get_type          (void) G_GNUC_CONST;
 
+_PANGO_EXTERN
 void            _pango_win32_make_matching_logfontw (PangoFontMap   *fontmap,
 						     const LOGFONTW *lfp,
 						     int             size,
 						     LOGFONTW       *out);
 
+_PANGO_EXTERN
 GType           _pango_win32_font_map_get_type      (void) G_GNUC_CONST;
 
+_PANGO_EXTERN
 void            _pango_win32_fontmap_cache_remove   (PangoFontMap   *fontmap,
 						     PangoWin32Font *xfont);
 
+_PANGO_EXTERN
 gboolean	_pango_win32_get_name_header	    (HDC                 hdc,
 						     struct name_header *header);
+_PANGO_EXTERN
 gboolean	_pango_win32_get_name_record        (HDC                 hdc,
 						     gint                i,
 						     struct name_record *record);
 
+_PANGO_EXTERN
 HFONT		_pango_win32_font_get_hfont         (PangoFont          *font);
+
+_PANGO_EXTERN
+void
+_pango_win32_shape (PangoFont        	*font,
+		    const char       	*text,
+		    unsigned int     	 length,
+		    const PangoAnalysis *analysis,
+		    PangoGlyphString    *glyphs,
+		    const char          *paragraph_text G_GNUC_UNUSED,
+		    unsigned int         paragraph_length G_GNUC_UNUSED);
 
 extern HDC _pango_win32_hdc;
 extern OSVERSIONINFO _pango_win32_os_version_info;

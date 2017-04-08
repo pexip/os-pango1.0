@@ -1,3 +1,145 @@
+pango1.0 (1.40.5-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Michael Biebl <biebl@debian.org>  Sun, 09 Apr 2017 01:12:25 +0200
+
+pango1.0 (1.40.4-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Drop debian/patches/disable-layout-test.patch, no longer needed.
+  * Force update of pango-view.1.in to ensure it doesn't contain a dummy text.
+    This requires a Build-Depends on help2man. (Closes: #774431)
+
+ -- Michael Biebl <biebl@debian.org>  Tue, 28 Feb 2017 19:59:30 +0100
+
+pango1.0 (1.40.3-3) unstable; urgency=medium
+
+  [ Martin Pitt ]
+  * Drop libpango1.0-doc's "lynx | www-browser" dependency. Docs can also be
+    read with devhelp, Chromium, or other browsers, there is no reason for
+    this to be a strict dependency.
+
+  [ Jeremy Bicha ]
+  * Add missing hyphen to fix autopkgtest
+
+ -- Martin Pitt <mpitt@debian.org>  Tue, 25 Oct 2016 21:49:33 +0200
+
+pango1.0 (1.40.3-2) unstable; urgency=medium
+
+  * Update debian/libpango1.0-doc.install to use the installed files.
+    This allows us to use dh-install --fail-missing.
+  * Enable all hardening build flags.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 22 Sep 2016 20:45:05 +0200
+
+pango1.0 (1.40.3-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Drop libpango1.0-0-dbg and switch to automatic dbgsym packages.
+  * Drop debian/libpango1.0-common.README.Debian, it's horribly outdated.
+  * Drop the multiflavor builds. Those are no longer necessary after the
+    modules system has been dropped and we have udebs for all necessary
+    dependencies.
+  * Convert from cdbs to dh.
+  * Bump debhelper compat level to 10.
+  * Use dh_install --list-missing to show uninstalled files.
+  * Remove symlink-to-doc migration code from pre-wheezy.
+  * Drop obsolete Replaces from pre-wheezy.
+  * Use dbus-run-session to run tests (autopkgtest). (Closes: #836040)
+  * Drop debian/patches/configure-without-libthai.patch now that there's a
+    libthai udeb.
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 22 Sep 2016 19:26:20 +0200
+
+pango1.0 (1.40.2-1) unstable; urgency=medium
+
+  [ Jeremy Bicha ]
+  * debian/control.in: Add homepage
+
+  [ Andreas Henriksson ]
+  * New upstream release.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Tue, 30 Aug 2016 20:23:45 +0200
+
+pango1.0 (1.40.1-1) unstable; urgency=medium
+
+  [ Andreas Henriksson ]
+  * Drop --without-libthai now that there's a libthai udeb (Closes: #803228)
+  * Bump libthai build-dependency to 0.1.22-3~ which gives us the udeb.
+  * State font-cantarell is only a build-dependency unless nocheck profile.
+    - since we only need it for tests to pass.
+
+  [ Michael Biebl ]
+  * New upstream release.
+  * Bump Build-Depends on debhelper to (>= 9.20141010) and add a versioned
+    Build-Depends on dpkg-dev (>= 1.17.14) for <!nocheck> support.
+  * Drop obsolete Conflicts, Breaks and Replaces from pre-wheezy.
+  * Bump Standards-Version to 3.9.8.
+
+ -- Michael Biebl <biebl@debian.org>  Fri, 15 Apr 2016 14:53:52 +0200
+
+pango1.0 (1.38.1-1) unstable; urgency=medium
+
+  [ Michael Biebl ]
+  * Use https:// for Vcs-Browser
+
+  [ Andreas Henriksson ]
+  * New upstream release.
+  * Bump build-dependencies according to configure.ac changes:
+    - libharfbuzz-dev >= 0.9.30
+  * Drop debian/patches/tests-needs-asserts.patch, fixed upstream.
+  * Bump Standards-Version to 3.9.6
+  * Add "(transitional package)" to libpango1.0-0 short description
+    (Closes: #714766)
+
+ -- Andreas Henriksson <andreas@fatal.se>  Tue, 20 Oct 2015 18:47:18 +0200
+
+pango1.0 (1.38.0-3) unstable; urgency=medium
+
+  * Add debian/patches/configure-without-libthai.patch
+    - make it possible to disable checking for libthai
+  * debian/rules: configure udeb build --without-libthai
+    - this avoids the udeb picking up a dependency on libthai which has
+      no udeb. (Closes: #800356)
+
+ -- Andreas Henriksson <andreas@fatal.se>  Mon, 28 Sep 2015 16:01:38 +0200
+
+pango1.0 (1.38.0-2) unstable; urgency=medium
+
+  * Add debian/patches/disable-layout-test.patch
+    - disable flaky test while waiting for feedback on bgo#755733
+
+ -- Andreas Henriksson <andreas@fatal.se>  Mon, 28 Sep 2015 15:34:57 +0200
+
+pango1.0 (1.38.0-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Add debian/patches/tests-needs-asserts.patch
+    - fixes issue in testattributes (bgo#755126) under --disable-debug
+  * Make tests fatal again.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Mon, 28 Sep 2015 04:48:34 +0200
+
+pango1.0 (1.37.5-1) experimental; urgency=medium
+
+  * New upstream development release.
+    - The module system is now deprecated.
+  * Drop patches obsoleted by module system deprecation:
+    - 10_scan-module-files-in-dirs.patch
+    - 11_module-files-append-module-files-d.patch
+    - 14_makefile_modules_ft2_link_harfbuzz.patch
+  * Drop lingering unused patch
+    - 13_configure-thai-modules.patch
+  * Partial import of Ubuntu gnome3 staging ppa 1.37.4-0ubuntu1~wily0
+    - symbols files updates
+    - package updates for modules deprecation
+    - drop debian/dh_pangomodules.in + debian/libpango1.0-dev.manpages
+  * Make tests non-fatal while waiting for feedback on BGO#755126
+    - This seems to be a problem in the test itself rather then pango.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Wed, 16 Sep 2015 19:27:38 +0200
+
 pango1.0 (1.36.8-3) unstable; urgency=medium
 
   * debian/control{,.in}: The testsuite depends on Cantarell. Fixes DEP8 test

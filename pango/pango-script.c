@@ -121,8 +121,8 @@ _pango_script_iter_init (PangoScriptIter *iter,
  * @length: length of @text, or -1 if @text is nul-terminated.
  *
  * Create a new #PangoScriptIter, used to break a string of
- * Unicode into runs by text. No copy is made of @text, so
- * the caller needs to make sure it remains valid until
+ * Unicode text into runs by Unicode script. No copy is made of
+ * @text, so the caller needs to make sure it remains valid until
  * the iterator is freed with pango_script_iter_free().
  *
  * Return value: the new script iterator, initialized
@@ -266,7 +266,7 @@ pango_script_iter_next (PangoScriptIter *iter)
       PangoScript sc;
       int pair_index;
 
-      sc = pango_script_for_unichar (ch);
+      sc = g_unichar_get_script (ch);
       if (sc != PANGO_SCRIPT_COMMON)
 	pair_index = -1;
       else

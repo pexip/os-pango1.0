@@ -40,7 +40,7 @@
 #include "pangowin32.h"
 #include "pangowin32-private.h"
 
-#define MAX_FREED_FONTS 16
+#define MAX_FREED_FONTS 256
 
 #define CH_IS_UNIHAN_BMP(ch) ((ch) >= 0x3400 && (ch) <= 0x9FFF)
 #define CH_IS_UNIHAN(ch) (CH_IS_UNIHAN_BMP (ch) || \
@@ -84,6 +84,8 @@ static double   pango_win32_font_real_get_metrics_factor (PangoFont *font);
 
 static void                  pango_win32_get_item_properties    (PangoItem        *item,
 								 PangoUnderline   *uline,
+								 PangoAttrColor   *uline_color,
+								 gboolean         *uline_set,
 								 PangoAttrColor   *fg_color,
 								 gboolean         *fg_set,
 								 PangoAttrColor   *bg_color,
@@ -156,9 +158,9 @@ _pango_win32_font_init (PangoWin32Font *win32font)
 HDC
 pango_win32_get_dc (void)
 {
-  if (_pango_win32_hdc == NULL)
+  if (g_once_init_enter (&_pango_win32_hdc))
     {
-      _pango_win32_hdc = CreateDC ("DISPLAY", NULL, NULL, NULL);
+      HDC hdc = CreateDC ("DISPLAY", NULL, NULL, NULL);
       memset (&_pango_win32_os_version_info, 0,
 	      sizeof (_pango_win32_os_version_info));
       _pango_win32_os_version_info.dwOSVersionInfoSize =
@@ -173,6 +175,7 @@ pango_win32_get_dc (void)
       if (getenv ("PANGO_WIN32_DEBUG") != NULL)
 	_pango_win32_debug = TRUE;
 #endif
+      g_once_init_leave (&_pango_win32_hdc, hdc);
     }
 
   return _pango_win32_hdc;
@@ -382,7 +385,8 @@ pango_win32_render (HDC               hdc,
 /**
  * pango_win32_render_transformed:
  * @hdc:     a windows device context
- * @matrix:  a #PangoMatrix, or %NULL to use an identity transformation
+ * @matrix:  (nullable): a #PangoMatrix, or %NULL to use an identity
+ *           transformation
  * @font:    the font in which to draw the string
  * @glyphs:  the glyph string to draw
  * @x:       the x position of the start of the string (in Pango
@@ -844,7 +848,10 @@ pango_win32_font_finalize (GObject *object)
 
   fontmap = g_weak_ref_get ((GWeakRef *) &win32font->fontmap);
   if (fontmap)
+  {
+    g_object_remove_weak_pointer (G_OBJECT (win32font->fontmap), (gpointer *) (gpointer) &win32font->fontmap);
     g_object_unref (fontmap);
+  }
 
   G_OBJECT_CLASS (_pango_win32_font_parent_class)->finalize (object);
 }
@@ -871,20 +878,6 @@ pango_win32_font_describe_absolute (PangoFont *font)
   pango_font_description_set_absolute_size (desc, win32font->size);
 
   return desc;
-}
-
-static PangoMap *
-pango_win32_get_shaper_map (PangoLanguage *lang)
-{
-  static guint engine_type_id = 0; /* MT-safe */
-  static guint render_type_id = 0; /* MT-safe */
-
-  if (engine_type_id == 0)
-    engine_type_id = g_quark_from_static_string (PANGO_ENGINE_TYPE_SHAPE);
-  if (render_type_id == 0)
-    render_type_id = g_quark_from_static_string (PANGO_RENDER_TYPE_WIN32);
-
-  return pango_find_map (lang, engine_type_id, render_type_id);
 }
 
 static gint
@@ -945,17 +938,44 @@ pango_win32_font_get_coverage (PangoFont     *font,
   return coverage;
 }
 
+/* Wrap shaper in PangoEngineShape to pass it through old API,
+ * from times when there were modules and engines. */
+typedef PangoEngineShape      PangoWin32ShapeEngine;
+typedef PangoEngineShapeClass PangoWin32ShapeEngineClass;
+static GType pango_win32_shape_engine_get_type (void) G_GNUC_CONST;
+G_DEFINE_TYPE (PangoWin32ShapeEngine, pango_win32_shape_engine, PANGO_TYPE_ENGINE_SHAPE);
+static void
+_pango_win32_shape_engine_shape (PangoEngineShape    *engine G_GNUC_UNUSED,
+				 PangoFont           *font,
+				 const char          *item_text,
+				 unsigned int         item_length,
+				 const PangoAnalysis *analysis,
+				 PangoGlyphString    *glyphs,
+				 const char          *paragraph_text,
+				 unsigned int         paragraph_length)
+{
+  _pango_win32_shape (font, item_text, item_length, analysis, glyphs,
+		      paragraph_text, paragraph_length);
+}
+static void
+pango_win32_shape_engine_class_init (PangoEngineShapeClass *class)
+{
+  class->script_shape = _pango_win32_shape_engine_shape;
+}
+static void
+pango_win32_shape_engine_init (PangoEngineShape *object)
+{
+}
+
 static PangoEngineShape *
 pango_win32_font_find_shaper (PangoFont     *font,
 			      PangoLanguage *lang,
 			      guint32        ch)
 {
-  PangoMap *shape_map = NULL;
-  PangoScript script;
-
-  shape_map = pango_win32_get_shaper_map (lang);
-  script = pango_script_for_unichar (ch);
-  return (PangoEngineShape *)pango_map_get_engine (shape_map, script);
+  static PangoEngineShape *shaper;
+  if (g_once_init_enter (&shaper))
+    g_once_init_leave (&shaper, g_object_new (pango_win32_shape_engine_get_type(), NULL));
+  return shaper;
 }
 
 /* Utility functions */
@@ -981,7 +1001,7 @@ pango_win32_get_unknown_glyph (PangoFont *font,
 
 /**
  * pango_win32_render_layout_line:
- * @hdc:       DC to use for uncolored drawing
+ * @hdc:       DC to use for drawing
  * @line:      a #PangoLayoutLine
  * @x:         the x position of start of string (in pixels)
  * @y:         the y position of baseline (in pixels)
@@ -1000,6 +1020,7 @@ pango_win32_render_layout_line (HDC              hdc,
   PangoRectangle overall_rect;
   PangoRectangle logical_rect;
   PangoRectangle ink_rect;
+  int oldbkmode = SetBkMode (hdc, TRANSPARENT);
 
   int x_off = 0;
 
@@ -1007,17 +1028,19 @@ pango_win32_render_layout_line (HDC              hdc,
 
   while (tmp_list)
     {
-      HBRUSH oldfg = NULL;
-      HBRUSH brush = NULL;
+      COLORREF oldfg = 0;
+      HPEN uline_pen, old_pen;
       POINT points[2];
       PangoUnderline uline = PANGO_UNDERLINE_NONE;
       PangoLayoutRun *run = tmp_list->data;
-      PangoAttrColor fg_color, bg_color;
-      gboolean fg_set, bg_set;
+      PangoAttrColor fg_color, bg_color, uline_color;
+      gboolean fg_set, bg_set, uline_set;
 
       tmp_list = tmp_list->next;
 
-      pango_win32_get_item_properties (run->item, &uline, &fg_color, &fg_set, &bg_color, &bg_set);
+      pango_win32_get_item_properties (run->item, &uline, &uline_color, &uline_set, &fg_color, &fg_set, &bg_color, &bg_set);
+      if (!uline_set)
+	uline_color = fg_color;
 
       if (uline == PANGO_UNDERLINE_NONE)
 	pango_glyph_string_extents (run->glyphs, run->item->analysis.font,
@@ -1028,30 +1051,43 @@ pango_win32_render_layout_line (HDC              hdc,
 
       if (bg_set)
 	{
-	  HBRUSH oldbrush;
-
-	  brush = CreateSolidBrush (RGB ((bg_color.color.red + 128) >> 8,
-					 (bg_color.color.green + 128) >> 8,
-					 (bg_color.color.blue + 128) >> 8));
-	  oldbrush = SelectObject (hdc, brush);
+	  COLORREF bg_col = RGB ((bg_color.color.red) >> 8,
+				 (bg_color.color.green) >> 8,
+				 (bg_color.color.blue) >> 8);
+	  HBRUSH bg_brush = CreateSolidBrush (bg_col);
+	  HBRUSH old_brush = SelectObject (hdc, bg_brush);
+	  old_pen = SelectObject (hdc, GetStockObject (NULL_PEN));
 	  Rectangle (hdc, x + PANGO_PIXELS (x_off + logical_rect.x),
 			  y + PANGO_PIXELS (overall_rect.y),
-			  PANGO_PIXELS (logical_rect.width),
-			  PANGO_PIXELS (overall_rect.height));
-	  SelectObject (hdc, oldbrush);
-	  DeleteObject (brush);
+			  1 + x + PANGO_PIXELS (x_off + logical_rect.x + logical_rect.width),
+			  1 + y + PANGO_PIXELS (overall_rect.y + overall_rect.height));
+	  SelectObject (hdc, old_brush);
+	  DeleteObject (bg_brush);
+	  SelectObject (hdc, old_pen);
 	}
 
       if (fg_set)
 	{
-	  brush = CreateSolidBrush (RGB ((fg_color.color.red + 128) >> 8,
-					 (fg_color.color.green + 128) >> 8,
-					 (fg_color.color.blue + 128) >> 8));
-	  oldfg = SelectObject (hdc, brush);
+	  COLORREF fg_col = RGB ((fg_color.color.red) >> 8,
+				 (fg_color.color.green) >> 8,
+				 (fg_color.color.blue) >> 8);
+	  oldfg = SetTextColor (hdc, fg_col);
 	}
 
       pango_win32_render (hdc, run->item->analysis.font, run->glyphs,
 			  x + PANGO_PIXELS (x_off), y);
+
+      if (fg_set)
+	SetTextColor (hdc, oldfg);
+
+      if (uline != PANGO_UNDERLINE_NONE)
+	{
+	  COLORREF uline_col = RGB ((uline_color.color.red) >> 8,
+				    (uline_color.color.green) >> 8,
+				    (uline_color.color.blue) >> 8);
+	  uline_pen = CreatePen (PS_SOLID, 1, uline_col);
+	  old_pen = SelectObject (hdc, uline_pen);
+	}
 
       switch (uline)
 	{
@@ -1102,19 +1138,21 @@ pango_win32_render_layout_line (HDC              hdc,
 	  break;
 	}
 
-      if (fg_set)
+      if (uline != PANGO_UNDERLINE_NONE)
 	{
-	  SelectObject (hdc, oldfg);
-	  DeleteObject (brush);
+	  SelectObject (hdc, old_pen);
+	  DeleteObject (uline_pen);
 	}
 
       x_off += logical_rect.width;
     }
+
+    SetBkMode (hdc, oldbkmode);
 }
 
 /**
  * pango_win32_render_layout:
- * @hdc:       HDC to use for uncolored drawing
+ * @hdc:       HDC to use for drawing
  * @layout:    a #PangoLayout
  * @x:         the X position of the left of the layout (in pixels)
  * @y:         the Y position of the top of the layout (in pixels)
@@ -1161,6 +1199,8 @@ pango_win32_render_layout (HDC          hdc,
 static void
 pango_win32_get_item_properties (PangoItem      *item,
 				 PangoUnderline *uline,
+				 PangoAttrColor *uline_color,
+				 gboolean       *uline_set,
 				 PangoAttrColor *fg_color,
 				 gboolean       *fg_set,
 				 PangoAttrColor *bg_color,
@@ -1183,6 +1223,14 @@ pango_win32_get_item_properties (PangoItem      *item,
 	case PANGO_ATTR_UNDERLINE:
 	  if (uline)
 	    *uline = ((PangoAttrInt *)attr)->value;
+	  break;
+
+	case PANGO_ATTR_UNDERLINE_COLOR:
+	  if (uline_color)
+	    *uline_color = *((PangoAttrColor *)attr);
+	  if (uline_set)
+	    *uline_set = TRUE;
+
 	  break;
 
 	case PANGO_ATTR_FOREGROUND:

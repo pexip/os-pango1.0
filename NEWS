@@ -1,3 +1,93 @@
+Overview of changes between 1.40.4 and 1.40.5
+=============================================
+- Add missing introspection annotations (#778663)
+- Fix line-end handling in pango_read_line (#778816)
+- Make alpha attribute work without color (#773767)
+- win32: Enable rendering colored texti and underlines (#768779)
+
+Overview of changes between 1.40.3 and 1.40.4
+=============================================
+- Fix some Coverity findings (#778601, #778602, #778654, #778656)
+- Fix introspection annotation of pango_lkayout_get_size (#779232)
+
+Overview of changes between 1.40.2 and 1.40.3
+=============================================
+- Fix export of pango_cairo_win32_font_map_get_type (#771004)
+- Fix build on OS X (#770729)
+
+Overview of changes between 1.40.1 and 1.40.2
+=============================================
+- Improve introspection builds in msvc (#764984)
+- Properly handle UTF32 chars in coretext
+- Add rebeccapurple to list of colors
+- Correct font weight mapping in coretext (#766148)
+- Use version macros for exports (#767587)
+
+Overview of changes between 1.40.0 and 1.40.1
+=============================================
+- Use $PKG_CONFIG consistently (#764191)
+- Fix a PangoWin32FontMap memory leak (#7640890)
+
+Overview of changes between 1.39.1 and 1.40.0
+=============================================
+- Fix typos
+- Don't treat OGHAM SPACE MARK as whitespace
+
+Overview of changes between 1.38.1 and 1.39.0
+=============================================
+- Update PangoScript to Unicode 8.0
+
+Overview of changes between 1.38.0 and 1.38.1
+=============================================
+- Require 0.9.30
+- Fix make check with --enable-debug=no
+- Win32 build fixes
+
+Overview of changes between 1.37.5 and 1.38.0
+=============================================
+- No changes
+
+Overview of changes between 1.37.4 and 1.37.5
+=============================================
+- Small optimizations
+
+Overview of changes between 1.37.3 and 1.37.4
+=============================================
+- Use grapheme boundaries in justification
+- Support coloring marks and bases independently (#541608)
+- Fix a crash (#753167)
+- Make Thai and Arabic support thread-safe
+- Fix justification (#753772)
+
+Overview of changes between 1.37.2 and 1.37.3
+=============================================
+- Fix pango_glyph_item_iter_prev
+- Add alpha attributes
+- Add support for alpha in markup
+
+Overview of changes between 1.37.1 and 1.37.2
+=============================================
+- Don't use hb_glib_get_unicode_funcs
+- Warning fixes
+
+Overview of changes between 1.37.0 and 1.37.1
+=============================================
+- Add attributes for OpenType font features (#738505)
+- CoreText: locale handling improvements (#750017)
+- Fix ellipsization with line space (#750383)
+- Fix issues with hex boxes (#750463)
+
+Overview of changes between 1.36.8 and 1.37.0
+=============================================
+- Pango modules, engines, and config have been removed (#733882)
+- Added pango_fc_font_map_config_changed() (#748767)
+- Added pango_fc_font_map_[sg]et_config() (#547671)
+- Added pango_matrix_get_font_scale_factors
+- Lot of API has been deprecated
+- Fix CoreText font fallback
+- General build fixes
+- Win32 build fixes
+
 Overview of changes between 1.36.7 and 1.36.8
 =============================================
 - Make tests not fail on build.gnome.org
@@ -2753,9 +2843,3 @@ Changes between 0.12 and 0.13
 What is new in GScript 0.1:
 
 * Initial release
-
-
-# Local Variables:
-# coding: utf-8
-# End:
-# vim: encoding=utf-8:

@@ -27,7 +27,10 @@ INCLUDES =						\
 	$(CAIRO_CFLAGS)					\
 	$(HARFBUZZ_CFLAGS)				\
 	$(FREETYPE_CFLAGS)				\
-	$(X_CFLAGS)
+	$(FONTCONFIG_CFLAGS)				\
+	$(LIBTHAI_CFLAGS)					\
+	$(X_CFLAGS)					\
+	$(PANGO_HIDDEN_VISIBILITY_CFLAGS)
 
 BUILT_SOURCES = pango-enum-types.h pango-enum-types.c pango-features.h
 
@@ -46,17 +49,15 @@ INTROSPECTION_GIRS += Pango-1.0.gir
 libpango_1_0_la_LDFLAGS = $(LIBRARY_LIBTOOL_OPTIONS)
 libpango_1_0_la_LIBADD =		\
 	$(GLIB_LIBS)			\
-	$(libm)				\
-	$(INCLUDED_LANG_MODULES)
-libpango_1_0_la_DEPENDENCIES = 		\
-	$(INCLUDED_LANG_MODULES)
+	$(LIBTHAI_LIBS)			\
+	$(libm)
 
 libpango_1_0_la_LIBADD += mini-fribidi/libmini-fribidi.la
-libpango_1_0_la_DEPENDENCIES += mini-fribidi/libmini-fribidi.la
+libpango_1_0_la_DEPENDENCIES = mini-fribidi/libmini-fribidi.la
 
 if PLATFORM_WIN32
-libpango_1_0_la_LDFLAGS += -export-symbols $(srcdir)/pango.def -Wl,pango-win32-res.o
-libpango_1_0_la_DEPENDENCIES += pango-win32-res.o pango.def
+libpango_1_0_la_LDFLAGS += -Wl,pango-win32-res.o
+libpango_1_0_la_DEPENDENCIES += pango-win32-res.o
 endif
 pango-win32-res.o: pango.rc
 	$(AM_V_GEN) $(WINDRES) $< $@
@@ -93,35 +94,36 @@ libpango_1_0_la_SOURCES =			\
 	pango-script-private.h			\
 	pango-tabs.c				\
 	pango-utils.c				\
+	pango-utils-internal.h			\
 	reorder-items.c				\
 	shape.c					\
-	pango-enum-types.c			\
-	module-defs-lang.c
+	pango-enum-types.c
 
-pango_headers =		   \
-	pango.h		   \
-	pango-attributes.h \
-	pango-bidi-type.h  \
-	pango-break.h	   \
-	pango-context.h	   \
-	pango-coverage.h   \
-	pango-engine.h	   \
-	pango-font.h       \
-	pango-fontmap.h	   \
-	pango-fontset.h    \
-	pango-glyph.h	   \
-	pango-glyph-item.h \
-	pango-gravity.h    \
-	pango-item.h	   \
-	pango-language.h   \
-	pango-layout.h	   \
-	pango-matrix.h     \
-	pango-modules.h	   \
-	pango-renderer.h   \
-	pango-script.h	   \
-	pango-tabs.h	   \
-	pango-types.h	   \
-	pango-utils.h
+pango_headers =		\
+	pango.h			\
+	pango-attributes.h	\
+	pango-bidi-type.h	\
+	pango-break.h		\
+	pango-context.h		\
+	pango-coverage.h	\
+	pango-engine.h		\
+	pango-font.h		\
+	pango-fontmap.h		\
+	pango-fontset.h		\
+	pango-glyph.h		\
+	pango-glyph-item.h	\
+	pango-gravity.h		\
+	pango-item.h		\
+	pango-language.h	\
+	pango-layout.h		\
+	pango-matrix.h		\
+	pango-modules.h		\
+	pango-renderer.h	\
+	pango-script.h		\
+	pango-tabs.h		\
+	pango-types.h		\
+	pango-utils.h		\
+	pango-version-macros.h
 
 pangoinclude_HEADERS =	   \
 	$(pango_headers)   \
@@ -183,23 +185,21 @@ pangoft2_public_sources = 	\
 	pangofc-font.c	   	\
 	pangofc-fontmap.c	\
 	pangofc-decoder.c	\
+	pangofc-shape.c		\
 	pangoft2.c
 
 libpangoft2_1_0_la_LDFLAGS = $(LIBRARY_LIBTOOL_OPTIONS)
 libpangoft2_1_0_la_LIBADD =			\
 	libpango-$(PANGO_API_VERSION).la	\
-	$(INCLUDED_FC_MODULES)			\
 	$(GLIB_LIBS)				\
 	$(HARFBUZZ_LIBS)			\
 	$(FREETYPE_LIBS)			\
+	$(FONTCONFIG_LIBS)			\
 	$(libm)
 libpangoft2_1_0_la_DEPENDENCIES =		\
-	libpango-$(PANGO_API_VERSION).la	\
-	$(INCLUDED_FC_MODULES)
+	libpango-$(PANGO_API_VERSION).la
 libpangoft2_1_0_la_SOURCES =   	\
 	$(pangoft2_public_sources) \
-	modules.h		\
-	module-defs-fc.c	\
 	pangofc-private.h	\
 	pangoft2.h		\
 	pangoft2-private.h	\
@@ -213,8 +213,8 @@ libpangoft2_1_0_la_SOURCES =   	\
 
 
 if PLATFORM_WIN32
-libpangoft2_1_0_la_LDFLAGS += -export-symbols $(srcdir)/pangoft2.def -Wl,pangoft2-win32-res.o
-libpangoft2_1_0_la_DEPENDENCIES += pangoft2-win32-res.o pangoft2.def
+libpangoft2_1_0_la_LDFLAGS += -Wl,pangoft2-win32-res.o
+libpangoft2_1_0_la_DEPENDENCIES += pangoft2-win32-res.o
 endif
 pangoft2-win32-res.o: pangoft2.rc
 	$(AM_V_GEN) $(WINDRES) $< $@
@@ -249,17 +249,17 @@ libpangoxft_1_0_la_LIBADD =			\
 	libpangoft2-$(PANGO_API_VERSION).la	\
 	libpango-$(PANGO_API_VERSION).la	\
 	$(GLIB_LIBS)				\
-	$(X_LIBS)				\
 	$(XFT_LIBS)				\
 	$(FREETYPE_LIBS)			\
+	$(FONTCONFIG_LIBS)			\
 	$(libm)
 libpangoxft_1_0_la_DEPENDENCIES =		\
 	libpangoft2-$(PANGO_API_VERSION).la	\
 	libpango-$(PANGO_API_VERSION).la
 
 if PLATFORM_WIN32
-libpangoxft_1_0_la_LDFLAGS += -export-symbols $(srcdir)/pangoxft.def -Wl,pangoxft-win32-res.o
-libpangoxft_1_0_la_DEPENDENCIES += pangoxft-win32-res.o pangoxft.def
+libpangoxft_1_0_la_LDFLAGS += -Wl,pangoxft-win32-res.o
+libpangoxft_1_0_la_DEPENDENCIES += pangoxft-win32-res.o
 endif
 pangoxft-win32-res.o: pangoxft.rc
 	$(AM_V_GEN) $(WINDRES) $< $@
@@ -300,6 +300,7 @@ libpangocairo_1_0_la_LIBADD =			\
 	libpango-$(PANGO_API_VERSION).la	\
 	$(GLIB_LIBS)				\
 	$(CAIRO_LIBS)				\
+	$(FONTCONFIG_LIBS)			\
 	$(libm)
 libpangocairo_1_0_la_DEPENDENCIES =		\
 	libpango-$(PANGO_API_VERSION).la
@@ -314,15 +315,15 @@ libpangocairo_1_0_la_SOURCES = $(pangocairo_core_sources)
 
 if HAVE_CAIRO_WIN32
 if PLATFORM_WIN32
-libpangocairo_1_0_la_LDFLAGS += -export-symbols $(srcdir)/pangocairo.def -Wl,pangocairo-win32-res.o
-libpangocairo_1_0_la_DEPENDENCIES += pangocairo-win32-res.o pangocairo.def
+libpangocairo_1_0_la_LDFLAGS += -Wl,pangocairo-win32-res.o
+libpangocairo_1_0_la_DEPENDENCIES += pangocairo-win32-res.o
 endif
 pangocairo-win32-res.o: pangocairo.rc
 	$(AM_V_GEN) $(WINDRES) $< $@
 
 
-libpangocairo_1_0_la_LIBADD += libpangowin32-$(PANGO_API_VERSION).la $(WIN32_LIBS)
-libpangocairo_1_0_la_DEPENDENCIES += libpangowin32-$(PANGO_API_VERSION).la 
+libpangocairo_1_0_la_LIBADD += libpangowin32-$(PANGO_API_VERSION).la -lgdi32
+libpangocairo_1_0_la_DEPENDENCIES += libpangowin32-$(PANGO_API_VERSION).la
 
 libpangocairo_1_0_la_SOURCES += pangocairo-win32font.c pangocairo-win32fontmap.c pangocairo-win32.h
 endif
@@ -341,12 +342,11 @@ endif
 if HAVE_CAIRO_QUARTZ
 if HAVE_CORE_TEXT
 libpangocairo_1_0_la_SOURCES += \
-	modules.h		\
-	module-defs-coretext.c	\
 	pangocoretext.h		\
 	pangocoretext.c		\
 	pangocoretext-private.h	\
 	pangocoretext-fontmap.c	\
+	pangocoretext-shape.c	\
 	pangocairo-coretext.h	\
 	pangocairo-coretextfont.c	\
 	pangocairo-coretextfont.h	\
@@ -354,7 +354,6 @@ libpangocairo_1_0_la_SOURCES += \
 pangoinclude_HEADERS += pangocoretext.h
 
 libpangocairo_1_0_la_LDFLAGS += -framework CoreFoundation -framework ApplicationServices
-libpangocairo_1_0_la_LIBADD += $(INCLUDED_CORE_TEXT_MODULES)
 # We don't have an CoreText GIR right now, so this is just hypothetical
 # PANGOCAIRO_FONT_BACKEND_GI_MODULE = PangoCoreText-1.0.gir
 endif
@@ -389,24 +388,21 @@ endif
 libpangowin32_1_0_la_LDFLAGS = $(LIBRARY_LIBTOOL_OPTIONS)
 libpangowin32_1_0_la_LIBADD =			\
 	libpango-$(PANGO_API_VERSION).la	\
-	$(INCLUDED_WIN32_MODULES)		\
 	$(GLIB_LIBS)				\
-	$(WIN32_LIBS)
+	-lgdi32 -lusp10
 libpangowin32_1_0_la_DEPENDENCIES =		\
-	libpango-$(PANGO_API_VERSION).la	\
-	$(INCLUDED_WIN32_MODULES)
+	libpango-$(PANGO_API_VERSION).la
 libpangowin32_1_0_la_SOURCES =	\
-	modules.h		\
-	module-defs-win32.c	\
 	pangowin32.h		\
 	pangowin32.c		\
 	pangowin32-private.h	\
 	pangowin32-fontcache.c	\
-	pangowin32-fontmap.c
+	pangowin32-fontmap.c	\
+	pangowin32-shape.c
 
 if PLATFORM_WIN32
-libpangowin32_1_0_la_LDFLAGS += -export-symbols $(srcdir)/pangowin32.def -Wl,pangowin32-win32-res.o
-libpangowin32_1_0_la_DEPENDENCIES += pangowin32-win32-res.o pangowin32.def
+libpangowin32_1_0_la_LDFLAGS += -Wl,pangowin32-win32-res.o
+libpangowin32_1_0_la_DEPENDENCIES += pangowin32-win32-res.o
 endif
 pangowin32-win32-res.o: pangowin32.rc
 	$(AM_V_GEN) $(WINDRES) $< $@
@@ -424,39 +420,11 @@ typelibs_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 
 endif # HAVE_INTROSPECTION
 
-# ------------------- pango-querymodules -------------------
-
-bin_PROGRAMS = pango-querymodules
-
-pango_querymodules_SOURCES = \
-	querymodules.c
-
-pango_querymodules_LDADD =
-if HAVE_XFT
-pango_querymodules_LDADD += libpangoxft-$(PANGO_API_VERSION).la
-endif
-if HAVE_FREETYPE
-pango_querymodules_LDADD += libpangoft2-$(PANGO_API_VERSION).la
-endif
-if HAVE_WIN32
-pango_querymodules_LDADD += libpangowin32-$(PANGO_API_VERSION).la
-endif
-pango_querymodules_LDADD += libpango-$(PANGO_API_VERSION).la $(GLIB_LIBS)
 
 EXTRA_DIST =					\
 	pango-enum-types.h			\
 	pango-enum-types.h.template		\
 	pango-enum-types.c.template		\
-	module-defs.h				\
-	module-defs.h.win32			\
-	module-defs-lang.c.win32		\
-	module-defs-fc.c.win32			\
-	module-defs-win32.c.win32		\
-	pango.def				\
-	pangocairo.def				\
-	pangowin32.def				\
-	pangoft2.def				\
-	pangoxft.def				\
 	pango.rc				\
 	pango.rc.in				\
 	pangoft2.rc				\
@@ -467,32 +435,9 @@ EXTRA_DIST =					\
 	pangocairo.rc.in			\
 	pangoxft.rc				\
 	pangoxft.rc.in				\
-	check.defs
-
-
-if HAVE_INCLUDED_MODULES
-included-modules:
-	$(AM_V_GEN) cd $(top_builddir)/modules && $(MAKE) $(AM_MAKEFLAGS) included-modules
-
-$(INCLUDED_LANG_MODULES) $(INCLUDED_FC_MODULES) $(INCLUDED_WIN32_MODULES) $(INCLUDED_CORE_TEXT_MODULES): included-modules
-	$(AM_V_GEN) true
-
-.PHONY: included-modules
-endif
-
-MODULE_DEF_FILES = \
-	module-defs.h \
-	module-defs-lang.c \
-	module-defs-fc.c \
-	module-defs-win32.c \
-	module-defs-coretext.c
-
-$(MODULE_DEF_FILES): $(top_builddir)/config.status
-	$(AM_V_GEN) cd $(top_builddir) && $(SHELL) ./config.status pango/$@
-
-include $(top_srcdir)/build/Makefile-msvcproj.am
-
-dist-hook: $(pango_vcproj_stuff)
+	break-arabic.c				\
+	break-indic.c				\
+	break-thai.c
 
 CLEANFILES =			\
 	pango-enum-types.h	\
@@ -507,17 +452,96 @@ MOSTLYCLEANFILES = 		\
 	*.expected
 
 DISTCLEANFILES = 		\
-	pango-features.h	\
-	$(MODULE_DEF_FILES)	\
-	$(pango_vcproj_stuff)
+	pango-features.h
 
-install-exec-hook:
-if DISABLE_EXPLICIT_DEPS
-	-for i in libpangoft2-$(PANGO_API_VERSION).la libpangoxft-$(PANGO_API_VERSION).la libpangowin32-$(PANGO_API_VERSION).la; do \
-	  test -f $(DESTDIR)$(libdir)/$$i && $(SHELL) $(top_srcdir)/sanitize-la.sh $(DESTDIR)$(libdir)/$$i ; \
-	done
+# ------------------- MSVC Build Items ----------------
+
+extra_fribidi_srcs_for_msvc =	\
+	mini-fribidi/fribidi.c			\
+	mini-fribidi/fribidi_char_type.c	\
+	mini-fribidi/fribidi_types.c
+
+MSVCPROJS = pango pangowin32 pangoft2 pangocairo
+
+pango_FILES =	\
+	$(extra_fribidi_srcs_for_msvc)	\
+	$(libpango_1_0_la_SOURCES)
+pango_EXCLUDES = dummy
+pango_HEADERS_DIR = $(pangoincludedir)
+
+# We can't just use $(pangoinclude_HEADERS), due to different platforms this may run on.
+# We don't include the pangoft2 headers here, as it is optional on Windows Builds.
+pango_HEADERS_INST = 	\
+	$(pango_headers)	\
+	$(pangocairo_headers)	\
+	pangowin32.h		\
+	pango-features.h	\
+	pango-enum-types.h
+
+pango_HEADERS_EXCLUDES = dummy
+
+pangowin32_FILES = $(libpangowin32_1_0_la_SOURCES)
+pangowin32_EXCLUDES = dummy
+
+pangoft2_FILES = $(libpangoft2_1_0_la_SOURCES)
+pangoft2_EXCLUDES = dummy
+
+# Again, can't use $(libpangocairo_1_0_la_SOURCES), due to different platforms this may run on.
+pangocairo_FILES = $(pangocairo_core_sources)
+pangocairo_EXCLUDES = dummy
+
+include $(top_srcdir)/win32/Makefile.msvcproj
+
+if HAVE_INTROSPECTION
+# Introspection Items for MSVC
+MSVC_INTROSPECT_GIRS = Pango-1.0.gir PangoCairo-1.0.gir
+
+BASE_MSVC_GIR_CFLAGS =			\
+	-DG_LOG_DOMAIN=\"Pango\"	\
+	-DPANGO_ENABLE_BACKEND		\
+	-DPANGO_ENABLE_ENGINE
+
+INTROSPECTION_INTERMEDIATE_ITEMS = \
+	$(top_builddir)/win32/Pango-1.0.gir.msvc.introspect		\
+	$(top_builddir)/win32/Pango_1_0_gir_list			\
+	$(top_builddir)/win32/PangoCairo-1.0.gir.msvc.introspect	\
+	$(top_builddir)/win32/PangoCairo_1_0_gir_list
+
+Pango_1_0_gir_MSVC_FILES = $(Pango_1_0_gir_FILES)
+Pango_1_0_gir_MSVC_PACKAGES = gobject-2.0 cairo glib-2.0
+Pango_1_0_gir_MSVC_EXPORT_PACKAGES = $(Pango_1_0_gir_EXPORT_PACKAGES)
+Pango_1_0_gir_MSVC_INCLUDE_GIRS = $(Pango_1_0_gir_INCLUDES)
+Pango_1_0_gir_MSVC_LIBS = pango-1.0
+Pango_1_0_gir_MSVC_CFLAGS = -I.. $(BASE_MSVC_GIR_CFLAGS)
+Pango_1_0_gir_MSVC_SCANNERFLAGS = $(Pango_1_0_gir_SCANNERFLAGS)
+
+pangocairo_msvc_introspection_files =	\
+	$(pangocairo_core_sources)	\
+	pangocairo-win32font.c		\
+	pangocairo-win32fontmap.c	\
+	pangocairo-win32.h		\
+	$(pangocairo_headers)
+
+PangoCairo_1_0_gir_MSVC_FILES = $(filter-out %-private.h, $(pangocairo_msvc_introspection_files))
+PangoCairo_1_0_gir_MSVC_GIR_DEPS = Pango-1.0.gir
+PangoCairo_1_0_gir_MSVC_PACKAGES = $(PangoCairo_1_0_gir_PACKAGES)
+PangoCairo_1_0_gir_MSVC_EXPORT_PACKAGES = $(PangoCairo_1_0_gir_EXPORT_PACKAGES)
+PangoCairo_1_0_gir_MSVC_INCLUDE_GIRS = $(PangoCairo_1_0_gir_INCLUDES) win32-1.0
+PangoCairo_1_0_gir_MSVC_LIBS = $(Pango_1_0_gir_MSVC_LIBS) pangocairo-1.0
+PangoCairo_1_0_gir_MSVC_CFLAGS = $(Pango_1_0_gir_MSVC_CFLAGS)
+PangoCairo_1_0_gir_MSVC_SCANNERFLAGS = --include-uninstalled=./Pango-1.0.gir --c-include "pango/pangocairo.h"
+
+include $(top_srcdir)/win32/Makefile.msvc-introspection
+else
+INTROSPECTION_INTERMEDIATE_ITEMS =
 endif
 
-TESTS = check.defs
+dist-hook: \
+	$(top_builddir)/win32/vs9/pango.vcproj		\
+	$(top_builddir)/win32/vs9/pangowin32.vcproj	\
+	$(top_builddir)/win32/vs9/pangoft2.vcproj		\
+	$(top_builddir)/win32/vs9/pangocairo.vcproj	\
+	$(top_builddir)/win32/vs9/pango.headers		\
+	$(INTROSPECTION_INTERMEDIATE_ITEMS)
 
 -include $(top_srcdir)/git.mk

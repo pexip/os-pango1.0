@@ -84,7 +84,8 @@ ct_font_descriptor_get_coverage (CTFontDescriptorRef desc)
   CFCharacterSetRef charset;
   CFIndex i, length;
   CFDataRef bitmap;
-  const UInt8 *ptr;
+  const UInt8 *ptr, *plane_ptr;
+  const UInt32 plane_size = 8192;
   PangoCoverage *coverage;
 
   coverage = pango_coverage_new ();
@@ -96,10 +97,10 @@ ct_font_descriptor_get_coverage (CTFontDescriptorRef desc)
 
   bitmap = CFCharacterSetCreateBitmapRepresentation (kCFAllocatorDefault,
                                                      charset);
-
-  /* We only handle the BMP plane */
-  length = MIN (CFDataGetLength (bitmap), 8192);
   ptr = CFDataGetBytePtr (bitmap);
+
+  /* First handle the BMP plane. */
+  length = MIN (CFDataGetLength (bitmap), plane_size);
 
   /* FIXME: can and should this be done more efficiently? */
   for (i = 0; i < length; i++)
@@ -107,9 +108,31 @@ ct_font_descriptor_get_coverage (CTFontDescriptorRef desc)
       int j;
 
       for (j = 0; j < 8; j++)
-        pango_coverage_set (coverage, i * 8 + j,
-                            ((ptr[i] & (1 << j)) == (1 << j)) ?
-                            PANGO_COVERAGE_EXACT : PANGO_COVERAGE_NONE);
+        if ((ptr[i] & (1 << j)) == (1 << j))
+          pango_coverage_set (coverage, i * 8 + j, PANGO_COVERAGE_EXACT);
+    }
+
+  /* Next, handle the other planes. The plane number is encoded first as
+   * a single byte. In the following 8192 bytes that plane's coverage bitmap
+   * is stored.
+   */
+  plane_ptr = ptr + plane_size;
+  while (plane_ptr - ptr < CFDataGetLength (bitmap))
+    {
+      const UInt8 plane_number = *plane_ptr;
+      plane_ptr++;
+
+      for (i = 0; i < plane_size; i++)
+        {
+          int j;
+
+          for (j = 0; j < 8; j++)
+            if ((plane_ptr[i] & (1 << j)) == (1 << j))
+              pango_coverage_set (coverage, (plane_number * plane_size + i) * 8 + j,
+                                  PANGO_COVERAGE_EXACT);
+        }
+
+      plane_ptr += plane_size;
     }
 
   CFRelease (bitmap);
@@ -120,7 +143,7 @@ ct_font_descriptor_get_coverage (CTFontDescriptorRef desc)
 
 static PangoCoverage *
 pango_core_text_font_get_coverage (PangoFont     *font,
-                                   PangoLanguage *language)
+                                   PangoLanguage *language G_GNUC_UNUSED)
 {
   PangoCoreTextFont *ctfont = (PangoCoreTextFont *)font;
   PangoCoreTextFontPrivate *priv = ctfont->priv;
@@ -137,13 +160,44 @@ pango_core_text_font_get_coverage (PangoFont     *font,
   return pango_coverage_ref (priv->coverage);
 }
 
+/* Wrap shaper in PangoEngineShape to pass it through old API,
+ * from times when there were modules and engines. */
+typedef PangoEngineShape      PangoCoreTextShapeEngine;
+typedef PangoEngineShapeClass PangoCoreTextShapeEngineClass;
+static GType pango_core_text_shape_engine_get_type (void) G_GNUC_CONST;
+G_DEFINE_TYPE (PangoCoreTextShapeEngine, pango_core_text_shape_engine, PANGO_TYPE_ENGINE_SHAPE);
+static void
+_pango_core_text_shape_engine_shape (PangoEngineShape    *engine G_GNUC_UNUSED,
+				 PangoFont           *font,
+				 const char          *item_text,
+				 unsigned int         item_length,
+				 const PangoAnalysis *analysis,
+				 PangoGlyphString    *glyphs,
+				 const char          *paragraph_text,
+				 unsigned int         paragraph_length)
+{
+  _pango_core_text_shape (font, item_text, item_length, analysis, glyphs,
+		      paragraph_text, paragraph_length);
+}
+static void
+pango_core_text_shape_engine_class_init (PangoEngineShapeClass *class)
+{
+  class->script_shape = _pango_core_text_shape_engine_shape;
+}
+static void
+pango_core_text_shape_engine_init (PangoEngineShape *object)
+{
+}
+
 static PangoEngineShape *
 pango_core_text_font_find_shaper (PangoFont     *font,
-                                  PangoLanguage *language,
+                                  PangoLanguage *language G_GNUC_UNUSED,
                                   guint32        ch)
 {
-  /* FIXME: Implement */
-  return NULL;
+  static PangoEngineShape *shaper;
+  if (g_once_init_enter (&shaper))
+    g_once_init_leave (&shaper, g_object_new (pango_core_text_shape_engine_get_type(), NULL));
+  return shaper;
 }
 
 static PangoFontMap *
