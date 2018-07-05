@@ -30,7 +30,7 @@ Standards-Version: 3.9.5
 Vcs-Svn: svn://anonscm.debian.org/pkg-gnome/desktop/unstable/pango1.0
 Vcs-Browser: http://anonscm.debian.org/viewvc/pkg-gnome/desktop/unstable/pango1.0
 XS-Testsuite: autopkgtest
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ jessie
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
 
 Package: libpango1.0-0
 Section: oldlibs
