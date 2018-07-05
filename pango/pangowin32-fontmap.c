@@ -34,7 +34,6 @@
 #include "pango-fontmap.h"
 #include "pango-impl-utils.h"
 #include "pangowin32-private.h"
-#include "modules.h"
 
 typedef struct _PangoWin32Family PangoWin32Family;
 typedef PangoFontFamilyClass PangoWin32FamilyClass;
@@ -493,48 +492,9 @@ read_builtin_aliases (GHashTable *ht_aliases)
 #endif
 
 
-static void
-read_alias_file (const char *filename, GHashTable *ht_aliases)
-{
-  FILE *file;
-
-  GString *line_buffer;
-  char *errstring = NULL;
-  int line = 0;
-
-  file = g_fopen (filename, "r");
-  if (!file)
-    return;
-
-  line_buffer = g_string_new (NULL);
-
-  while (pango_read_line (file, line_buffer) &&
-         errstring == NULL)
-    {
-      line++;
-      handle_alias_line (line_buffer, &errstring, ht_aliases);
-    }
-
-  if (errstring == NULL && ferror (file))
-    errstring = g_strdup (g_strerror(errno));
-
-  if (errstring)
-    {
-      g_warning ("error reading alias file: %s:%d: %s\n", filename, line, errstring);
-      g_free (errstring);
-    }
-
-  g_string_free (line_buffer, TRUE);
-
-  fclose (file);
-}
-
 static GHashTable *
 load_aliases (void)
 {
-  char *filename;
-  const char *home;
-
   GHashTable *ht_aliases = g_hash_table_new_full ((GHashFunc)alias_hash,
                                                   (GEqualFunc)alias_equal,
                                                   (GDestroyNotify)alias_free,
@@ -544,21 +504,6 @@ load_aliases (void)
   read_builtin_aliases (ht_aliases);
 #endif
 
-  filename = g_strconcat (pango_get_sysconf_subdirectory (),
-                          G_DIR_SEPARATOR_S "pango.aliases",
-                          NULL);
-  read_alias_file (filename, ht_aliases);
-  g_free (filename);
-
-  home = g_get_home_dir ();
-  if (home && *home)
-    {
-      filename = g_strconcat (home,
-                              G_DIR_SEPARATOR_S ".pango.aliases",
-                              NULL);
-      read_alias_file (filename, ht_aliases);
-      g_free (filename);
-    }
   return ht_aliases;
 }
 
@@ -631,6 +576,8 @@ create_standard_family (PangoWin32FontMap *win32fontmap,
 		    new_face->coverages[j] = NULL;
 		}
 
+	      new_face->face_name = NULL;
+
 	      new_face->is_synthetic = TRUE;
 
 	      new_face->has_cmap = old_face->has_cmap;
@@ -656,10 +603,12 @@ _pango_win32_font_map_init (PangoWin32FontMap *win32fontmap)
 {
   LOGFONTW logfont;
 
-  win32fontmap->families = g_hash_table_new ((GHashFunc) case_insensitive_str_hash,
-					     (GEqualFunc) case_insensitive_str_equal);
+  win32fontmap->families =
+    g_hash_table_new_full ((GHashFunc) case_insensitive_str_hash,
+                           (GEqualFunc) case_insensitive_str_equal, NULL, g_object_unref);
   win32fontmap->fonts =
-    g_hash_table_new ((GHashFunc) logfontw_nosize_hash, (GEqualFunc) logfontw_nosize_equal);
+    g_hash_table_new_full ((GHashFunc) logfontw_nosize_hash,
+                           (GEqualFunc) logfontw_nosize_equal, NULL, g_free);
 
   win32fontmap->font_cache = pango_win32_font_cache_new ();
   win32fontmap->freed_fonts = g_queue_new ();
@@ -721,7 +670,6 @@ _pango_win32_font_map_class_init (PangoWin32FontMapClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
   PangoFontMapClass *fontmap_class = PANGO_FONT_MAP_CLASS (class);
-  int i;
 
   class->find_font = pango_win32_font_map_real_find_font;
   object_class->finalize = pango_win32_font_map_finalize;
@@ -732,9 +680,6 @@ _pango_win32_font_map_class_init (PangoWin32FontMapClass *class)
   fontmap_class->shape_engine_type = PANGO_RENDER_TYPE_WIN32;
 
   pango_win32_get_dc ();
-
-  for (i = 0; _pango_included_win32_modules[i].list; i++)
-    pango_module_register (&_pango_included_win32_modules[i]);
 }
 
 /**
@@ -786,6 +731,10 @@ pango_win32_font_map_finalize (GObject *object)
   g_queue_free (win32fontmap->freed_fonts);
 
   pango_win32_font_cache_free (win32fontmap->font_cache);
+
+  g_hash_table_destroy (win32fontmap->fonts);
+
+  g_hash_table_destroy (win32fontmap->families);
 
   G_OBJECT_CLASS (_pango_win32_font_map_parent_class)->finalize (object);
 }
@@ -847,8 +796,23 @@ pango_win32_family_is_monospace (PangoFontFamily *family)
 G_DEFINE_TYPE (PangoWin32Family, pango_win32_family, PANGO_TYPE_FONT_FAMILY)
 
 static void
+pango_win32_family_finalize (GObject *object)
+{
+  PangoWin32Family *win32family = PANGO_WIN32_FAMILY (object);
+
+  g_free (win32family->family_name);
+
+  g_slist_free_full (win32family->faces, g_object_unref);
+
+  G_OBJECT_CLASS (pango_win32_family_parent_class)->finalize (object);
+}
+
+static void
 pango_win32_family_class_init (PangoFontFamilyClass *class)
 {
+  GObjectClass *object_class = G_OBJECT_CLASS (class);
+
+  object_class->finalize = pango_win32_family_finalize;
   class->list_faces = pango_win32_family_list_faces;
   class->get_name = pango_win32_family_get_name;
   class->is_monospace = pango_win32_family_is_monospace;
@@ -1515,6 +1479,8 @@ pango_win32_insert_font (PangoWin32FontMap *win32fontmap,
   for (i = 0; i < PANGO_WIN32_N_COVERAGES; i++)
      win32face->coverages[i] = NULL;
 
+  win32face->face_name = NULL;
+
   win32face->is_synthetic = is_synthetic;
 
   win32face->has_cmap = TRUE;
@@ -1604,8 +1570,33 @@ pango_win32_face_is_synthesized (PangoFontFace *face)
 G_DEFINE_TYPE (PangoWin32Face, pango_win32_face, PANGO_TYPE_FONT_FACE)
 
 static void
+pango_win32_face_finalize (GObject *object)
+{
+  int j;
+  PangoWin32Face *win32face = PANGO_WIN32_FACE (object);
+
+  pango_font_description_free (win32face->description);
+
+  for (j = 0; j < PANGO_WIN32_N_COVERAGES; j++)
+    if (win32face->coverages[j] != NULL)
+      pango_coverage_unref (win32face->coverages[j]);
+
+  g_free (win32face->face_name);
+
+  //g_free (win32face->cmap); // Err, cmap does not have lifecycle management currently :(
+
+  g_slist_free (win32face->cached_fonts);
+//  g_slist_free_full (win32face->cached_fonts, g_object_unref); // This doesn't work.
+
+  G_OBJECT_CLASS (pango_win32_family_parent_class)->finalize (object);
+}
+
+static void
 pango_win32_face_class_init (PangoFontFaceClass *class)
 {
+  GObjectClass *object_class = G_OBJECT_CLASS (class);
+
+  object_class->finalize = pango_win32_face_finalize;
   class->describe = pango_win32_face_describe;
   class->get_face_name = pango_win32_face_get_face_name;
   class->list_sizes = pango_win32_face_list_sizes;

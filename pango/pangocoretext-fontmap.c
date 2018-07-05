@@ -26,7 +26,6 @@
 #include "pango-fontmap.h"
 #include "pangocoretext-private.h"
 #include "pango-impl-utils.h"
-#include "modules.h"
 
 #include <Carbon/Carbon.h>
 
@@ -107,25 +106,29 @@ static PangoCoreTextFontsetKey *pango_core_text_fontset_get_key (PangoCoreTextFo
 
 typedef struct
 {
-    float bound;
-    PangoWeight weight;
+    float ct_weight;
+    PangoWeight pango_weight;
 } PangoCTWeight;
 
-const float ct_weight_min = -1.00f;
-const float ct_weight_max = 1.00f;
+#define ct_weight_min -0.7f
+#define ct_weight_max  0.8f
 
-static const PangoCTWeight ct_weight_limits[] = {
-    { -0.00, PANGO_WEIGHT_THIN },
-    { -0.75, PANGO_WEIGHT_ULTRALIGHT },
-    { -0.50, PANGO_WEIGHT_LIGHT },
-    { -0.25, PANGO_WEIGHT_SEMILIGHT },
-    { -0.10, PANGO_WEIGHT_BOOK },
+/* This map is based on empirical data from analyzing a large collection of
+ * fonts and comparing the opentype value with the value that OSX returns.
+ * see: https://bugzilla.gnome.org/show_bug.cgi?id=766148
+ */
+
+static const PangoCTWeight ct_weight_map[] = {
+    { ct_weight_min, PANGO_WEIGHT_THIN },
+    { -0.5, PANGO_WEIGHT_ULTRALIGHT },
+    { -0.23, PANGO_WEIGHT_LIGHT },
+    { -0.115, PANGO_WEIGHT_SEMILIGHT },
     {  0.00, PANGO_WEIGHT_NORMAL },
-    {  0.10, PANGO_WEIGHT_MEDIUM },
-    {  0.25, PANGO_WEIGHT_SEMIBOLD },
-    {  0.50, PANGO_WEIGHT_BOLD },
-    {  0.75, PANGO_WEIGHT_ULTRABOLD },
-    {  1.00, PANGO_WEIGHT_HEAVY }
+    {  0.2, PANGO_WEIGHT_MEDIUM },
+    {  0.3, PANGO_WEIGHT_SEMIBOLD },
+    {  0.4, PANGO_WEIGHT_BOLD },
+    {  0.6, PANGO_WEIGHT_ULTRABOLD },
+    {  ct_weight_max, PANGO_WEIGHT_HEAVY }
 };
 
 static const char *
@@ -286,39 +289,45 @@ cf_font_descriptor_copy_with_traits (CTFontDescriptorRef        desc,
   return new_desc;
 }
 
+static int
+lerp(float x, float x1, float x2, int y1, int y2) {
+  float dx = x2 - x1;
+  int dy = y2 - y1;
+  return y1 + (dy*(x-x1) + dx/2) / dx;
+}
+
 static PangoWeight
 ct_font_descriptor_get_weight (CTFontDescriptorRef desc)
 {
   CFDictionaryRef dict;
   CFNumberRef cf_number;
   CGFloat value;
-  PangoWeight weight;
+  PangoWeight weight = PANGO_WEIGHT_NORMAL;
 
   dict = CTFontDescriptorCopyAttribute (desc, kCTFontTraitsAttribute);
   cf_number = (CFNumberRef)CFDictionaryGetValue (dict,
                                                  kCTFontWeightTrait);
 
-  if (CFNumberGetValue (cf_number, kCFNumberCGFloatType, &value))
+  if (cf_number != NULL && CFNumberGetValue (cf_number, kCFNumberCGFloatType, &value))
     {
-      if (value < ct_weight_min || value > ct_weight_max)
-	{
-          /* This is really an error */
-          weight = PANGO_WEIGHT_NORMAL;
-	}
-      else
-	{
-	  guint i;
-	  for (i = 0; i < G_N_ELEMENTS(ct_weight_limits); i++)
-	    if (value < ct_weight_limits[i].bound)
-	      {
-	        /* TODO interpolate weight. */
-                weight = ct_weight_limits[i].weight;
-                break;
-	      }
-	}
+    if (value < ct_weight_min || value > ct_weight_max)
+      {
+        /* This is really an error */
+        weight = PANGO_WEIGHT_NORMAL;
+      }
+    else
+      {
+        guint i;
+        for (i = 1; value > ct_weight_map[i].ct_weight; ++i)
+          ;
+
+        weight = lerp(value, ct_weight_map[i-1].ct_weight, ct_weight_map[i].ct_weight,
+                      ct_weight_map[i-1].pango_weight, ct_weight_map[i].pango_weight);
+
+      }
     }
- else
-   weight = PANGO_WEIGHT_NORMAL;
+  else
+    weight = PANGO_WEIGHT_NORMAL;
 
   CFRelease (dict);
 
@@ -412,6 +421,9 @@ _pango_core_text_font_description_from_ct_font_descriptor (CTFontDescriptorRef d
     pango_font_description_set_style (font_desc, PANGO_STYLE_OBLIQUE);
   else
     pango_font_description_set_style (font_desc, PANGO_STYLE_NORMAL);
+
+  if ((font_traits & kCTFontCondensedTrait) == kCTFontCondensedTrait)
+    pango_font_description_set_stretch (font_desc, PANGO_STRETCH_CONDENSED);
 
   if (ct_font_descriptor_is_small_caps (desc))
     pango_font_description_set_variant (font_desc, PANGO_VARIANT_SMALL_CAPS);
@@ -715,7 +727,6 @@ static void
 pango_core_text_family_class_init (PangoCoreTextFamilyClass *klass)
 {
   GObjectClass *object_class = (GObjectClass *)klass;
-  int i;
   PangoFontFamilyClass *pfclass = PANGO_FONT_FAMILY_CLASS(klass);
 
   object_class->finalize = pango_core_text_family_finalize;
@@ -723,9 +734,6 @@ pango_core_text_family_class_init (PangoCoreTextFamilyClass *klass)
   pfclass->list_faces = pango_core_text_family_list_faces;
   pfclass->get_name = pango_core_text_family_get_name;
   pfclass->is_monospace = pango_core_text_family_is_monospace;
-
-  for (i = 0; _pango_included_core_text_modules[i].list; i++)
-    pango_module_register (&_pango_included_core_text_modules[i]);
 }
 
 static void
@@ -1524,10 +1532,12 @@ G_DEFINE_TYPE (PangoCoreTextFontset,
                pango_core_text_fontset,
                PANGO_TYPE_FONTSET);
 
+#if !defined(MAC_OS_X_VERSION_10_8) || MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_8
 /* This symbol does exist in the CoreText library shipped with Snow
  * Leopard and Lion, however, it is not found in the public header files.
  */
 CFArrayRef CTFontCopyDefaultCascadeList (CTFontRef font_ref);
+#endif
 
 static PangoCoreTextFontset *
 pango_core_text_fontset_new (PangoCoreTextFontsetKey    *key,
@@ -1591,7 +1601,36 @@ pango_core_text_fontset_new (PangoCoreTextFontsetKey    *key,
   fontset->coverages = g_ptr_array_new ();
 
   /* Add the cascade list for this language */
+#if defined(MAC_OS_X_VERSION_10_8) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_8
+    {
+      CFArrayRef language_pref_list = NULL;
+      CFStringRef languages[1];
+
+      if (key->language)
+        {
+          languages[0] = CFStringCreateWithCString (NULL,
+                                                    pango_language_to_string (key->language),
+                                                    kCFStringEncodingASCII);
+          language_pref_list = CFArrayCreate (kCFAllocatorDefault,
+                                              (const void **) languages,
+                                              1,
+                                              &kCFTypeArrayCallBacks);
+        }
+
+      fontset->cascade_list = CTFontCopyDefaultCascadeListForLanguages (pango_core_text_font_get_ctfont (best_font), language_pref_list);
+
+      if (language_pref_list)
+        {
+          CFRelease (languages[0]);
+          CFRelease (language_pref_list);
+        }
+    }
+#else
+  /* There is unfortunately no public API to retrieve the cascade list
+   * on Mac OS X < 10.8, so we use the following undocumented public function.
+   */
   fontset->cascade_list = CTFontCopyDefaultCascadeList (pango_core_text_font_get_ctfont (best_font));
+#endif
 
   /* length of cascade list + 1 for the "real" font at the front */
   g_ptr_array_set_size (fontset->fonts, CFArrayGetCount (fontset->cascade_list) + 1);

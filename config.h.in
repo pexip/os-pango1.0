@@ -49,6 +49,9 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Whether libthai is available */
+#undef HAVE_LIBTHAI
+
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
@@ -96,12 +99,8 @@
 /* Have Xft library */
 #undef HAVE_XFT
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
-
-/* Module interface version */
-#undef MODULE_VERSION
 
 /* Name of package */
 #undef PACKAGE
@@ -142,8 +141,8 @@
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
-/* Whether to load modules via .la files rather than directly */
-#undef USE_LA_MODULES
-
 /* Version number of package */
 #undef VERSION
+
+/* defines how to decorate public symbols while building */
+#undef _PANGO_EXTERN

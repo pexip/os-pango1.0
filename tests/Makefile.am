@@ -4,7 +4,6 @@ EXTRA_DIST = 			\
 	boundaries.utf8		\
 	GraphemeBreakTest.txt
 
-CLEANFILES = pangorc
 DISTCLEANFILES = all-unicode.txt
 
 AM_CPPFLAGS =					\
@@ -40,8 +39,7 @@ endif
 TESTS_ENVIRONMENT =                    \
    srcdir=$(srcdir)                    \
    G_TEST_SRCDIR=$(abs_srcdir)         \
-   G_TEST_BUILDDIR=$(abs_builddir)     \
-   PANGO_RC_FILE=./pangorc
+   G_TEST_BUILDDIR=$(abs_builddir)
 
 check_PROGRAMS = 			\
 	testboundaries 			\
@@ -51,6 +49,7 @@ check_PROGRAMS = 			\
 	markup-parse 			\
 	test-layout			\
 	test-font			\
+	testattributes			\
 	$(NULL)
 
 if HAVE_CAIRO
@@ -64,6 +63,18 @@ TEST_PANGO_LIBS = ../pango/libpango-$(PANGO_API_VERSION).la
 TEST_PANGOFT2_LIBS = $(TEST_PANGO_LIBS) ../pango/libpangoft2-$(PANGO_API_VERSION).la
 TEST_PANGOCAIRO_LIBS = $(TEST_PANGO_LIBS) ../pango/libpangocairo-$(PANGO_API_VERSION).la
 
+test_layout_SOURCES = \
+	test-layout.c \
+	test-common.c \
+	test-common.h \
+	$(NULL)
+
+testattributes_SOURCES = \
+	testattributes.c \
+	test-common.c \
+	test-common.h \
+	$(NULL)
+
 gen_all_unicode_LDADD = $(GLIB_LIBS)
 testboundaries_LDADD = $(TEST_PANGO_LIBS) $(GLIB_LIBS)
 testboundaries_ucd_LDADD = $(TEST_PANGO_LIBS) $(GLIB_LIBS)
@@ -76,6 +87,7 @@ dump_boundaries_LDADD = $(TEST_PANGO_LIBS) $(GLIB_LIBS)
 markup_parse_LDADD = $(TEST_PANGOCAIRO_LIBS) $(GLIB_LIBS)
 test_layout_LDADD = $(TEST_PANGOCAIRO_LIBS) $(GLIB_LIBS)
 test_font_LDADD = $(TEST_PANGOCAIRO_LIBS) $(GLIB_LIBS)
+testattributes_LDADD = $(TEST_PANGOCAIRO_LIBS) $(GLIB_LIBS)
 
 if HAVE_CXX
 check_PROGRAMS += cxx-test
@@ -84,11 +96,6 @@ cxx_test_SOURCES = cxx-test.C
 
 all-unicode.txt: gen-all-unicode$(EXEEXT)
 	./gen-all-unicode > all-unicode.txt
-
-pangorc: $(srcdir)/../modules/pangorc
-	cp $(srcdir)/../modules/pangorc $@
-
-$(noinst_PROGRAMS) $(check_PROGRAMS): pangorc
 
 noinst_PROGRAMS = $(check_PROGRAMS) gen-all-unicode dump-boundaries
 

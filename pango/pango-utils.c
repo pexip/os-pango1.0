@@ -47,6 +47,7 @@
 #include "pango-font.h"
 #include "pango-features.h"
 #include "pango-impl-utils.h"
+#include "pango-utils-internal.h"
 
 #include <glib/gstdio.h>
 
@@ -128,10 +129,10 @@ pango_version_string (void)
  *
  * For compile-time version checking use PANGO_VERSION_CHECK().
  *
- * Return value: %NULL if the Pango library is compatible with the
- *   given version, or a string describing the version mismatch.
- *   The returned string is owned by Pango and should not be modified
- *   or freed.
+ * Return value: (nullable): %NULL if the Pango library is compatible
+ *   with the given version, or a string describing the version
+ *   mismatch.  The returned string is owned by Pango and should not
+ *   be modified or freed.
  *
  * Since: 1.16
  **/
@@ -159,9 +160,17 @@ pango_version_check (int required_major,
  * Trims leading and trailing whitespace from a string.
  *
  * Return value: A newly-allocated string that must be freed with g_free()
+ *
+ * Deprecated: 1.38
  **/
 char *
 pango_trim_string (const char *str)
+{
+  return _pango_trim_string (str);
+}
+
+char *
+_pango_trim_string (const char *str)
 {
   int len;
 
@@ -186,6 +195,8 @@ pango_trim_string (const char *str)
  *
  * Return value: (transfer full) (array zero-terminated=1): a list of
  * strings to be freed with g_strfreev()
+ *
+ * Deprecated: 1.38
  **/
 char **
 pango_split_file_list (const char *str)
@@ -198,7 +209,7 @@ pango_split_file_list (const char *str)
 
   while (files[i])
     {
-      char *file = pango_trim_string (files[i]);
+      char *file = _pango_trim_string (files[i]);
 
       /* If the resulting file is empty, skip it */
       if (file[0] == '\0')
@@ -257,6 +268,8 @@ pango_split_file_list (const char *str)
  * Return value: 0 if the stream was already at an %EOF character, otherwise
  *               the number of lines read (this is useful for maintaining
  *               a line number counter which doesn't combine lines with '\')
+ *
+ * Deprecated: 1.38
  **/
 gint
 pango_read_line (FILE *stream, GString *str)
@@ -325,11 +338,12 @@ pango_read_line (FILE *stream, GString *str)
 	      if (!comment)
 		quoted = TRUE;
 	      break;
+	    case '\r':
 	    case '\n':
 	      {
 		int next_c = getc_unlocked (stream);
 
-		if (!(c == EOF ||
+		if (!(next_c == EOF ||
 		      (c == '\r' && next_c == '\n') ||
 		      (c == '\n' && next_c == '\r')))
 		  ungetc (next_c, stream);
@@ -358,6 +372,8 @@ pango_read_line (FILE *stream, GString *str)
  *
  * Return value: %FALSE if skipping the white space leaves
  * the position at a '\0' character.
+ *
+ * Deprecated: 1.38
  **/
 gboolean
 pango_skip_space (const char **pos)
@@ -382,6 +398,8 @@ pango_skip_space (const char **pos)
  * Leading white space is skipped.
  *
  * Return value: %FALSE if a parse error occurred.
+ *
+ * Deprecated: 1.38
  **/
 gboolean
 pango_scan_word (const char **pos, GString *out)
@@ -425,6 +443,8 @@ pango_scan_word (const char **pos, GString *out)
  * a literal quote. Leading white space outside of quotes is skipped.
  *
  * Return value: %FALSE if a parse error occurred.
+ *
+ * Deprecated: 1.38
  **/
 gboolean
 pango_scan_string (const char **pos, GString *out)
@@ -513,9 +533,17 @@ pango_scan_string (const char **pos, GString *out)
  * Leading white space is skipped.
  *
  * Return value: %FALSE if a parse error occurred.
+ *
+ * Deprecated: 1.38
  **/
 gboolean
 pango_scan_int (const char **pos, int *out)
+{
+  return _pango_scan_int (pos, out);
+}
+
+gboolean
+_pango_scan_int (const char **pos, int *out)
 {
   char *end;
   long temp;
@@ -539,207 +567,48 @@ pango_scan_int (const char **pos, int *out)
   return TRUE;
 }
 
-
-static void
-read_config_file (const char *filename, gboolean enoent_error, GHashTable *ht)
-{
-  GKeyFile *key_file = g_key_file_new();
-  GError *key_file_error = NULL;
-  gchar **groups;
-  gsize groups_count = 0;
-  guint group_index;
-
-  if (!g_key_file_load_from_file(key_file,filename, 0, &key_file_error))
-    {
-      if (key_file_error)
-	{
-	  if (key_file_error->domain != G_FILE_ERROR || key_file_error->code != G_FILE_ERROR_NOENT || enoent_error)
-	    {
-	      g_warning ("error opening config file '%s': %s\n",
-			  filename, key_file_error->message);
-	    }
-	  g_error_free(key_file_error);
-	}
-      g_key_file_free(key_file);
-      return;
-    }
-
-  groups = g_key_file_get_groups (key_file, &groups_count);
-  for (group_index = 0; group_index < groups_count; group_index++)
-    {
-      gsize keys_count = 0;
-      const gchar *group = groups[group_index];
-      GError *keys_error = NULL;
-      gchar **keys;
-
-      keys = g_key_file_get_keys(key_file, group, &keys_count, &keys_error);
-
-      if (keys)
-	{
-	  guint key_index;
-
-	  for (key_index = 0; key_index < keys_count; key_index++)
-	    {
-	      const gchar *key = keys[key_index];
-	      GError *key_error = NULL;
-	      gchar *value =  g_key_file_get_value(key_file, group, key, &key_error);
-	      if (value != NULL)
-		{
-		  g_hash_table_insert (ht,
-				       g_strdup_printf ("%s/%s", group, key),
-				       value);
-		}
-	      if (key_error)
-		{
-		  g_warning ("error getting key '%s/%s' in config file '%s'\n",
-			     group, key, filename);
-		  g_error_free(key_error);
-		}
-	    }
-	  g_strfreev(keys);
-	}
-
-      if (keys_error)
-	{
-	  g_warning ("error getting keys in group '%s' of config file '%s'\n",
-		     filename, group);
-	  g_error_free(keys_error);
-	}
-    }
-  g_strfreev(groups);
-  g_key_file_free(key_file);
-}
-
-static GHashTable *
-read_config_system (void)
-{
-  char *filename;
-  GHashTable *config_hash;
-
-  config_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                       (GDestroyNotify)g_free,
-                                       (GDestroyNotify)g_free);
-
-  filename = g_build_filename (pango_get_sysconf_subdirectory (),
-                               "pangorc",
-			       NULL);
-  read_config_file (filename, FALSE, config_hash);
-  g_free (filename);
-
-  return config_hash;
-}
-
-static GHashTable *
-read_config (void)
-{
-  static GHashTable *config_hash = NULL;
-
-  if (g_once_init_enter (&config_hash))
-    {
-      GHashTable *tmp_hash;
-      char *filename;
-      const char *envvar;
-
-      tmp_hash = read_config_system ();
-
-      filename = g_build_filename (g_get_user_config_dir (),
-                                   "pango",
-                                   "pangorc",
-                                   NULL);
-      read_config_file (filename, FALSE, tmp_hash);
-      g_free (filename);
-
-      envvar = g_getenv ("PANGO_RC_FILE");
-      if (envvar)
-        read_config_file (envvar, TRUE, tmp_hash);
-
-      g_once_init_leave (&config_hash, tmp_hash);
-    }
-
-  return config_hash;
-}
-
 /**
  * pango_config_key_get_system:
  * @key: Key to look up, in the form "SECTION/KEY".
  *
- * Looks up a key, consulting only the Pango system config database
- * in $sysconfdir/pango/pangorc.
+ * Do not use.  Does not do anything.
  *
- * Return value: the value, if found, otherwise %NULL. The value is a
- * newly-allocated string and must be freed with g_free().
+ * Return value: %NULL
+ *
+ * Deprecated: 1.38
  **/
 char *
 pango_config_key_get_system (const char *key)
 {
-  GHashTable *config_hash;
-  gchar *ret;
-
-  g_return_val_if_fail (key != NULL, NULL);
-
-  config_hash = read_config_system ();
-  ret = g_strdup (g_hash_table_lookup (config_hash, key));
-  g_hash_table_unref (config_hash);
-
-  return ret;
+  return NULL;
 }
 
 /**
  * pango_config_key_get:
  * @key: Key to look up, in the form "SECTION/KEY".
  *
- * Looks up a key in the Pango config database
- * (pseudo-win.ini style, read from $sysconfdir/pango/pangorc,
- *  $XDG_CONFIG_HOME/pango/pangorc, and getenv (PANGO_RC_FILE).)
+ * Do not use.  Does not do anything.
  *
- * Return value: the value, if found, otherwise %NULL. The value is a
- * newly-allocated string and must be freed with g_free().
+ * Return value: %NULL
+ *
+ * Deprecated: 1.38
  **/
 char *
 pango_config_key_get (const char *key)
 {
-  GHashTable *config_hash;
-
-  g_return_val_if_fail (key != NULL, NULL);
-
-  config_hash = read_config ();
-
-  return g_strdup (g_hash_table_lookup (config_hash, key));
+  return NULL;
 }
-
-#ifdef G_OS_WIN32
-
-/* DllMain function needed to tuck away the DLL handle */
-
-static HMODULE pango_dll; /* MT-safe */
-
-BOOL WINAPI
-DllMain (HINSTANCE hinstDLL,
-	 DWORD     fdwReason,
-	 LPVOID    lpvReserved)
-{
-  switch (fdwReason)
-    {
-    case DLL_PROCESS_ATTACH:
-      pango_dll = (HMODULE) hinstDLL;
-      break;
-    }
-
-  return TRUE;
-}
-
-#endif
 
 /**
  * pango_get_sysconf_subdirectory:
  *
- * On Unix, returns the name of the "pango" subdirectory of SYSCONFDIR
- * (which is set at compile time). On Windows, returns the etc\pango
- * subdirectory of the Pango installation directory (which is deduced
- * at run time from the DLL's location).
+ * Returns the name of the "pango" subdirectory of SYSCONFDIR
+ * (which is set at compile time).
  *
  * Return value: the Pango sysconf directory. The returned string should
  * not be freed.
+ *
+ * Deprecated: 1.38
  */
 const char *
 pango_get_sysconf_subdirectory (void)
@@ -749,17 +618,11 @@ pango_get_sysconf_subdirectory (void)
   if (g_once_init_enter (&result))
     {
       const char *tmp_result = NULL;
-#ifdef G_OS_WIN32
-      gchar *root = g_win32_get_package_installation_directory_of_module (pango_dll);
-      tmp_result = g_build_filename (root, "etc\\pango", NULL);
-      g_free (root);
-#else
       const char *sysconfdir = g_getenv ("PANGO_SYSCONFDIR");
       if (sysconfdir != NULL)
 	tmp_result = g_build_filename (sysconfdir, "pango", NULL);
       else
 	tmp_result = SYSCONFDIR "/pango";
-#endif
       g_once_init_leave(&result, tmp_result);
     }
   return result;
@@ -768,13 +631,13 @@ pango_get_sysconf_subdirectory (void)
 /**
  * pango_get_lib_subdirectory:
  *
- * On Unix, returns the name of the "pango" subdirectory of LIBDIR
- * (which is set at compile time). On Windows, returns the lib\pango
- * subdirectory of the Pango installation directory (which is deduced
- * at run time from the DLL's location).
+ * Returns the name of the "pango" subdirectory of LIBDIR
+ * (which is set at compile time).
  *
  * Return value: the Pango lib directory. The returned string should
  * not be freed.
+ *
+ * Deprecated: 1.38
  */
 const char *
 pango_get_lib_subdirectory (void)
@@ -784,23 +647,11 @@ pango_get_lib_subdirectory (void)
   if (g_once_init_enter (&result))
     {
       const gchar *tmp_result = NULL;
-#ifdef G_OS_WIN32
-      gchar *root = g_win32_get_package_installation_directory_of_module (pango_dll);
-      /* If we are running against an uninstalled copy of the Pango DLL,
-       * use the compile-time installation prefix.
-       */
-      if (g_str_has_suffix (root, "\\.libs"))
-	tmp_result = g_strdup (LIBDIR "/pango");
-      else
-	tmp_result = g_build_filename (root, "lib\\pango", NULL);
-      g_free (root);
-#else
       const char *libdir = g_getenv ("PANGO_LIBDIR");
       if (libdir != NULL)
 	tmp_result = g_build_filename (libdir, "pango", NULL);
       else
 	tmp_result = LIBDIR "/pango";
-#endif
       g_once_init_leave(&result, tmp_result);
     }
   return result;
@@ -852,6 +703,8 @@ parse_int (const char *word,
  *
  * Return value: %TRUE if @str was successfully parsed.
  *
+ * Deprecated: 1.38
+ *
  * Since: 1.16
  **/
 gboolean
@@ -860,6 +713,16 @@ pango_parse_enum (GType       type,
 		  int        *value,
 		  gboolean    warn,
 		  char      **possible_values)
+{
+  return _pango_parse_enum (type, str, value, warn, possible_values);
+}
+
+gboolean
+_pango_parse_enum (GType       type,
+		   const char *str,
+ 		   int        *value,
+		   gboolean    warn,
+		   char      **possible_values)
 {
   GEnumClass *class = NULL;
   gboolean ret = TRUE;
@@ -1160,7 +1023,7 @@ _pango_shape_shape (const char       *text,
 		    PangoRectangle   *shape_logical,
 		    PangoGlyphString *glyphs)
 {
-  int i;
+  unsigned int i;
   const char *p;
 
   pango_glyph_string_set_size (glyphs, n_chars);

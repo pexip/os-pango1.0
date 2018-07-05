@@ -97,10 +97,16 @@ pango_ft2_font_map_class_init (PangoFT2FontMapClass *class)
 static void
 pango_ft2_font_map_init (PangoFT2FontMap *fontmap)
 {
+  FT_Error error;
+
   fontmap->serial = 1;
   fontmap->library = NULL;
   fontmap->dpi_x   = 72.0;
   fontmap->dpi_y   = 72.0;
+
+  error = FT_Init_FreeType (&fontmap->library);
+  if (error != FT_Err_Ok)
+    g_critical ("pango_ft2_font_map_init: Could not initialize freetype");
 }
 
 static void
@@ -136,21 +142,12 @@ pango_ft2_font_map_finalize (GObject *object)
 PangoFontMap *
 pango_ft2_font_map_new (void)
 {
-  PangoFT2FontMap *ft2fontmap;
-  FT_Error error;
-
 #if !GLIB_CHECK_VERSION (2, 35, 3)
   /* Make sure that the type system is initialized */
   g_type_init ();
 #endif
 
-  ft2fontmap = g_object_new (PANGO_TYPE_FT2_FONT_MAP, NULL);
-
-  error = FT_Init_FreeType (&ft2fontmap->library);
-  if (error != FT_Err_Ok)
-    g_critical ("pango_ft2_font_map_new: Could not initialize freetype");
-
-  return (PangoFontMap *)ft2fontmap;
+  return (PangoFontMap *) g_object_new (PANGO_TYPE_FT2_FONT_MAP, NULL);
 }
 
 static guint
@@ -256,7 +253,8 @@ pango_ft2_font_map_set_resolution (PangoFT2FontMap *fontmap,
  *
  * Create a #PangoContext for the given fontmap.
  *
- * Return value: the newly created context; free with g_object_unref().
+ * Return value: (transfer full): the newly created context; free with
+ *     g_object_unref().
  *
  * Since: 1.2
  *
@@ -279,7 +277,7 @@ pango_ft2_font_map_create_context (PangoFT2FontMap *fontmap)
  * (see pango_ft2_font_map_for_display()) and sets the resolution
  * for the default fontmap to @dpi_x by @dpi_y.
  *
- * Return value: the new #PangoContext
+ * Return value: (transfer full): the new #PangoContext
  *
  * Deprecated: 1.22: Use pango_font_map_create_context() instead.
  **/
@@ -305,13 +303,13 @@ G_GNUC_END_IGNORE_DEPRECATIONS
  * global PangoFT2 fontmap is deprecated; use pango_ft2_font_map_new()
  * instead.
  *
- * Return value: a #PangoFT2FontMap.
+ * Return value: (transfer none): a #PangoFT2FontMap.
  **/
 PangoFontMap *
 pango_ft2_font_map_for_display (void)
 {
   if (g_once_init_enter (&pango_ft2_global_fontmap))
-    g_once_init_leave(&pango_ft2_global_fontmap, PANGO_FT2_FONT_MAP (pango_ft2_font_map_new ()));
+    g_once_init_leave (&pango_ft2_global_fontmap, PANGO_FT2_FONT_MAP (pango_ft2_font_map_new ()));
 
   return PANGO_FONT_MAP (pango_ft2_global_fontmap);
 }

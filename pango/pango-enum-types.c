@@ -1,6 +1,8 @@
 
 /* Generated data (by glib-mkenums) */
 
+#include "config.h"
+
 #include <pango.h>
 
 /* enumerations from "pango-attributes.h" */
@@ -35,6 +37,9 @@ pango_attr_type_get_type (void)
         { PANGO_ATTR_ABSOLUTE_SIZE, "PANGO_ATTR_ABSOLUTE_SIZE", "absolute-size" },
         { PANGO_ATTR_GRAVITY, "PANGO_ATTR_GRAVITY", "gravity" },
         { PANGO_ATTR_GRAVITY_HINT, "PANGO_ATTR_GRAVITY_HINT", "gravity-hint" },
+        { PANGO_ATTR_FONT_FEATURES, "PANGO_ATTR_FONT_FEATURES", "font-features" },
+        { PANGO_ATTR_FOREGROUND_ALPHA, "PANGO_ATTR_FOREGROUND_ALPHA", "foreground-alpha" },
+        { PANGO_ATTR_BACKGROUND_ALPHA, "PANGO_ATTR_BACKGROUND_ALPHA", "background-alpha" },
         { 0, NULL, NULL }
       };
       GType g_define_type_id =
@@ -509,6 +514,35 @@ pango_script_get_type (void)
         { PANGO_SCRIPT_SHARADA, "PANGO_SCRIPT_SHARADA", "sharada" },
         { PANGO_SCRIPT_SORA_SOMPENG, "PANGO_SCRIPT_SORA_SOMPENG", "sora-sompeng" },
         { PANGO_SCRIPT_TAKRI, "PANGO_SCRIPT_TAKRI", "takri" },
+        { PANGO_SCRIPT_BASSA_VAH, "PANGO_SCRIPT_BASSA_VAH", "bassa-vah" },
+        { PANGO_SCRIPT_CAUCASIAN_ALBANIAN, "PANGO_SCRIPT_CAUCASIAN_ALBANIAN", "caucasian-albanian" },
+        { PANGO_SCRIPT_DUPLOYAN, "PANGO_SCRIPT_DUPLOYAN", "duployan" },
+        { PANGO_SCRIPT_ELBASAN, "PANGO_SCRIPT_ELBASAN", "elbasan" },
+        { PANGO_SCRIPT_GRANTHA, "PANGO_SCRIPT_GRANTHA", "grantha" },
+        { PANGO_SCRIPT_KHOJKI, "PANGO_SCRIPT_KHOJKI", "khojki" },
+        { PANGO_SCRIPT_KHUDAWADI, "PANGO_SCRIPT_KHUDAWADI", "khudawadi" },
+        { PANGO_SCRIPT_LINEAR_A, "PANGO_SCRIPT_LINEAR_A", "linear-a" },
+        { PANGO_SCRIPT_MAHAJANI, "PANGO_SCRIPT_MAHAJANI", "mahajani" },
+        { PANGO_SCRIPT_MANICHAEAN, "PANGO_SCRIPT_MANICHAEAN", "manichaean" },
+        { PANGO_SCRIPT_MENDE_KIKAKUI, "PANGO_SCRIPT_MENDE_KIKAKUI", "mende-kikakui" },
+        { PANGO_SCRIPT_MODI, "PANGO_SCRIPT_MODI", "modi" },
+        { PANGO_SCRIPT_MRO, "PANGO_SCRIPT_MRO", "mro" },
+        { PANGO_SCRIPT_NABATAEAN, "PANGO_SCRIPT_NABATAEAN", "nabataean" },
+        { PANGO_SCRIPT_OLD_NORTH_ARABIAN, "PANGO_SCRIPT_OLD_NORTH_ARABIAN", "old-north-arabian" },
+        { PANGO_SCRIPT_OLD_PERMIC, "PANGO_SCRIPT_OLD_PERMIC", "old-permic" },
+        { PANGO_SCRIPT_PAHAWH_HMONG, "PANGO_SCRIPT_PAHAWH_HMONG", "pahawh-hmong" },
+        { PANGO_SCRIPT_PALMYRENE, "PANGO_SCRIPT_PALMYRENE", "palmyrene" },
+        { PANGO_SCRIPT_PAU_CIN_HAU, "PANGO_SCRIPT_PAU_CIN_HAU", "pau-cin-hau" },
+        { PANGO_SCRIPT_PSALTER_PAHLAVI, "PANGO_SCRIPT_PSALTER_PAHLAVI", "psalter-pahlavi" },
+        { PANGO_SCRIPT_SIDDHAM, "PANGO_SCRIPT_SIDDHAM", "siddham" },
+        { PANGO_SCRIPT_TIRHUTA, "PANGO_SCRIPT_TIRHUTA", "tirhuta" },
+        { PANGO_SCRIPT_WARANG_CITI, "PANGO_SCRIPT_WARANG_CITI", "warang-citi" },
+        { PANGO_SCRIPT_AHOM, "PANGO_SCRIPT_AHOM", "ahom" },
+        { PANGO_SCRIPT_ANATOLIAN_HIEROGLYPHS, "PANGO_SCRIPT_ANATOLIAN_HIEROGLYPHS", "anatolian-hieroglyphs" },
+        { PANGO_SCRIPT_HATRAN, "PANGO_SCRIPT_HATRAN", "hatran" },
+        { PANGO_SCRIPT_MULTANI, "PANGO_SCRIPT_MULTANI", "multani" },
+        { PANGO_SCRIPT_OLD_HUNGARIAN, "PANGO_SCRIPT_OLD_HUNGARIAN", "old-hungarian" },
+        { PANGO_SCRIPT_SIGNWRITING, "PANGO_SCRIPT_SIGNWRITING", "signwriting" },
         { 0, NULL, NULL }
       };
       GType g_define_type_id =
