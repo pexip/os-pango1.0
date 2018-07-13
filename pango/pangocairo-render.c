@@ -191,12 +191,38 @@ set_color (PangoCairoRenderer *crenderer,
 	   PangoRenderPart     part)
 {
   PangoColor *color = pango_renderer_get_color ((PangoRenderer *) (crenderer), part);
+  guint16 a = pango_renderer_get_alpha ((PangoRenderer *) (crenderer), part);
+  gdouble red, green, blue, alpha;
+
+  if (!a && !color)
+    return;
 
   if (color)
-    cairo_set_source_rgb (crenderer->cr,
-			  color->red / 65535.,
-			  color->green / 65535.,
-			  color->blue / 65535.);
+    {
+      red = color->red / 65535.;
+      green = color->green / 65535.;
+      blue = color->blue / 65535.;
+      alpha = 1.;
+    }
+  else
+    {
+      cairo_pattern_t *pattern = cairo_get_source (crenderer->cr);
+
+      if (pattern && cairo_pattern_get_type (pattern) == CAIRO_PATTERN_TYPE_SOLID)
+        cairo_pattern_get_rgba (pattern, &red, &green, &blue, &alpha);
+      else
+        {
+          red = 0.;
+          green = 0.;
+          blue = 0.;
+          alpha = 1.;
+        }
+    }
+
+  if (a)
+    alpha = a / 65535.;
+
+  cairo_set_source_rgba (crenderer->cr, red, green, blue, alpha);
 }
 
 /* note: modifies crenderer->cr without doing cairo_save/restore() */
@@ -341,6 +367,7 @@ _pango_cairo_renderer_draw_unknown_glyph (PangoCairoRenderer *crenderer,
   double x0, y0;
   int row, col;
   int rows, cols;
+  double width, lsb;
   char hexbox_string[2] = {0, 0};
   PangoCairoFontHexBoxInfo *hbi;
   gunichar ch;
@@ -369,10 +396,14 @@ _pango_cairo_renderer_draw_unknown_glyph (PangoCairoRenderer *crenderer,
       g_snprintf (buf, sizeof(buf), (ch > 0xffff) ? "%06X" : "%04X", ch);
     }
 
+  width = (3 * hbi->pad_x + cols * (hbi->digit_width + hbi->pad_x));
+  lsb = ((double)gi->geometry.width / PANGO_SCALE - width) * .5;
+  lsb = floor (lsb / hbi->pad_x) * hbi->pad_x;
+
   _pango_cairo_renderer_draw_frame (crenderer,
-				    cx + hbi->pad_x * 1.5,
+				    cx + lsb + .5 * hbi->pad_x,
 				    cy + hbi->box_descent - hbi->box_height + hbi->pad_y * 0.5,
-				    (double)gi->geometry.width / PANGO_SCALE - 3 * hbi->pad_x,
+				    width - hbi->pad_x,
 				    (hbi->box_height - hbi->pad_y),
 				    hbi->line_width,
 				    invalid_input);
@@ -380,7 +411,7 @@ _pango_cairo_renderer_draw_unknown_glyph (PangoCairoRenderer *crenderer,
   if (invalid_input)
     goto done;
 
-  x0 = cx + hbi->pad_x * 3.0;
+  x0 = cx + lsb + hbi->pad_x * 2;
   y0 = cy + hbi->box_descent - hbi->pad_y * 2;
 
   for (row = 0; row < rows; row++)

@@ -2,13 +2,13 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Pango Reference Manual: PangoEngineLang</title>
-<meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
+<title>PangoEngineLang: Pango Reference Manual</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="index.html" title="Pango Reference Manual">
 <link rel="up" href="lowlevel.html" title="Low Level Functionality">
 <link rel="prev" href="pango-Engines.html" title="Engines">
 <link rel="next" href="PangoEngineShape.html" title="PangoEngineShape">
-<meta name="generator" content="GTK-Doc V1.21.1 (XML mode)">
+<meta name="generator" content="GTK-Doc V1.25.1 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
@@ -51,7 +51,7 @@ mentioned in the release notes for the affected release.
 </div>
 <div class="refsect1">
 <a name="PangoEngineLang.functions"></a><h2>Functions</h2>
-<div class="informaltable"><table width="100%" border="0">
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="functions_return">
 <col class="functions_name">
@@ -66,7 +66,7 @@ mentioned in the release notes for the affected release.
 </div>
 <div class="refsect1">
 <a name="PangoEngineLang.other"></a><h2>Types and Values</h2>
-<div class="informaltable"><table width="100%" border="0">
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="name">
 <col class="description">
@@ -89,7 +89,7 @@ mentioned in the release notes for the affected release.
 </div>
 <div class="refsect1">
 <a name="PangoEngineLang.object-hierarchy"></a><h2>Object Hierarchy</h2>
-<pre class="screen">    <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
+<pre class="screen">    <a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#GObject-struct">GObject</a>
     <span class="lineart">╰──</span> <a class="link" href="pango-Engines.html#PangoEngine">PangoEngine</a>
         <span class="lineart">╰──</span> PangoEngineLang
 </pre>
@@ -105,6 +105,7 @@ These engines are used in <a class="link" href="pango-Text-Processing.html#pango
 <div class="refsect2">
 <a name="PANGO-ENGINE-LANG-DEFINE-TYPE:CAPS"></a><h3>PANGO_ENGINE_LANG_DEFINE_TYPE()</h3>
 <pre class="programlisting">#define             PANGO_ENGINE_LANG_DEFINE_TYPE(name, prefix, class_init, instance_init)</pre>
+<div class="warning"><p><code class="literal">PANGO_ENGINE_LANG_DEFINE_TYPE</code> has been deprecated since version 1.38 and should not be used in newly-written code.</p></div>
 <p>Outputs the necessary code for GObject type registration for a
 <a class="link" href="PangoEngineLang.html" title="PangoEngineLang"><span class="type">PangoEngineLang</span></a> class defined in a module. Two static symbols
 are defined.</p>
@@ -121,15 +122,15 @@ function can create instances of the object as follows:</p>
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting"><span class="usertype">PangoEngine</span><span class="normal"> </span><span class="symbol">*</span><span class="normal">engine </span><span class="symbol">=</span><span class="normal"> </span><span class="function"><a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-new">g_object_new</a></span><span class="normal"> </span><span class="symbol">(&lt;</span><span class="usertype">em</span><span class="normal"> class</span><span class="symbol">=</span><span class="string">"replaceable"</span><span class="symbol">&gt;&lt;</span><span class="normal">code</span><span class="symbol">&gt;</span><span class="normal">prefix</span><span class="symbol">&lt;/</span><span class="normal">code</span><span class="symbol">&gt;&lt;/</span><span class="normal">em</span><span class="symbol">&gt;</span><span class="normal">_type</span><span class="symbol">,</span><span class="normal"> <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS">NULL</a></span><span class="symbol">);</span></pre></td>
+        <td class="listing_code"><pre class="programlisting">PangoEngine <span class="gtkdoc opt">*</span>engine <span class="gtkdoc opt">=</span> <span class="function"><a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#g-object-new">g_object_new</a></span> <span class="gtkdoc opt">(&lt;</span>em <span class="gtkdoc kwc">class</span><span class="gtkdoc opt">=</span><span class="string">&quot;replaceable&quot;</span><span class="gtkdoc opt">&gt;&lt;</span>code<span class="gtkdoc opt">&gt;</span>prefix<span class="gtkdoc opt">&lt;/</span>code<span class="gtkdoc opt">&gt;&lt;/</span>em<span class="gtkdoc opt">&gt;</span>_type<span class="gtkdoc opt">,</span> NULL<span class="gtkdoc opt">);</span></pre></td>
       </tr>
     </tbody>
   </table>
 </div>
 
 <div class="refsect3">
-<a name="id-1.4.9.8.2.8"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="PANGO-ENGINE-LANG-DEFINE-TYPE.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -148,13 +149,13 @@ function can create instances of the object as follows:</p>
 </tr>
 <tr>
 <td class="parameter_name"><p>class_init</p></td>
-<td class="parameter_description"><p>Class initialization function for the new type, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a></p></td>
-<td class="parameter_annotations"> </td>
+<td class="parameter_description"><p> Class initialization function for the new type, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></td>
 </tr>
 <tr>
 <td class="parameter_name"><p>instance_init</p></td>
-<td class="parameter_description"><p>Instance initialization function for the new type, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a></p></td>
-<td class="parameter_annotations"> </td>
+<td class="parameter_description"><p> Instance initialization function for the new type, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></td>
 </tr>
 </tbody>
 </table></div>
@@ -166,6 +167,7 @@ function can create instances of the object as follows:</p>
 <div class="refsect2">
 <a name="PangoEngineLang-struct"></a><h3>PangoEngineLang</h3>
 <pre class="programlisting">typedef struct _PangoEngineLang PangoEngineLang;</pre>
+<div class="warning"><p><code class="literal">PangoEngineLang</code> has been deprecated since version 1.38 and should not be used in newly-written code.</p></div>
 <p>The <a class="link" href="PangoEngineLang.html" title="PangoEngineLang"><span class="type">PangoEngineLang</span></a> class is implemented by engines that
 customize the rendering-system independent part of the
 Pango pipeline for a particular script or language. For
@@ -185,10 +187,11 @@ lookups needed for that language.</p>
 			int            attrs_len);
 };
 </pre>
+<div class="warning"><p><code class="literal">PangoEngineLangClass</code> has been deprecated since version 1.38 and should not be used in newly-written code.</p></div>
 <p>Class structure for <a class="link" href="PangoEngineLang.html" title="PangoEngineLang"><span class="type">PangoEngineLang</span></a></p>
 <div class="refsect3">
-<a name="id-1.4.9.9.3.5"></a><h4>Members</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="PangoEngineLangClass.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="300px" class="struct_members_name">
 <col class="struct_members_description">
@@ -196,13 +199,13 @@ lookups needed for that language.</p>
 </colgroup>
 <tbody><tr>
 <td class="struct_member_name"><p><em class="structfield"><code><a name="PangoEngineLangClass.script-break"></a>script_break</code></em> ()</p></td>
-<td class="struct_member_description"><p>Provides a custom implementation of <a class="link" href="pango-Text-Processing.html#pango-break" title="pango_break ()"><code class="function">pango_break()</code></a>.
-If <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>, <a class="link" href="pango-Text-Processing.html#pango-default-break" title="pango_default_break ()"><code class="function">pango_default_break()</code></a> is used instead. If not <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>, for
-Pango versions before 1.16 (module interface version before 1.6.0),
-this was called instead of <a class="link" href="pango-Text-Processing.html#pango-default-break" title="pango_default_break ()"><code class="function">pango_default_break()</code></a>, but in newer versions,
-<a class="link" href="pango-Text-Processing.html#pango-default-break" title="pango_default_break ()"><code class="function">pango_default_break()</code></a> is always called and this is called after that to
-allow tailoring the breaking results.</p></td>
-<td class="struct_member_annotations"> </td>
+<td class="struct_member_description"><p> Provides a custom implementation of
+<a class="link" href="pango-Text-Processing.html#pango-break" title="pango_break ()"><code class="function">pango_break()</code></a>.  If <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>, <a class="link" href="pango-Text-Processing.html#pango-default-break" title="pango_default_break ()"><code class="function">pango_default_break()</code></a> is used instead. If
+not <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>, for Pango versions before 1.16 (module interface version
+before 1.6.0), this was called instead of <a class="link" href="pango-Text-Processing.html#pango-default-break" title="pango_default_break ()"><code class="function">pango_default_break()</code></a>,
+but in newer versions, <a class="link" href="pango-Text-Processing.html#pango-default-break" title="pango_default_break ()"><code class="function">pango_default_break()</code></a> is always called and
+this is called after that to allow tailoring the breaking results. </p></td>
+<td class="struct_member_annotations"><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></td>
 </tr></tbody>
 </table></div>
 </div>
@@ -212,13 +215,13 @@ allow tailoring the breaking results.</p></td>
 <a name="PANGO-ENGINE-TYPE-LANG:CAPS"></a><h3>PANGO_ENGINE_TYPE_LANG</h3>
 <pre class="programlisting">#define PANGO_ENGINE_TYPE_LANG "PangoEngineLang"
 </pre>
+<div class="warning"><p><code class="literal">PANGO_ENGINE_TYPE_LANG</code> has been deprecated since version 1.38 and should not be used in newly-written code.</p></div>
 <p>A string constant defining the engine type for language engines.
 These engines derive from <a class="link" href="PangoEngineLang.html" title="PangoEngineLang"><span class="type">PangoEngineLang</span></a>.</p>
 </div>
 </div>
 </div>
 <div class="footer">
-<hr>
-          Generated by GTK-Doc V1.21.1</div>
+<hr>Generated by GTK-Doc V1.25.1</div>
 </body>
 </html>

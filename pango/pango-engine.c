@@ -37,6 +37,8 @@
  * script_engine_create(). The latter three functions are used when
  * creating engines from the module at run time, while the first
  * function is used when building a catalog of all available modules.
+ *
+ * Deprecated: 1.38
  */
 /**
  * SECTION:pango-engine-lang
@@ -47,6 +49,8 @@
  * The <firstterm>language engines</firstterm> are rendering-system independent
  * engines that determine line, word, and character breaks for character strings.
  * These engines are used in pango_break().
+ *
+ * Deprecated: 1.38
  */
 /**
  * SECTION:pango-engine-shape
@@ -57,6 +61,8 @@
  * The <firstterm>shape engines</firstterm> are rendering-system dependent
  * engines that convert character strings into glyph strings.
  * These engines are used in pango_shape().
+ *
+ * Deprecated: 1.38
  */
 #include "config.h"
 
@@ -77,8 +83,9 @@ pango_engine_class_init (PangoEngineClass *klass)
 {
 }
 
-
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 G_DEFINE_ABSTRACT_TYPE (PangoEngineLang, pango_engine_lang, PANGO_TYPE_ENGINE);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 static void
 pango_engine_lang_init (PangoEngineLang *self)
@@ -97,7 +104,6 @@ pango_engine_shape_real_covers (PangoEngineShape *engine G_GNUC_UNUSED,
 				PangoLanguage    *language,
 				gunichar          wc)
 {
-
   PangoCoverage *coverage = pango_font_get_coverage (font, language);
   PangoCoverageLevel result = pango_coverage_get (coverage, wc);
 
@@ -106,8 +112,9 @@ pango_engine_shape_real_covers (PangoEngineShape *engine G_GNUC_UNUSED,
   return result;
 }
 
-
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 G_DEFINE_ABSTRACT_TYPE (PangoEngineShape, pango_engine_shape, PANGO_TYPE_ENGINE);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 static void
 pango_engine_shape_init (PangoEngineShape *klass)
@@ -148,8 +155,8 @@ _pango_engine_shape_covers (PangoEngineShape *engine,
 			    PangoLanguage    *language,
 			    gunichar          wc)
 {
-  g_return_val_if_fail (PANGO_IS_ENGINE_SHAPE (engine), PANGO_COVERAGE_NONE);
-  g_return_val_if_fail (PANGO_IS_FONT (font), PANGO_COVERAGE_NONE);
+  if (G_UNLIKELY (!engine || !font))
+    return PANGO_COVERAGE_NONE;
 
   return PANGO_ENGINE_SHAPE_GET_CLASS (engine)->covers (engine,
 							font,
@@ -226,7 +233,9 @@ fallback_engine_covers (PangoEngineShape *engine G_GNUC_UNUSED,
 
 static GType pango_fallback_engine_get_type (void);
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 G_DEFINE_TYPE (PangoFallbackEngine, pango_fallback_engine, PANGO_TYPE_ENGINE_SHAPE);
+G_GNUC_END_IGNORE_DEPRECATIONS
 
 static void
 pango_fallback_engine_init (PangoFallbackEngine *self)

@@ -2,13 +2,13 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<title>Pango Reference Manual: PangoRenderer</title>
-<meta name="generator" content="DocBook XSL Stylesheets V1.78.1">
+<title>PangoRenderer: Pango Reference Manual</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
 <link rel="home" href="index.html" title="Pango Reference Manual">
 <link rel="up" href="lowlevel.html" title="Low Level Functionality">
 <link rel="prev" href="lowlevel.html" title="Low Level Functionality">
 <link rel="next" href="PangoFcFontMap.html" title="PangoFcFontMap">
-<meta name="generator" content="GTK-Doc V1.21.1 (XML mode)">
+<meta name="generator" content="GTK-Doc V1.25.1 (XML mode)">
 <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 <body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
@@ -34,16 +34,12 @@
 </tr></table></div>
 <div class="refsect1">
 <a name="PangoRenderer.functions"></a><h2>Functions</h2>
-<div class="informaltable"><table width="100%" border="0">
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="functions_return">
 <col class="functions_name">
 </colgroup>
 <tbody>
-<tr>
-<td class="define_keyword">#define</td>
-<td class="function_name"><a class="link" href="PangoRenderer.html#PANGO-TYPE-RENDER-PART:CAPS" title="PANGO_TYPE_RENDER_PART">PANGO_TYPE_RENDER_PART</a></td>
-</tr>
 <tr>
 <td class="function_type">
 <span class="returnvalue">void</span>
@@ -153,6 +149,22 @@
 <span class="returnvalue">void</span>
 </td>
 <td class="function_name">
+<a class="link" href="PangoRenderer.html#pango-renderer-set-alpha" title="pango_renderer_set_alpha ()">pango_renderer_set_alpha</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a href="https://developer.gnome.org/glib/unstable/glib-Basic-Types.html#guint16"><span class="returnvalue">guint16</span></a>
+</td>
+<td class="function_name">
+<a class="link" href="PangoRenderer.html#pango-renderer-get-alpha" title="pango_renderer_get_alpha ()">pango_renderer_get_alpha</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
 <a class="link" href="PangoRenderer.html#pango-renderer-set-matrix" title="pango_renderer_set_matrix ()">pango_renderer_set_matrix</a> <span class="c_punctuation">()</span>
 </td>
 </tr>
@@ -184,7 +196,7 @@
 </div>
 <div class="refsect1">
 <a name="PangoRenderer.other"></a><h2>Types and Values</h2>
-<div class="informaltable"><table width="100%" border="0">
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="name">
 <col class="description">
@@ -199,6 +211,10 @@
 <td class="function_name"><a class="link" href="PangoRenderer.html#PangoRenderPart" title="enum PangoRenderPart">PangoRenderPart</a></td>
 </tr>
 <tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="PangoRenderer.html#PANGO-TYPE-RENDER-PART:CAPS" title="PANGO_TYPE_RENDER_PART">PANGO_TYPE_RENDER_PART</a></td>
+</tr>
+<tr>
 <td class="datatype_keyword">struct</td>
 <td class="function_name"><a class="link" href="PangoRenderer.html#PangoRendererClass" title="struct PangoRendererClass">PangoRendererClass</a></td>
 </tr>
@@ -207,9 +223,9 @@
 </div>
 <div class="refsect1">
 <a name="PangoRenderer.object-hierarchy"></a><h2>Object Hierarchy</h2>
-<pre class="screen">    GEnum
+<pre class="screen">    <a href="https://developer.gnome.org/gobject/unstable/gobject-Enumeration-and-Flag-Types.html">GEnum</a>
     <span class="lineart">╰──</span> PangoRenderPart
-    <a href="http://library.gnome.org/devel/gobject/unstable/gobject-The-Base-Object-Type.html#GObject">GObject</a>
+    <a href="https://developer.gnome.org/gobject/unstable/gobject-The-Base-Object-Type.html#GObject-struct">GObject</a>
     <span class="lineart">╰──</span> PangoRenderer
         <span class="lineart">╰──</span> <a class="link" href="pango-Xft-Fonts-and-Rendering.html#PangoXftRenderer">PangoXftRenderer</a>
 </pre>
@@ -227,12 +243,6 @@ destinations can be created.</p>
 <div class="refsect1">
 <a name="PangoRenderer.functions_details"></a><h2>Functions</h2>
 <div class="refsect2">
-<a name="PANGO-TYPE-RENDER-PART:CAPS"></a><h3>PANGO_TYPE_RENDER_PART</h3>
-<pre class="programlisting">#define PANGO_TYPE_RENDER_PART (pango_render_part_get_type ())
-</pre>
-</div>
-<hr>
-<div class="refsect2">
 <a name="pango-renderer-draw-layout"></a><h3>pango_renderer_draw_layout ()</h3>
 <pre class="programlisting"><span class="returnvalue">void</span>
 pango_renderer_draw_layout (<em class="parameter"><code><a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a> *renderer</code></em>,
@@ -242,8 +252,8 @@ pango_renderer_draw_layout (<em class="parameter"><code><a class="link" href="Pa
 <p>Draws <em class="parameter"><code>layout</code></em>
  with the specified <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.3.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-draw-layout.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -275,7 +285,7 @@ in Pango units.</p></td>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -288,8 +298,8 @@ pango_renderer_draw_layout_line (<em class="parameter"><code><a class="link" hre
 <p>Draws <em class="parameter"><code>line</code></em>
  with the specified <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.4.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-draw-layout-line.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -321,7 +331,7 @@ in Pango units.</p></td>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -335,8 +345,8 @@ pango_renderer_draw_glyphs (<em class="parameter"><code><a class="link" href="Pa
 <p>Draws the glyphs in <em class="parameter"><code>glyphs</code></em>
  with the specified <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.5.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-draw-glyphs.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -373,7 +383,7 @@ in Pango units.</p></td>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -393,12 +403,12 @@ output format supports it (PDF for example).</p>
 indexed by <code class="literal"><em class="parameter"><code>glyph_item-&gt;item-&gt;offset</code></em>
 </code>.</p>
 <p>If <em class="parameter"><code>text</code></em>
- is <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>, this simply calls <a class="link" href="PangoRenderer.html#pango-renderer-draw-glyphs" title="pango_renderer_draw_glyphs ()"><code class="function">pango_renderer_draw_glyphs()</code></a>.</p>
+ is <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>, this simply calls <a class="link" href="PangoRenderer.html#pango-renderer-draw-glyphs" title="pango_renderer_draw_glyphs ()"><code class="function">pango_renderer_draw_glyphs()</code></a>.</p>
 <p>The default implementation of this method simply falls back to
 <a class="link" href="PangoRenderer.html#pango-renderer-draw-glyphs" title="pango_renderer_draw_glyphs ()"><code class="function">pango_renderer_draw_glyphs()</code></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.6.8"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-draw-glyph-item.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -413,7 +423,7 @@ indexed by <code class="literal"><em class="parameter"><code>glyph_item-&gt;item
 <tr>
 <td class="parameter_name"><p>text</p></td>
 <td class="parameter_description"><p> the UTF-8 text that <em class="parameter"><code>glyph_item</code></em>
-refers to, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. </p></td>
+refers to, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>. </p></td>
 <td class="parameter_annotations"><span class="annotation">[<acronym title="NULL is OK, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span></td>
 </tr>
 <tr>
@@ -436,7 +446,7 @@ in Pango units.</p></td>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.22</p>
+<p class="since">Since: <a class="link" href="api-index-1-22.html#api-index-1.22">1.22</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -454,8 +464,8 @@ specified <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span 
  is already active.  Use
 <a class="link" href="PangoRenderer.html#pango-renderer-activate" title="pango_renderer_activate ()"><code class="function">pango_renderer_activate()</code></a> to activate a renderer.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.7.6"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-draw-rectangle.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -495,7 +505,7 @@ specified <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span 
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -515,8 +525,8 @@ in the original rectangle)</p>
  is already active.  Use
 <a class="link" href="PangoRenderer.html#pango-renderer-activate" title="pango_renderer_activate ()"><code class="function">pango_renderer_activate()</code></a> to activate a renderer.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.8.6"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-draw-error-underline.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -551,7 +561,7 @@ in the original rectangle)</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -568,8 +578,8 @@ pango_renderer_draw_trapezoid (<em class="parameter"><code><a class="link" href=
 <p>Draws a trapezoid with the parallel sides aligned with the X axis
 using the given <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a>; coordinates are in device space.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.9.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-draw-trapezoid.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -619,7 +629,7 @@ using the given <a class="link" href="PangoRenderer.html" title="PangoRenderer">
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -632,8 +642,8 @@ pango_renderer_draw_glyph (<em class="parameter"><code><a class="link" href="Pan
                            <em class="parameter"><code><span class="type">double</span> y</code></em>);</pre>
 <p>Draws a single glyph with coordinates in device space.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.10.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-draw-glyph.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -668,7 +678,7 @@ pango_renderer_draw_glyph (<em class="parameter"><code><a class="link" href="Pan
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -684,8 +694,8 @@ activate the layout before drawing on it. Calls to
 be nested and the renderer will only be initialized and
 deinitialized once.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.11.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-activate.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -698,7 +708,7 @@ deinitialized once.</p>
 </tr></tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -709,8 +719,8 @@ pango_renderer_deactivate (<em class="parameter"><code><a class="link" href="Pan
 . See
 docs for <a class="link" href="PangoRenderer.html#pango-renderer-activate" title="pango_renderer_activate ()"><code class="function">pango_renderer_activate()</code></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.12.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-deactivate.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -723,7 +733,7 @@ docs for <a class="link" href="PangoRenderer.html#pango-renderer-activate" title
 </tr></tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -742,7 +752,7 @@ option for drawing underlines, it needs to call</p>
     <tbody>
       <tr>
         <td class="listing_lines" align="right"><pre>1</pre></td>
-        <td class="listing_code"><pre class="programlisting"><span class="function"><a href="PangoRenderer.html#pango-renderer-part-changed">pango_renderer_part_changed</a></span><span class="normal"> </span><span class="symbol">(</span><span class="normal">render</span><span class="symbol">,</span><span class="normal"> PANGO_RENDER_PART_UNDERLINE</span><span class="symbol">);</span></pre></td>
+        <td class="listing_code"><pre class="programlisting"><span class="function"><a href="PangoRenderer.html#pango-renderer-part-changed">pango_renderer_part_changed</a></span> <span class="gtkdoc opt">(</span>render<span class="gtkdoc opt">,</span> PANGO_RENDER_PART_UNDERLINE<span class="gtkdoc opt">);</span></pre></td>
       </tr>
     </tbody>
   </table>
@@ -752,8 +762,8 @@ option for drawing underlines, it needs to call</p>
 might be joined together. Pango automatically calls this for
 changes to colors. (See <a class="link" href="PangoRenderer.html#pango-renderer-set-color" title="pango_renderer_set_color ()"><code class="function">pango_renderer_set_color()</code></a>)</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.13.7"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-part-changed.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -773,7 +783,7 @@ changes to colors. (See <a class="link" href="PangoRenderer.html#pango-renderer-
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -782,10 +792,11 @@ changes to colors. (See <a class="link" href="PangoRenderer.html#pango-renderer-
 pango_renderer_set_color (<em class="parameter"><code><a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a> *renderer</code></em>,
                           <em class="parameter"><code><a class="link" href="PangoRenderer.html#PangoRenderPart" title="enum PangoRenderPart"><span class="type">PangoRenderPart</span></a> part</code></em>,
                           <em class="parameter"><code>const <a class="link" href="pango-Text-Attributes.html#PangoColor"><span class="type">PangoColor</span></a> *color</code></em>);</pre>
-<p>Sets the color for part of the rendering.</p>
+<p>Sets the color for part of the rendering.
+Also see <a class="link" href="PangoRenderer.html#pango-renderer-set-alpha" title="pango_renderer_set_alpha ()"><code class="function">pango_renderer_set_alpha()</code></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.14.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-set-color.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -804,13 +815,13 @@ pango_renderer_set_color (<em class="parameter"><code><a class="link" href="Pang
 </tr>
 <tr>
 <td class="parameter_name"><p>color</p></td>
-<td class="parameter_description"><p> the new color or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> to unset the current color. </p></td>
+<td class="parameter_description"><p> the new color or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> to unset the current color. </p></td>
 <td class="parameter_annotations"><span class="annotation">[<acronym title="NULL is OK, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span></td>
 </tr>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -820,8 +831,8 @@ pango_renderer_get_color (<em class="parameter"><code><a class="link" href="Pang
                           <em class="parameter"><code><a class="link" href="PangoRenderer.html#PangoRenderPart" title="enum PangoRenderPart"><span class="type">PangoRenderPart</span></a> part</code></em>);</pre>
 <p>Gets the current rendering color for the specified part.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.15.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-get-color.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -842,13 +853,90 @@ pango_renderer_get_color (<em class="parameter"><code><a class="link" href="Pang
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.4.2.7.15.6"></a><h4>Returns</h4>
-<p> the color for the specified part, or
-<a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if it hasn't been set and should be inherited from the
-environment. </p>
-<p><span class="annotation">[<acronym title="Don't free data after the code is done."><span class="acronym">transfer none</span></acronym>]</span></p>
+<a name="pango-renderer-get-color.returns"></a><h4>Returns</h4>
+<p> the color for the
+specified part, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if it hasn't been set and should be
+inherited from the environment. </p>
+<p><span class="annotation">[<acronym title="Don't free data after the code is done."><span class="acronym">transfer none</span></acronym>][<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="pango-renderer-set-alpha"></a><h3>pango_renderer_set_alpha ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+pango_renderer_set_alpha (<em class="parameter"><code><a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a> *renderer</code></em>,
+                          <em class="parameter"><code><a class="link" href="PangoRenderer.html#PangoRenderPart" title="enum PangoRenderPart"><span class="type">PangoRenderPart</span></a> part</code></em>,
+                          <em class="parameter"><code><a href="https://developer.gnome.org/glib/unstable/glib-Basic-Types.html#guint16"><span class="type">guint16</span></a> alpha</code></em>);</pre>
+<p>Sets the alpha for part of the rendering.
+Note that the alpha may only be used if a color is
+specified for <em class="parameter"><code>part</code></em>
+ as well.</p>
+<div class="refsect3">
+<a name="pango-renderer-set-alpha.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>renderer</p></td>
+<td class="parameter_description"><p>a <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>part</p></td>
+<td class="parameter_description"><p>the part to set the alpha for</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>alpha</p></td>
+<td class="parameter_description"><p>an alpha value between 1 and 65536, or 0 to unset the alpha</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: <a class="link" href="api-index-1-38.html#api-index-1.38">1.38</a></p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="pango-renderer-get-alpha"></a><h3>pango_renderer_get_alpha ()</h3>
+<pre class="programlisting"><a href="https://developer.gnome.org/glib/unstable/glib-Basic-Types.html#guint16"><span class="returnvalue">guint16</span></a>
+pango_renderer_get_alpha (<em class="parameter"><code><a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a> *renderer</code></em>,
+                          <em class="parameter"><code><a class="link" href="PangoRenderer.html#PangoRenderPart" title="enum PangoRenderPart"><span class="type">PangoRenderPart</span></a> part</code></em>);</pre>
+<p>Gets the current alpha for the specified part.</p>
+<div class="refsect3">
+<a name="pango-renderer-get-alpha.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>renderer</p></td>
+<td class="parameter_description"><p>a <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>part</p></td>
+<td class="parameter_description"><p>the part to get the alpha for</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="pango-renderer-get-alpha.returns"></a><h4>Returns</h4>
+<p> the alpha for the specified part,
+or 0 if it hasn't been set and should be
+inherited from the environment.</p>
+</div>
+<p class="since">Since: <a class="link" href="api-index-1-38.html#api-index-1.38">1.38</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -858,8 +946,8 @@ pango_renderer_set_matrix (<em class="parameter"><code><a class="link" href="Pan
                            <em class="parameter"><code>const <a class="link" href="pango-Glyph-Storage.html#PangoMatrix"><span class="type">PangoMatrix</span></a> *matrix</code></em>);</pre>
 <p>Sets the transformation matrix that will be applied when rendering.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.16.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-set-matrix.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -873,14 +961,14 @@ pango_renderer_set_matrix (<em class="parameter"><code><a class="link" href="Pan
 </tr>
 <tr>
 <td class="parameter_name"><p>matrix</p></td>
-<td class="parameter_description"><p> a <a class="link" href="pango-Glyph-Storage.html#PangoMatrix"><span class="type">PangoMatrix</span></a>, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> to unset any existing matrix.
+<td class="parameter_description"><p> a <a class="link" href="pango-Glyph-Storage.html#PangoMatrix"><span class="type">PangoMatrix</span></a>, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> to unset any existing matrix.
 (No matrix set is the same as setting the identity matrix.). </p></td>
 <td class="parameter_annotations"><span class="annotation">[<acronym title="NULL is OK, both for passing and for returning."><span class="acronym">allow-none</span></acronym>]</span></td>
 </tr>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -890,8 +978,8 @@ pango_renderer_get_matrix (<em class="parameter"><code><a class="link" href="Pan
 <p>Gets the transformation matrix that will be applied when
 rendering. See <a class="link" href="PangoRenderer.html#pango-renderer-set-matrix" title="pango_renderer_set_matrix ()"><code class="function">pango_renderer_set_matrix()</code></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.17.5"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-get-matrix.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -905,14 +993,13 @@ rendering. See <a class="link" href="PangoRenderer.html#pango-renderer-set-matri
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.4.2.7.17.6"></a><h4>Returns</h4>
-<p> the matrix, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if no matrix has been set
-(which is the same as the identity matrix). The returned
-matrix is owned by Pango and must not be modified or
-freed.</p>
-<p></p>
+<a name="pango-renderer-get-matrix.returns"></a><h4>Returns</h4>
+<p> the matrix, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if no matrix has
+been set (which is the same as the identity matrix). The returned
+matrix is owned by Pango and must not be modified or freed. </p>
+<p><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -926,8 +1013,8 @@ methods, like in its draw_shape() for example.</p>
 <p>The returned layout should not be modified while still being
 rendered.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.18.6"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-get-layout.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -941,13 +1028,13 @@ rendered.</p>
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.4.2.7.18.7"></a><h4>Returns</h4>
-<p> the layout, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if no layout is being
-rendered using <em class="parameter"><code>renderer</code></em>
+<a name="pango-renderer-get-layout.returns"></a><h4>Returns</h4>
+<p> the layout, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if
+no layout is being rendered using <em class="parameter"><code>renderer</code></em>
 at this time. </p>
-<p><span class="annotation">[<acronym title="Don't free data after the code is done."><span class="acronym">transfer none</span></acronym>]</span></p>
+<p><span class="annotation">[<acronym title="Don't free data after the code is done."><span class="acronym">transfer none</span></acronym>][<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.20</p>
+<p class="since">Since: <a class="link" href="api-index-1-20.html#api-index-1.20">1.20</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -961,8 +1048,8 @@ methods, like in its draw_shape() for example.</p>
 <p>The returned layout line should not be modified while still being
 rendered.</p>
 <div class="refsect3">
-<a name="id-1.4.2.7.19.6"></a><h4>Parameters</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="pango-renderer-get-layout-line.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="150px" class="parameters_name">
 <col class="parameters_description">
@@ -976,13 +1063,13 @@ rendered.</p>
 </table></div>
 </div>
 <div class="refsect3">
-<a name="id-1.4.2.7.19.7"></a><h4>Returns</h4>
-<p> the layout line, or <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a> if no
-layout line is being rendered using <em class="parameter"><code>renderer</code></em>
+<a name="pango-renderer-get-layout-line.returns"></a><h4>Returns</h4>
+<p> the layout line, or <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>
+if no layout line is being rendered using <em class="parameter"><code>renderer</code></em>
 at this time. </p>
-<p><span class="annotation">[<acronym title="Don't free data after the code is done."><span class="acronym">transfer none</span></acronym>]</span></p>
+<p><span class="annotation">[<acronym title="Don't free data after the code is done."><span class="acronym">transfer none</span></acronym>][<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></p>
 </div>
-<p class="since">Since 1.20</p>
+<p class="since">Since: <a class="link" href="api-index-1-20.html#api-index-1.20">1.20</a></p>
 </div>
 </div>
 <div class="refsect1">
@@ -997,8 +1084,8 @@ at this time. </p>
 render Pango objects such as <a class="link" href="pango-Glyph-Storage.html#PangoGlyphString"><span class="type">PangoGlyphString</span></a> and
 <a class="link" href="pango-Layout-Objects.html#PangoLayout"><span class="type">PangoLayout</span></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.8.2.5"></a><h4>Members</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="PangoRenderer.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="300px" class="struct_members_name">
 <col class="struct_members_description">
@@ -1006,13 +1093,14 @@ render Pango objects such as <a class="link" href="pango-Glyph-Storage.html#Pang
 </colgroup>
 <tbody><tr>
 <td class="struct_member_name"><p><a class="link" href="pango-Glyph-Storage.html#PangoMatrix"><span class="type">PangoMatrix</span></a> *<em class="structfield"><code><a name="PangoRenderer-struct.matrix"></a>matrix</code></em>;</p></td>
-<td class="struct_member_description"><p>the current transformation matrix for the Renderer; may
-be <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>, which should be treated the same as the identity matrix.</p></td>
-<td class="struct_member_annotations"> </td>
+<td class="struct_member_description"><p> the current transformation matrix for
+the Renderer; may be <a href="https://developer.gnome.org/glib/unstable/glib-Standard-Macros.html#NULL:CAPS"><code class="literal">NULL</code></a>, which should be treated the
+same as the identity matrix. </p></td>
+<td class="struct_member_annotations"><span class="annotation">[<acronym title="NULL may be passed as the value in, out, in-out; or as a return value."><span class="acronym">nullable</span></acronym>]</span></td>
 </tr></tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 <hr>
 <div class="refsect2">
@@ -1020,8 +1108,8 @@ be <a href="http://library.gnome.org/devel/glib/unstable/glib-Standard-Macros.ht
 <p><a class="link" href="PangoRenderer.html#PangoRenderPart" title="enum PangoRenderPart"><span class="type">PangoRenderPart</span></a> defines different items to render for such
 purposes as setting colors.</p>
 <div class="refsect3">
-<a name="id-1.4.2.8.3.4"></a><h4>Members</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="PangoRenderPart.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="300px" class="enum_members_name">
 <col class="enum_members_description">
@@ -1059,7 +1147,13 @@ purposes as setting colors.</p>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="PANGO-TYPE-RENDER-PART:CAPS"></a><h3>PANGO_TYPE_RENDER_PART</h3>
+<pre class="programlisting">#define PANGO_TYPE_RENDER_PART (pango_render_part_get_type ())
+</pre>
 </div>
 <hr>
 <div class="refsect2">
@@ -1135,8 +1229,8 @@ purposes as setting colors.</p>
 </pre>
 <p>Class structure for <a class="link" href="PangoRenderer.html" title="PangoRenderer"><span class="type">PangoRenderer</span></a>.</p>
 <div class="refsect3">
-<a name="id-1.4.2.8.4.5"></a><h4>Members</h4>
-<div class="informaltable"><table width="100%" border="0">
+<a name="PangoRendererClass.members"></a><h4>Members</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
 <colgroup>
 <col width="300px" class="struct_members_name">
 <col class="struct_members_description">
@@ -1208,12 +1302,11 @@ attributes change</p></td>
 </tbody>
 </table></div>
 </div>
-<p class="since">Since 1.8</p>
+<p class="since">Since: <a class="link" href="api-index-1-8.html#api-index-1.8">1.8</a></p>
 </div>
 </div>
 </div>
 <div class="footer">
-<hr>
-          Generated by GTK-Doc V1.21.1</div>
+<hr>Generated by GTK-Doc V1.25.1</div>
 </body>
 </html>

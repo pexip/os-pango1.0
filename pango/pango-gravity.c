@@ -120,7 +120,7 @@ pango_gravity_to_rotation (PangoGravity gravity)
 
 /**
  * pango_gravity_get_for_matrix:
- * @matrix: a #PangoMatrix
+ * @matrix: (nullable): a #PangoMatrix
  *
  * Finds the gravity that best matches the rotation component
  * in a #PangoMatrix.
@@ -186,7 +186,6 @@ typedef struct {
 
 #define S PANGO_GRAVITY_SOUTH
 #define E PANGO_GRAVITY_EAST
-#define N PANGO_GRAVITY_NORTH
 #define W PANGO_GRAVITY_WEST
 
 const PangoScriptProperties script_properties[] =

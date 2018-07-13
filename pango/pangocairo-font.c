@@ -142,7 +142,7 @@ done:
  * The scaled font can be referenced and kept using
  * cairo_scaled_font_reference().
  *
- * Return value: the #cairo_scaled_font_t used by @font,
+ * Return value: (nullable): the #cairo_scaled_font_t used by @font,
  *               or %NULL if @font is %NULL.
  *
  * Since: 1.18
@@ -249,6 +249,7 @@ _pango_cairo_font_get_metrics (PangoFont     *font,
       cairo_matrix_t cairo_matrix;
       PangoMatrix pango_matrix;
       PangoMatrix identity = PANGO_MATRIX_INIT;
+      glong sample_str_width;
 
       int height, shift;
 
@@ -311,7 +312,9 @@ _pango_cairo_font_get_metrics (PangoFont     *font,
       pango_layout_set_text (layout, sample_str, -1);
       pango_layout_get_extents (layout, NULL, &extents);
 
-      info->metrics->approximate_char_width = extents.width / pango_utf8_strwidth (sample_str);
+      sample_str_width = pango_utf8_strwidth (sample_str);
+      g_assert (sample_str_width > 0);
+      info->metrics->approximate_char_width = extents.width / sample_str_width;
 
       pango_layout_set_text (layout, "0123456789", -1);
       info->metrics->approximate_digit_width = max_glyph_width (layout);
@@ -376,8 +379,8 @@ _pango_cairo_font_private_get_hex_box_info (PangoCairoFontPrivate *cf_priv)
   double size, mini_size;
   PangoFontDescription *desc;
   cairo_scaled_font_t *scaled_font, *scaled_mini_font;
-  PangoMatrix pango_ctm;
-  cairo_matrix_t cairo_ctm;
+  PangoMatrix pango_ctm, pango_font_matrix;
+  cairo_matrix_t cairo_ctm, cairo_font_matrix;
   /*PangoGravity gravity;*/
 
   if (!cf_priv)
@@ -394,10 +397,10 @@ _pango_cairo_font_private_get_hex_box_info (PangoCairoFontPrivate *cf_priv)
 
   font_options = cairo_font_options_create ();
   desc = pango_font_describe_with_absolute_size ((PangoFont *)cf_priv->cfont);
-  size = pango_font_description_get_size (desc) / (1.*PANGO_SCALE);
   /*gravity = pango_font_description_get_gravity (desc);*/
 
   cairo_scaled_font_get_ctm (scaled_font, &cairo_ctm);
+  cairo_scaled_font_get_font_matrix (scaled_font, &cairo_font_matrix);
   cairo_scaled_font_get_font_options (scaled_font, font_options);
   /* I started adding support for vertical hexboxes here, but it's too much
    * work.  Easier to do with cairo user fonts and vertical writing mode
@@ -410,8 +413,15 @@ _pango_cairo_font_private_get_hex_box_info (PangoCairoFontPrivate *cf_priv)
   pango_ctm.yy = cairo_ctm.yy;
   pango_ctm.x0 = cairo_ctm.x0;
   pango_ctm.y0 = cairo_ctm.y0;
+  pango_font_matrix.xx = cairo_font_matrix.xx;
+  pango_font_matrix.yx = cairo_font_matrix.yx;
+  pango_font_matrix.xy = cairo_font_matrix.xy;
+  pango_font_matrix.yy = cairo_font_matrix.yy;
+  pango_font_matrix.x0 = cairo_font_matrix.x0;
+  pango_font_matrix.y0 = cairo_font_matrix.y0;
 
-  size /= pango_matrix_get_font_scale_factor (&pango_ctm);
+  size = pango_matrix_get_font_scale_factor (&pango_font_matrix) /
+	 pango_matrix_get_font_scale_factor (&pango_ctm);
 
   if (is_hinted)
     {
