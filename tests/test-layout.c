@@ -21,9 +21,13 @@
 
 #include <glib.h>
 #include <string.h>
-#include <unistd.h>
 #include <locale.h>
 
+#ifndef G_OS_WIN32
+#include <unistd.h>
+#endif
+
+#include "config.h"
 #include <pango/pangocairo.h>
 #include "test-common.h"
 
@@ -261,10 +265,9 @@ test_file (const gchar *filename, GString *string)
   parse_params (contents, &width, &ellipsize_at, &ellipsize, &wrap);
 
   layout = pango_layout_new (context);
-
   desc = pango_font_description_from_string ("Cantarell 11");
   pango_layout_set_font_description (layout, desc);
-  pango_font_description_free (desc); 
+  pango_font_description_free (desc);
 
   pango_layout_set_markup (layout, markup, length);
   g_free (contents);

@@ -110,7 +110,7 @@ load_fallback_face (PangoFT2Font *ft2font,
 
   _pango_ft2_font_map_default_substitute ((PangoFcFontMap *)fcfont->fontmap, sans);
 
-  matched = FcFontMatch (pango_fc_font_map_get_config (fcfont->fontmap), sans, &result);
+  matched = FcFontMatch (pango_fc_font_map_get_config ((PangoFcFontMap *)fcfont->fontmap), sans, &result);
 
   if (FcPatternGetString (matched, FC_FILE, 0, &filename2) != FcResultMatch)
     goto bail1;
@@ -515,51 +515,6 @@ pango_ft2_get_unknown_glyph (PangoFont *font)
     return 0;
   else
     return PANGO_GLYPH_EMPTY;
-}
-
-typedef struct
-{
-  FT_Error     code;
-  const char   msg[40];
-} ft_error_description;
-
-static int
-ft_error_compare (const void *pkey,
-		  const void *pbase)
-{
-  return ((ft_error_description *) pkey)->code - ((ft_error_description *) pbase)->code;
-}
-
-const char *
-_pango_ft2_ft_strerror (FT_Error error)
-{
-#undef __FTERRORS_H__
-#define FT_ERRORDEF( e, v, s )  { e, s },
-#define FT_ERROR_START_LIST  {
-#define FT_ERROR_END_LIST    };
-
-  static const ft_error_description ft_errors[] =
-#include FT_ERRORS_H
-
-#undef FT_ERRORDEF
-#undef FT_ERROR_START_LIST
-#undef FT_ERROR_END_LIST
-
-  ft_error_description *found =
-    bsearch (&error, ft_errors, G_N_ELEMENTS (ft_errors),
-	     sizeof (ft_errors[0]), ft_error_compare);
-  if (found != NULL)
-    return found->msg;
-  else
-    {
-      static char *default_msg = NULL; /* MT-safe */
-
-      if (g_once_init_enter (&default_msg))
-	g_once_init_leave (&default_msg, g_malloc (60));
-
-      g_sprintf (default_msg, "Unknown FreeType2 error %#x", error);
-      return default_msg;
-    }
 }
 
 void *
