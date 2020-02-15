@@ -76,10 +76,10 @@ typedef struct _PangoFcHbContext {
 } PangoFcHbContext;
 
 static hb_bool_t
-pango_fc_hb_font_get_glyph (hb_font_t *font, void *font_data,
-			    hb_codepoint_t unicode, hb_codepoint_t variation_selector,
-			    hb_codepoint_t *glyph,
-			    void *user_data G_GNUC_UNUSED)
+pango_fc_hb_font_get_nominal_glyph (hb_font_t *font, void *font_data,
+				    hb_codepoint_t unicode,
+				    hb_codepoint_t *glyph,
+				    void *user_data G_GNUC_UNUSED)
 {
   PangoFcHbContext *context = (PangoFcHbContext *) font_data;
   PangoFcFont *fc_font = context->fc_font;
@@ -96,6 +96,27 @@ pango_fc_hb_font_get_glyph (hb_font_t *font, void *font_data,
     return TRUE;
 
   return FALSE;
+}
+
+static hb_bool_t
+pango_fc_hb_font_get_variation_glyph (hb_font_t *font,
+                                      void *font_data,
+                                      hb_codepoint_t unicode,
+                                      hb_codepoint_t variation_selector,
+                                      hb_codepoint_t *glyph,
+                                      void *user_data G_GNUC_UNUSED)
+{
+  PangoFcHbContext *context = (PangoFcHbContext *) font_data;
+  FT_Face ft_face = context->ft_face;
+  unsigned int g;
+
+  g = FT_Face_GetCharVariantIndex (ft_face, unicode, variation_selector);
+
+  if (G_UNLIKELY (!g))
+    return FALSE;
+
+  *glyph = g;
+  return TRUE;
 }
 
 static hb_bool_t
@@ -185,13 +206,9 @@ pango_fc_hb_font_get_glyph_h_origin (hb_font_t *font, void *font_data,
     return FALSE;
 
   /* Note: FreeType's vertical metrics grows downward while other FreeType coordinates
-   * have a Y growing upward.  Hence the extra negation. */
-  *x = PANGO_UNITS_26_6 (ft_face->glyph->metrics.horiBearingX -   ft_face->glyph->metrics.vertBearingX);
-  *y = PANGO_UNITS_26_6 (ft_face->glyph->metrics.horiBearingY - (-ft_face->glyph->metrics.vertBearingY));
-
-  /* XXX */
-  *x = -*x;
-  *y =  *y;
+   * have a Y growing upward.  Hence the extra negations. */
+  *x = -PANGO_UNITS_26_6 (ft_face->glyph->metrics.horiBearingX -   ft_face->glyph->metrics.vertBearingX);
+  *y = +PANGO_UNITS_26_6 (ft_face->glyph->metrics.horiBearingY - (-ft_face->glyph->metrics.vertBearingY));
 
   return TRUE;
 }
@@ -245,7 +262,8 @@ pango_fc_get_hb_font_funcs (void)
 
   if (G_UNLIKELY (!funcs)) {
     funcs = hb_font_funcs_create ();
-    hb_font_funcs_set_glyph_func (funcs, pango_fc_hb_font_get_glyph, NULL, NULL);
+    hb_font_funcs_set_nominal_glyph_func (funcs, pango_fc_hb_font_get_nominal_glyph, NULL, NULL);
+    hb_font_funcs_set_variation_glyph_func (funcs, pango_fc_hb_font_get_variation_glyph, NULL, NULL);
     hb_font_funcs_set_glyph_h_advance_func (funcs, pango_fc_hb_font_get_glyph_advance, NULL, NULL);
     hb_font_funcs_set_glyph_v_advance_func (funcs, pango_fc_hb_font_get_glyph_advance, NULL, NULL);
     hb_font_funcs_set_glyph_h_origin_func (funcs, pango_fc_hb_font_get_glyph_h_origin, NULL, NULL);
@@ -260,6 +278,38 @@ pango_fc_get_hb_font_funcs (void)
   return funcs;
 }
 
+static void
+parse_variations (const char      *variations,
+                  hb_variation_t **hb_variations,
+                  guint           *n_variations)
+{
+  guint n;
+  hb_variation_t *var;
+  int i;
+  const char *p;
+
+  n = 1;
+  for (i = 0; variations[i]; i++)
+    {
+      if (variations[i] == ',')
+        n++;
+    }
+
+  var = g_new (hb_variation_t, n);
+
+  p = variations;
+  n = 0;
+  while (p && *p)
+    {
+      char *end = strchr (p, ',');
+      if (hb_variation_from_string (p, end ? end - p: -1, &var[n]))
+        n++;
+      p = end ? end + 1 : NULL;
+    }
+
+  *hb_variations = var;
+  *n_variations = n;
+}
 
 void
 _pango_fc_shape (PangoFont           *font,
@@ -288,6 +338,7 @@ _pango_fc_shape (PangoFont           *font,
   unsigned int num_features = 0;
   double x_scale_inv, y_scale_inv;
   PangoGlyphInfo *infos;
+  const char *variations;
 
   g_return_if_fail (font != NULL);
   g_return_if_fail (analysis != NULL);
@@ -329,6 +380,18 @@ _pango_fc_shape (PangoFont           *font,
 		    fc_font->is_hinted ? ft_face->size->metrics.x_ppem : 0,
 		    fc_font->is_hinted ? ft_face->size->metrics.y_ppem : 0);
 
+  variations = pango_fc_font_key_get_variations (key);
+  if (variations)
+    {
+      guint n_variations;
+      hb_variation_t *hb_variations;
+
+      parse_variations (variations, &hb_variations, &n_variations);
+      hb_font_set_variations (hb_font, hb_variations, n_variations);
+
+      g_free (hb_variations);
+    }
+
   hb_buffer = acquire_buffer (&free_buffer);
 
   hb_direction = PANGO_GRAVITY_IS_VERTICAL (analysis->gravity) ? HB_DIRECTION_TTB : HB_DIRECTION_LTR;
@@ -345,9 +408,7 @@ _pango_fc_shape (PangoFont           *font,
 #if HB_VERSION_ATLEAST(1,0,3)
   hb_buffer_set_cluster_level (hb_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
 #endif
-  hb_buffer_set_flags (hb_buffer,
-		       (item_offset == 0 ? HB_BUFFER_FLAG_BOT : 0) |
-		       (item_offset + item_length == paragraph_length ? HB_BUFFER_FLAG_EOT : 0));
+  hb_buffer_set_flags (hb_buffer, HB_BUFFER_FLAG_BOT | HB_BUFFER_FLAG_EOT);
 
   hb_buffer_add_utf8 (hb_buffer, paragraph_text, paragraph_length, item_offset, item_length);
 

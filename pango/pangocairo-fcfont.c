@@ -21,13 +21,20 @@
 
 #include "config.h"
 
+/* Freetype has undefined macros in its header */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wundef"
 #include <cairo-ft.h>
+#pragma GCC diagnostic pop
 
 #include "pango-fontmap.h"
 #include "pangocairo-private.h"
 #include "pangocairo-fc.h"
 #include "pangofc-private.h"
 #include "pango-impl-utils.h"
+
+#include <hb-ot.h>
+#include <freetype/ftmm.h>
 
 #define PANGO_TYPE_CAIRO_FC_FONT           (pango_cairo_fc_font_get_type ())
 #define PANGO_CAIRO_FC_FONT(object)        (G_TYPE_CHECK_INSTANCE_CAST ((object), PANGO_TYPE_CAIRO_FC_FONT, PangoCairoFcFont))
@@ -218,6 +225,7 @@ _pango_cairo_fc_font_new (PangoCairoFcFontMap *cffontmap,
   FcMatrix fc_matrix, *fc_matrix_val;
   double size;
   int i;
+  cairo_font_options_t *options;
 
   g_return_val_if_fail (PANGO_IS_CAIRO_FC_FONT_MAP (cffontmap), NULL);
   g_return_val_if_fail (pattern != NULL, NULL);
@@ -243,10 +251,12 @@ _pango_cairo_fc_font_new (PangoCairoFcFontMap *cffontmap,
 
   cairo_matrix_scale (&font_matrix, size, size);
 
+  options = pango_fc_font_key_get_context_key (key);
+
   _pango_cairo_font_private_initialize (&cffont->cf_priv,
 					(PangoCairoFont *) cffont,
 					get_gravity (pattern),
-					pango_fc_font_key_get_context_key (key),
+					options,
 					pango_fc_font_key_get_matrix (key),
 					&font_matrix);
 
