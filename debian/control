@@ -33,7 +33,7 @@ Standards-Version: 3.9.8
 Vcs-Svn: svn://anonscm.debian.org/pkg-gnome/desktop/unstable/pango1.0
 Vcs-Browser: https://anonscm.debian.org/viewvc/pkg-gnome/desktop/unstable/pango1.0
 Homepage: http://www.pango.org/
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ stretch
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ buster
 
 Package: libpango1.0-0
 Section: oldlibs
