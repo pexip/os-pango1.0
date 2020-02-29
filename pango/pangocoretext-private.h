@@ -93,14 +93,15 @@ void                  _pango_core_text_font_set_context_key      (PangoCoreTextF
                                                                   gpointer           context_key);
 void                  _pango_core_text_font_set_font_key         (PangoCoreTextFont    *font,
                                                                   PangoCoreTextFontKey *key);
-_PANGO_EXTERN
 void                  _pango_core_text_font_set_ctfont           (PangoCoreTextFont    *font,
                                                                   CTFontRef         font_ref);
 
 PangoFontDescription *_pango_core_text_font_description_from_ct_font_descriptor (CTFontDescriptorRef desc);
 
 _PANGO_EXTERN
-int                   pango_core_text_font_key_get_absolute_size    (const PangoCoreTextFontKey *key);
+int                   pango_core_text_font_key_get_size             (const PangoCoreTextFontKey *key);
+_PANGO_EXTERN
+int                   pango_core_text_font_key_get_size    (const PangoCoreTextFontKey *key);
 _PANGO_EXTERN
 double                pango_core_text_font_key_get_resolution       (const PangoCoreTextFontKey *key);
 _PANGO_EXTERN
