@@ -8,3 +8,4 @@ Update-Grapheme-Boundary-to-Unicode-11.patch
 Update-Word-Boundary-to-Unicode-11.patch
 Update-Line-Break-to-Unicode-11.patch
 bidi-Be-safer-against-bad-input.patch
+Fix-crash-in-pango_fc_font_key_get_variations-when-key-is.patch
