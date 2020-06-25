@@ -1,3 +1,9 @@
+pango1.0 (1.42.4-8~deb10u1pexip1) pexip; urgency=medium
+
+  * Migrate to Buster
+
+ -- Vincent Sanders <vince@pexip.com>  Thu, 25 Jun 2020 09:31:59 +0000
+
 pango1.0 (1.42.4-8~deb10u1) buster; urgency=medium
 
   * Team upload
