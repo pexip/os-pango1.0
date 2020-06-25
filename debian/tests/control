@@ -1,5 +1,6 @@
 Tests: build
 Depends: build-essential, libpango1.0-dev, pkg-config
+Restrictions: superficial
 
 Tests: installed-tests
 Depends: pango1.0-tests, dbus (>= 1.8), xauth, xvfb, gnome-desktop-testing

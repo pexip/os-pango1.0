@@ -1,3 +1,28 @@
+pango1.0 (1.42.4-8~deb10u1) buster; urgency=medium
+
+  * Team upload
+  * Merge changes from 1.42.4-8 into buster
+    - d/gbp.conf, d/control: Set packaging branch to debian/buster
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 29 Apr 2020 21:06:53 +0100
+
+pango1.0 (1.42.4-8) unstable; urgency=medium
+
+  * Team upload
+  * d/p/Fix-crash-in-pango_fc_font_key_get_variations-when-key-is.patch:
+    Backport crash fix from 1.44.x (Closes: #898960)
+  * d/tests/build: Use correct compiler for proposed autopkgtest
+    cross-architecture testing support, based on a patch for clutter-1.0
+    by Steve Langasek
+  * d/tests/build: Fix shellcheck warnings
+  * d/tests/build: Remove trailing whitespace
+  * d/tests/build: Fail if using an undefined variable ("unofficial strict
+    mode")
+  * d/tests/build: Mark as superficial
+  * d/gbp.conf, d/control: Use debian/unstable, upstream/1.42.x branches
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 26 Dec 2019 20:19:17 +0000
+
 pango1.0 (1.42.4-7~deb10u1pexip1) pexip; urgency=medium
 
   * Migrate to Buster
