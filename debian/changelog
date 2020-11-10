@@ -1,16 +1,144 @@
-pango1.0 (1.42.4-8~deb10u1) buster; urgency=medium
+pango1.0 (1.46.2-3) unstable; urgency=medium
 
   * Team upload
-  * Merge changes from 1.42.4-8 into buster
-    - d/gbp.conf, d/control: Set packaging branch to debian/buster
+  * d/p/fc_Sort-faces-of-a-family.patch,
+    d/p/fontconfig_Try-harder-to-return-a-default-face.patch:
+    - Show regular monospace fonts in gnome-terminal's profile editor
+      and not arbitrary font styles (LP: #1900729)
 
- -- Simon McVittie <smcv@debian.org>  Wed, 29 Apr 2020 21:06:53 +0100
+  [ Simon McVittie ]
+  * d/gbp.conf: Use upstream/1.46.x branch
 
-pango1.0 (1.42.4-8) unstable; urgency=medium
+ -- Gunnar Hjalmarsson <gunnarhj@ubuntu.com>  Tue, 10 Nov 2020 21:41:00 +0100
+
+pango1.0 (1.46.2-2) unstable; urgency=medium
 
   * Team upload
-  * d/p/Fix-crash-in-pango_fc_font_key_get_variations-when-key-is.patch:
-    Backport crash fix from 1.44.x (Closes: #898960)
+  * Use debian/tests/run-with-locales (originally from the gtk+4.0 Debian
+    packaging) instead of open-coding it
+    - d/rules, d/tests/installed-tests: Name the en_US locale as expected.
+      Pango's tests want to see it in the normalized form en_US.utf8.
+    - Run all tests in the newly-generated en_US.utf8 locale
+  * Build-depend on fonts-noto-core so we can test Thai word-breaking.
+    tests/breaks/four.break is skipped if we don't have any Thai fonts.
+  * Build-depend on fonts-noto-color-emoji so we can test odd symbols.
+    tests/layouts/valid-6.markup wants an emoji/symbols/dingbats font
+    that can handle U+FE0F U+20E3 (VARIATION SELECTOR-16, COMBINING
+    ENCLOSING KEYCAP).
+  * d/p/Revert-testsuite-Don-t-use-g_test_skip.patch:
+    Add patch to improve unit test output.
+    Upstream avoids g_test_skip() as a workaround for a Meson bug, but
+    we can get a fixed Meson by build-depending on at least 0.55.3.
+  * d/p/Tolerate-slightly-different-output-for-the-word-breaking-.patch:
+    Add patch to tolerate slightly different Thai word-breaking.
+    Dashes are treated as a word start, word break and word end on Fedora,
+    but a word start and word break (only) on Debian. It isn't clear why.
+    (If you can help, please see #971546)
+
+ -- Simon McVittie <smcv@debian.org>  Mon, 02 Nov 2020 20:24:40 +0000
+
+pango1.0 (1.46.2-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/rules: Enable all auto features
+
+ -- Jeremy Bicha <jbicha@debian.org>  Tue, 29 Sep 2020 20:28:10 -0400
+
+pango1.0 (1.46.1-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+    - Drop patch for #968337, applied upstream
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 25 Aug 2020 13:46:46 +0100
+
+pango1.0 (1.46.0-2) unstable; urgency=medium
+
+  * Team upload
+  * d/p/renderer-Move-overline-to-priv-data-structure.patch:
+    Revert ABI break on 32-bit architectures in 1.45.1 (Closes: #968337)
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 16 Aug 2020 14:07:31 +0100
+
+pango1.0 (1.46.0-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Reinstate libpango1.0-0, since it has passed NEW now
+  * Release to unstable
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 12 Aug 2020 11:13:10 +0100
+
+pango1.0 (1.45.5-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream release (Closes: #964380)
+  * d/watch: Look for odd-numbered branches too
+  * d/control.in: Update dependencies
+  * d/copyright: Update
+  * Drop patch, applied upstream
+  * d/*.symbols: Update
+  * Temporarily remove libpango1.0-0 again to decouple this version
+    update from the NEW queue
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 06 Aug 2020 20:50:54 +0100
+
+pango1.0 (1.44.7-5) unstable; urgency=medium
+
+  * Team upload
+  * Revert removal of libpango1.0-0 binary package.
+    Apparently 7 years is not long enough to update dependencies in the
+    fast-moving world of third-party proprietary software.
+    - Relax version constraints from lockstep versioning to (>= 1.42)
+      (which is still 5 years newer than the last real libpango1.0-0
+      package) so that the obsolete binary package can stay on end-user
+      systems after upgrade, even after it has been removed from Debian.
+    - Downgrade libpangox-1.0-0 dependency to Suggests.
+      This is not strictly correct, because libpango1.0-0 traditionally
+      included libpangox. However, libpangox is unmaintained upstream,
+      in danger of being removed from Debian, and no longer present in
+      Ubuntu i386, and in practice it seems to be rarely-used.
+    (Closes: #958035, #956520, #959978, #958477)
+  * d/rules: Don't explicitly use --as-needed linker option.
+    It's the default with bullseye toolchains.
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 05 Aug 2020 21:56:44 +0100
+
+pango1.0 (1.44.7-4) unstable; urgency=medium
+
+  * Team upload
+
+  [ Jeremy Bicha ]
+  * Cherry-pick Update-pango-emoji-table.h-to-Unicode-Emoji-Data-13.0.patch:
+    - Prepare for Unicode 13.0 (LP: #1871972)
+
+  [ Simon McVittie ]
+  * d/shlibs.local: Upgrade all binary packages in lockstep.
+    Like many projects where one source package builds multiple binary
+    packages, Pango has private headers that share non-public interfaces
+    between its binary packages. Upgrading one binary package from this
+    source without upgrading the others is not something that its upstream
+    developers are ever going to test or support, and neither should we.
+    (Closes: #958017)
+  * libpango-1.0-0: Add Breaks on older libpango*-1.0-0.
+    This should ensure that buster users can't get a broken partial upgrade
+    by upgrading only libpango-1.0-0, but not the others, from 1.42.x to
+    1.44.x.
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 17 Apr 2020 15:25:51 +0100
+
+pango1.0 (1.44.7-3) unstable; urgency=medium
+
+  * debian/control.in: Add libcairo2-doc, libgtk-3-doc and libharfbuzz-doc to
+    BDI to fix more links between gtk-doc files
+
+ -- Laurent Bigonville <bigon@debian.org>  Thu, 02 Apr 2020 13:00:27 +0200
+
+pango1.0 (1.44.7-2) experimental; urgency=medium
+
+  * Team upload
+  * d/control.in: Drop libpango1.0-0 transitional package
+    (Closes: #940744, #948462)
   * d/tests/build: Use correct compiler for proposed autopkgtest
     cross-architecture testing support, based on a patch for clutter-1.0
     by Steve Langasek
@@ -18,19 +146,68 @@ pango1.0 (1.42.4-8) unstable; urgency=medium
   * d/tests/build: Remove trailing whitespace
   * d/tests/build: Fail if using an undefined variable ("unofficial strict
     mode")
-  * d/tests/build: Mark as superficial
-  * d/gbp.conf, d/control: Use debian/unstable, upstream/1.42.x branches
+  * Trim trailing whitespace from debian/changelog
+  * Use secure URI in Homepage field.
+  * Set upstream metadata fields: Bug-Database, Bug-Submit, Repository,
+    Repository-Browse.
+  * Bump Standards-Version to 4.5.0
+  * Use debhelper-compat 12
+    - Drop dh_makeshlibs -V, it is now the default
+    - Install tests to default /usr/libexec/installed-tests
 
- -- Simon McVittie <smcv@debian.org>  Thu, 26 Dec 2019 20:19:17 +0000
+ -- Simon McVittie <smcv@debian.org>  Mon, 24 Feb 2020 18:26:11 +0000
 
-pango1.0 (1.42.4-7~deb10u1) buster-security; urgency=medium
+pango1.0 (1.44.7-1) experimental; urgency=medium
 
-  * Team upload
-  * Rebuild for buster-security
-  * d/gbp.conf: Set upstream branch to upstream/1.42.x
-  * d/gbp.conf: Set packaging branch to debian/buster
+  * New upstream release
+    - Fix tests without libthai
+    - Small speedup to Emoji iteration
+    - Bring back PangoFontsetSimple (pygtk bind it)
 
- -- Simon McVittie <smcv@debian.org>  Sat, 10 Aug 2019 11:15:40 +0100
+ -- Iain Lane <laney@debian.org>  Mon, 04 Nov 2019 16:46:18 +0000
+
+pango1.0 (1.44.6-1) experimental; urgency=medium
+
+  [ Simon McVittie ]
+  * New upstream release
+    - Update symbols files
+    - Update build-dependencies according to meson.build
+    - d/rules: Adjust to rename of enable_docs build option to gtk_doc
+    - d/copyright: Update
+    - Don't package AUTHORS, which is no longer shipped upstream
+    - Adjust for upstream rename of README to README.md
+  * Stop removing pango-view/pango-view.1.in from orig tarball.
+    It has moved to utils/pango-view.1.in, and the Meson build system
+    doesn't refer to it anyway.
+  * d/p/build-Don-t-force-C99-for-meson-build.patch:
+    Drop patch, no longer applicable and rejected upstream. We should
+    reassess whether a similar change is needed before promoting this
+    version from experimental to unstable.
+  * d/p/*: Drop all other patches, applied upstream
+  * d/rules: Continue to install installed-tests.
+    They are now disabled by default, so explicitly enable them.
+  * Add Provides for the new PangoFT2 and PangoXft GIR names
+  * d/control: Make libpango1.0-dev depend on libthai-dev.
+    The pkg-config metadata now pulls it in.
+  * d/control: Sync libpango1.0-dev dependencies with versioned build-deps
+  * Build-time tests:
+    - Build-depend on locales, and generate an en_US locale that we can
+      use to run build-time tests
+    - Don't run build-time tests for the Architecture: all build, only
+      for the Architecture: any builds
+  * debian/tests:
+    - Make the installed-tests depend on locales, and generate an en_US
+      locale for those too
+    - Use AUTOPKGTEST_TMP instead of deprecated ADTTMP
+    - Mark build test as superficial
+    - Add a test for the GObject-Introspection bindings
+
+  [ Iain Lane ]
+  * New upstream release
+  * debian/libpango-1.0-0.symbols: Add pango_attr_insert_hyphens_new
+  * control: BD on meson ≥ 0.50.0, now required by upstream
+
+ -- Iain Lane <laney@debian.org>  Wed, 04 Sep 2019 14:35:26 +0100
 
 pango1.0 (1.42.4-7) unstable; urgency=medium
 
@@ -2289,4 +2466,3 @@ pango1.0 (1.0.0-1) unstable; urgency=low
   * update-pango-modules: provides wrapper script for updating pango modules.
 
  -- Akira TAGOH <tagoh@debian.org>  Tue, 12 Mar 2002 17:53:38 +0900
-

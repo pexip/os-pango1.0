@@ -5,6 +5,13 @@
 
 set -e
 
-export XDG_RUNTIME_DIR=$ADTTMP
+export XDG_RUNTIME_DIR="$AUTOPKGTEST_TMP"
 
-dbus-run-session -- xvfb-run -a gnome-desktop-testing-runner pango
+debian/tests/run-with-locales \
+	--generate en_US.utf8 \
+	-- \
+env \
+	LC_ALL=en_US.utf8 \
+dbus-run-session -- \
+xvfb-run -a \
+gnome-desktop-testing-runner pango

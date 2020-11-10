@@ -22,6 +22,7 @@ libpangoft2-1.0.so.0 libpangoft2-1.0-0 #MINVER#
  pango_fc_font_map_create_context@Base 1.14.0
  pango_fc_font_map_find_decoder@Base 1.24.0
  pango_fc_font_map_get_config@Base 1.37.2
+ pango_fc_font_map_get_hb_face@Base 1.44.3
  pango_fc_font_map_get_type@Base 1.14.0
  pango_fc_font_map_set_config@Base 1.37.2
  pango_fc_font_map_shutdown@Base 1.14.0
@@ -57,6 +58,7 @@ libpangoft2-1.0.so.0 libpangoft2-1.0-0 #MINVER#
  pango_ot_buffer_clear@Base 1.14.0
  pango_ot_buffer_destroy@Base 1.14.0
  pango_ot_buffer_get_glyphs@Base 1.14.0
+ pango_ot_buffer_get_type@Base 1.45.5
  pango_ot_buffer_new@Base 1.14.0
  pango_ot_buffer_output@Base 1.14.0
  pango_ot_buffer_set_rtl@Base 1.14.0
@@ -73,6 +75,7 @@ libpangoft2-1.0.so.0 libpangoft2-1.0-0 #MINVER#
  pango_ot_ruleset_description_copy@Base 1.18.0
  pango_ot_ruleset_description_equal@Base 1.18.0
  pango_ot_ruleset_description_free@Base 1.18.0
+ pango_ot_ruleset_description_get_type@Base 1.45.5
  pango_ot_ruleset_description_hash@Base 1.18.0
  pango_ot_ruleset_get_feature_count@Base 1.18.0
  pango_ot_ruleset_get_for_description@Base 1.18.0
