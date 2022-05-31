@@ -34,7 +34,7 @@ Standards-Version: 4.3.0
 Vcs-Browser: https://salsa.debian.org/gnome-team/pango
 Vcs-Git: https://salsa.debian.org/gnome-team/pango.git -b debian/buster
 Homepage: http://www.pango.org/
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ buster
+XS-Pexip-Upstream: http://deb.debian.org/debian/ bullseye
 
 Package: libpango1.0-0
 Section: oldlibs
