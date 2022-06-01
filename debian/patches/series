@@ -1,11 +1,4 @@
-build-Don-t-force-C99-for-meson-build.patch
-emoji-Update-emoji-tables-to-Unicode-11.patch
-emoji-Port-to-new-Ragel-based-iterator-based-on-Chromium-.patch
-emoji-Fix-keycap-sequence.patch
-Update-pango-emoji-table.h-to-include-Extended-Pictograph.patch
-Update-GraphemeBreakTest.txt-to-Unicode-11.patch
-Update-Grapheme-Boundary-to-Unicode-11.patch
-Update-Word-Boundary-to-Unicode-11.patch
-Update-Line-Break-to-Unicode-11.patch
-bidi-Be-safer-against-bad-input.patch
-Fix-crash-in-pango_fc_font_key_get_variations-when-key-is.patch
+Revert-testsuite-Don-t-use-g_test_skip.patch
+Tolerate-slightly-different-output-for-the-word-breaking-.patch
+fc_Sort-faces-of-a-family.patch
+fontconfig_Try-harder-to-return-a-default-face.patch

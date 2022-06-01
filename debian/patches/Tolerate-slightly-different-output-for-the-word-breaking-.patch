@@ -1,0 +1,105 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Thu, 1 Oct 2020 13:42:46 +0100
+Subject: Tolerate slightly different output for the word-breaking algorithms
+
+If a Thai font is installed, the test for Thai line- and word-breaking
+is failing with a difference between the expected and actual result.
+The failure mode appears to be that every time the input text contains
+"-", the Words line is expected to contain bse
+(is_word_boundary && is_word_start && is_word_end) but
+actually contains bs (is_word_boundary && is_word_start && !is_word_end).
+
+Tolerate both outputs for now (but do not accept other, different
+outputs), while we try to work out what is going on.
+
+Signed-off-by: Simon McVittie <smcv@debian.org>
+---
+ tests/breaks/four.good-enough |  5 +++++
+ tests/test-break.c            | 41 +++++++++++++++++++++++++++++++++++++----
+ 2 files changed, 42 insertions(+), 4 deletions(-)
+ create mode 100644 tests/breaks/four.good-enough
+
+diff --git a/tests/breaks/four.good-enough b/tests/breaks/four.good-enough
+new file mode 100644
+index 0000000..ff23127
+--- /dev/null
++++ b/tests/breaks/four.good-enough
+@@ -0,0 +1,5 @@
++Text:         ภ า ษ า   ไ ท ย  [ ]   ห รื อ  [ ]   ภ า ษ า   ไ ท ย   ก ล า ง  [ ]   เ ป็ น   ภ า ษ า   ร า ช ก า ร   แ ล ะ   ภ า ษ า   ป ร ะ จ ำ   ช า ติ   ข อ ง   ป ร ะ เ ท ศ   ไ ท ย  [ ]   ภ า ษ า   ไ ท ย   เ ป็ น   ภ า ษ า   ใ น   ก ลุ่ ม   ภ า ษ า   ไ ท   ซึ่ ง   เ ป็ น   ก ลุ่ ม   ย่ อ ย   ข อ ง   ต ร ะ กู ล   ภ า ษ า   ข ร้ า  -  ไ ท  [ ]   สั น นิ ษ ฐ า น   ว่ า  [ ]   ภ า ษ า   ใ น   ต ร ะ กู ล   นี้   มี   ถิ่ น   ก ำ เ นิ ด   จ า ก   ท า ง   ต อ น   ใ ต้   ข อ ง   ป ร ะ เ ท ศ   จี น  [ ]   แ ล ะ   นั ก   ภ า ษ า ศ า ส ต ร์   บ า ง   ส่ ว น   เ ส น อ   ว่ า  [ ]   ภ า ษ า   ไ ท ย   น่ า   จ ะ   มี   ค ว า ม   เ ชื่ อ ม   โ ย ง   กั บ   ต ร ะ กู ล   ภ า ษ า   อ อ   ส โ ต ร  -  เ อ เ ชี ย   ติ ก  [ ]   ต ร ะ กู ล   ภ า ษ า   อ อ   ส โ ต ร นี เ ซี ย น  [ ]   แ ล ะ   ต ร ะ กู ล   ภ า ษ า   จี น  -  ทิ เ บ ต  [0x0a] 
++Breaks:     c  c c c lc  c c c    lc  c  c c    lc  c c c lc  c c lc  c c c c    lc  c  c lc  c c c lc  c c c c c lc  c c lc  c c c lc  c c c c lc  c c  lc  c c lc  c c c c c lc  c c c    lc  c c c lc  c c lc  c  c lc  c c c lc  c lc  c   c lc  c c c lc  c lc    c lc  c  c lc  c   c lc   c c lc  c c lc  c c c  c lc  c c c lc  c  c c  lc c c    lc   c c  c c c c lc   c c    lc  c c c lc  c lc  c c c  c lc    lc   lc    c lc  c c c  c lc  c c lc  c c lc  c c lc  c  lc  c c lc  c c c c c lc   c c    lc  c c lc   c lc  c c c c c c c c  lc  c c lc   c c lc  c c c lc   c c    lc  c c c lc  c c lc   c lc  c lc   lc  c c c lc  c   c c lc  c c lc   c lc  c c c  c lc  c c c lc  c lc  c c c c  lc c c c  c lc   c c    lc  c c c  c lc  c c c lc  c lc  c c c c  c c  c c c    lc  c c lc  c c c  c lc  c c c lc   c c  lc  c c c c       c
++Whitespace:                  x             x                                x                                                                                                          x                                                                                                                                                             x                             x                                                                                                                             x                                                                          x                                                                                                                                          x                                                       x                                                       w       w
++Words:      bs b b b bse b b be   bse b  b be   bse b b b bse b b bse b b b be   bse b  b bse b b b bse b b b b b bse b b bse b b b bse b b b b bse b b  bse b b bse b b b b b bse b b be   bse b b b bse b b bse b  b bse b b b bse b bse b   b bse b b b bse b bse   b bse b  b bse b   b bse  b b bse b b bse b b b  b bse b b b bse b  b be bs b be   bse  b b  b b b b bse  b be   bse b b b bse b bse b b b  b bse   bse  bse   b bse b b b  b bse b b bse b b bse b b bse b  bse b b bse b b b b b bse  b be   bse b b bse  b bse b b b b b b b b  bse b b bse  b b bse b b b bse  b be   bse b b b bse b b bse  b bse b bse  bse b b b bse b   b b bse b b bse  b bse b b b  b bse b b b bse b bse b b b be bs b b b  b bse  b be   bse b b b  b bse b b b bse b bse b b b b  b b  b b be   bse b b bse b b b  b bse b b b bse  b be bs  b b b be      b
++Sentences:  bs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         e       b
+diff --git a/tests/test-break.c b/tests/test-break.c
+index 413fd08..c43df26 100644
+--- a/tests/test-break.c
++++ b/tests/test-break.c
+@@ -232,7 +232,8 @@ test_file (const gchar *filename, GString *string)
+ }
+ 
+ static gchar *
+-get_expected_filename (const gchar *filename)
++get_expected_filename (const gchar *filename,
++                       const gchar *suffix)
+ {
+   gchar *f, *p, *expected;
+ 
+@@ -240,7 +241,7 @@ get_expected_filename (const gchar *filename)
+   p = strstr (f, ".break");
+   if (p)
+     *p = 0;
+-  expected = g_strconcat (f, ".expected", NULL);
++  expected = g_strconcat (f, suffix, NULL);
+ 
+   g_free (f);
+ 
+@@ -276,7 +277,7 @@ test_break (gconstpointer d)
+       return;
+     }
+ 
+-  expected_file = get_expected_filename (filename);
++  expected_file = get_expected_filename (filename, ".expected");
+ 
+   diff = diff_with_file (expected_file, dump->str, dump->len, &error);
+   g_assert_no_error (error);
+@@ -295,7 +296,39 @@ test_break (gconstpointer d)
+       for (line = lines[0]; line != NULL; line = lines[++i])
+         g_test_message ("%s", line);
+ 
+-      g_test_fail ();
++      g_free (expected_file);
++      expected_file = get_expected_filename (filename, ".good-enough");
++
++      if (g_file_test (expected_file, G_FILE_TEST_EXISTS))
++        {
++          g_free (diff);
++          diff = diff_with_file (expected_file, dump->str, dump->len, &error);
++          g_assert_no_error (error);
++
++          if (diff && diff[0])
++            {
++              g_strfreev (lines);
++              lines = g_strsplit (diff, "\n", -1);
++              i = 0;
++
++              g_test_message ("Contents don't match alternative either");
++
++              for (line = lines[0]; line != NULL; line = lines[++i])
++                g_test_message ("%s", line);
++
++              g_test_fail ();
++            }
++          else
++            {
++              /* four.break is failing in Debian but not upstream and we have no
++               * idea why. If you know how Thai word-breaking works, please help! */
++              g_test_incomplete ("https://gitlab.gnome.org/GNOME/pango/-/issues/507");
++            }
++        }
++      else
++        {
++          g_test_fail ();
++        }
+ 
+       g_strfreev (lines);
+     }

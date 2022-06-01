@@ -36,12 +36,12 @@ gboolean _pango_parse_enum              (GType       type,
                                          int        *value,
                                          gboolean    warn,
                                          char      **possible_values);
+gboolean pango_parse_flags              (GType       type,
+                                         const char *str,
+                                         int        *value,
+                                         char      **possible_values);
 
 char    *_pango_trim_string             (const char *str);
-
-gboolean _pango_color_parse_with_alpha  (PangoColor *color,
-                                         guint16    *alpha,
-                                         const char *spec);
 
 
 G_END_DECLS

@@ -1,11 +1,9 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: pango
 Source: https://download.gnome.org/sources/pango/
-Files-Excluded: pango-view/pango-view.1.in
-Comment: Ensure that man page won't contain empty placeholder text
 
 Files: *
-Copyright: 1999-2015  Red Hat
+Copyright: 1999-2019  Red Hat
            2005-2007  Imendio AB
            2007       Novell, Inc
            2001       Sun Microsystems
@@ -14,7 +12,7 @@ Copyright: 1999-2015  Red Hat
            2012       Emmanuele Bassi
            2008       Jürg Billeter
            2001       Hans Breuer
-           2002, 2012 Matthias Clasen
+           2002-2020  Matthias Clasen
            2001, 2002, 2006 Behdad Esfahbod
            2016       Chun-wei Fan
            2001       Alexander Larsson
@@ -66,9 +64,12 @@ Copyright: 2015 The Chromium Authors
            2017 Google, Inc.
 License: LGPL-2+
 
-Files: pango/pango-emoji-table.h
+Files: pango/pango-break-table.h
+       pango/pango-emoji-table.h
        tests/GraphemeBreakTest.txt
-Copyright: 2016, 2017 Unicode, Inc.
+       tests/SentenceBreakTest.txt
+       tests/WordBreakTest.txt
+Copyright: 2016-2020 Unicode, Inc.
 License:   Unicode
 
 Files: pango/pango-script.c
@@ -80,6 +81,40 @@ License: LGPL-2+ and ICU
 Files: utils/pango-list.c
 Copyright: 2018 Google
 License: LGPL-2+
+
+Files:
+ pango/emoji_presentation_scanner.c
+ pango/emoji_presentation_scanner.rl
+Copyright:
+ 2018 The Chromium Authors
+License: Chromium-BSD-style
+
+License: Chromium-BSD-style
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are
+ met:
+ .
+    * Redistributions of source code must retain the above copyright
+ notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+ copyright notice, this list of conditions and the following disclaimer
+ in the documentation and/or other materials provided with the
+ distribution.
+    * Neither the name of Google Inc. nor the names of its
+ contributors may be used to endorse or promote products derived from
+ this software without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 License: Example
  Permission to use, copy, modify, distribute, and sell this example

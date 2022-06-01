@@ -1,0 +1,118 @@
+From: Matthias Clasen <mclasen@redhat.com>
+Date: Fri, 6 Nov 2020 11:24:47 -0500
+Subject: [PATCH] fontconfig: Try harder to find a default face
+Bug-Ubuntu: https://launchpad.net/bugs/1900729
+Bug-GNOME: https://gitlab.gnome.org/GNOME/pango/-/issues/483
+Origin: Concatenated commits from upstream master:
+ * https://gitlab.gnome.org/GNOME/pango/-/commit/4db6068b
+ * https://gitlab.gnome.org/GNOME/pango/-/commit/3c995c93
+
+pango_font_family_get_face() is documented as nullable,
+so we are technically within our rights to return NULL,
+but that is unexpected when passing NULL to get the
+default face, and the family has faces. So, try a little
+harder by returning the first face if we don't find
+a face with the name "Regular".
+---
+Fonts are amazing, and not in a good way. My system has
+fonts with 0, 1, 2 "Regular" faces. It also has fonts
+where the "Regular" face is, in fact, bold.
+
+So, we need to work even harder to return a reasonable
+face when asked about the default. We already make
+a determination of faces that we consider 'regular'
+when we create the faces initially. Just keep that
+information for later reuse.
+---
+ pango/pangofc-fontmap.c | 27 +++++++++++++++++++++++----
+ 1 file changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/pango/pangofc-fontmap.c b/pango/pangofc-fontmap.c
+index 341b2d6..c7dcc86 100644
+--- a/pango/pangofc-fontmap.c
++++ b/pango/pangofc-fontmap.c
+@@ -181,6 +181,7 @@ struct _PangoFcFace
+   FcPattern *pattern;
+ 
+   guint fake : 1;
++  guint regular : 1;
+ };
+ 
+ struct _PangoFcFamily
+@@ -2773,6 +2774,7 @@ ensure_faces (PangoFcFamily *fcfamily)
+ 	  fcfamily->faces[i++] = create_face (fcfamily, "Bold", NULL, TRUE);
+ 	  fcfamily->faces[i++] = create_face (fcfamily, "Italic", NULL, TRUE);
+ 	  fcfamily->faces[i++] = create_face (fcfamily, "Bold Italic", NULL, TRUE);
++          fcfamily->faces[0]->regular = 1;
+ 	}
+       else
+ 	{
+@@ -2786,12 +2788,17 @@ ensure_faces (PangoFcFamily *fcfamily)
+ 	  gboolean has_face [4] = { FALSE, FALSE, FALSE, FALSE };
+ 	  PangoFcFace **faces;
+ 	  gint num = 0;
++          int regular_weight;
++          int regular_idx;
+ 
+ 	  fontset = fcfamily->patterns;
+ 
+ 	  /* at most we have 3 additional artifical faces */
+ 	  faces = g_new (PangoFcFace *, fontset->nfont + 3);
+ 
++          regular_weight = 0;
++          regular_idx = -1;
++
+ 	  for (i = 0; i < fontset->nfont; i++)
+ 	    {
+ 	      const char *style, *font_style = NULL;
+@@ -2816,12 +2823,23 @@ ensure_faces (PangoFcFamily *fcfamily)
+ 	      if (FcPatternGetString (fontset->fonts[i], FC_STYLE, 0, (FcChar8 **)(void*)&font_style) != FcResultMatch)
+ 		font_style = NULL;
+ 
++              if (font_style && strcmp (font_style, "Regular") == 0)
++                {
++                  regular_weight = FC_WEIGHT_MEDIUM;
++                  regular_idx = num;
++                }
++
+ 	      if (weight <= FC_WEIGHT_MEDIUM)
+ 		{
+ 		  if (slant == FC_SLANT_ROMAN)
+ 		    {
+ 		      has_face[REGULAR] = TRUE;
+ 		      style = "Regular";
++                      if (weight > regular_weight)
++                        {
++                          regular_weight = weight;
++                          regular_idx = num;
++                        }
+ 		    }
+ 		  else
+ 		    {
+@@ -2859,6 +2877,9 @@ ensure_faces (PangoFcFamily *fcfamily)
+ 	  if ((has_face[REGULAR] || has_face[ITALIC] || has_face[BOLD]) && !has_face[BOLD_ITALIC])
+ 	    faces[num++] = create_face (fcfamily, "Bold Italic", NULL, TRUE);
+ 
++          if (regular_idx != -1)
++            faces[regular_idx]->regular = 1;
++
+ 	  faces = g_renew (PangoFcFace *, faces, num);
+ 
+           qsort (faces, num, sizeof (PangoFcFace *), compare_face);
+@@ -2903,14 +2924,12 @@ pango_fc_family_get_face (PangoFontFamily *family,
+ 
+   ensure_faces (fcfamily);
+ 
+-  if (name == NULL)
+-    name = "Regular"; /* This name always exists in fontconfig */
+-
+   for (i = 0; i < fcfamily->n_faces; i++)
+     {
+       PangoFontFace *face = PANGO_FONT_FACE (fcfamily->faces[i]);
+ 
+-      if (strcmp (name, pango_font_face_get_face_name (face)) == 0)
++      if ((name != NULL && strcmp (name, pango_font_face_get_face_name (face)) == 0) ||
++          (name == NULL && PANGO_FC_FACE (face)->regular))
+         return face;
+     }
+ 

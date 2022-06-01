@@ -21,7 +21,7 @@
 
 /**
  * SECTION:bidi
- * @short_description:Types and functions to help with handling bidirectional text
+ * @short_description:Types and functions for bidirectional text
  * @title:Bidirectional Text
  * @see_also:
  * pango_context_get_base_dir(),
@@ -42,6 +42,8 @@
 #include <string.h>
 
 #include <fribidi.h>
+
+#undef PANGO_DISABLE_DEPRECATED
 
 #include "pango-bidi-type.h"
 #include "pango-utils.h"
@@ -179,8 +181,11 @@ pango_log2vis_get_embedding_levels (const gchar    *text,
   for (i = 0, p = text; p < text + length; p = g_utf8_next_char(p), i++)
     {
       gunichar ch = g_utf8_get_char (p);
-      FriBidiCharType char_type;
-      char_type = fribidi_get_bidi_type (ch);
+      FriBidiCharType char_type = fribidi_get_bidi_type (ch);
+
+      if (i == n_chars)
+        break;
+
       bidi_types[i] = char_type;
       ored_types |= char_type;
       if (FRIBIDI_IS_STRONG (char_type))
@@ -304,6 +309,7 @@ pango_unichar_direction (gunichar ch)
   else
     return PANGO_DIRECTION_LTR;
 }
+
 
 /**
  * pango_get_mirror_char:
