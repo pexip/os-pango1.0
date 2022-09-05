@@ -1,3 +1,9 @@
+pango1.0 (1.46.2-3pexip3) pexip-bullseye; urgency=medium
+
+  * Bullseye rebuild for ARM64 inclusion
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Mon, 05 Sep 2022 10:34:54 +0100
+
 pango1.0 (1.46.2-3pexip2) pexip-bullseye; urgency=medium
 
   * Main bullseye build
