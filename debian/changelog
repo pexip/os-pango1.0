@@ -1,3 +1,249 @@
+pango1.0 (1.50.12+ds-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/control.in: Build-Depend on gi-docgen
+  * Drop revert patches now that we've updated harfbuzz (Closes: #1022341)
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Thu, 15 Dec 2022 09:20:25 -0500
+
+pango1.0 (1.50.10+ds-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Fri, 16 Sep 2022 14:07:33 -0400
+
+pango1.0 (1.50.9+ds-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * d/watch: Ignore pango2 1.90.x snapshot.
+    pango2 is a separate, parallel-installable library (like the difference
+    between GTK 3 and 4), so in Debian it should be a new pango2 source
+    package.
+  * d/copyright: Replace CC0-1.0 text with a reference to common-licenses
+  * d/p/debian/Work-around-1014417-in-Meson.patch:
+    Temporarily work around TAP parsing regression #1014417 in Meson
+  * d/p/debian/Revert-Update-tests-to-pass-on-F36.patch:
+    Adjust more test expectations for older dependencies (workaround
+    for #1013673 or similar)
+  * Standards-Version: 4.6.1 (no changes required)
+  * Update syntax of Lintian overrides
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 12 Aug 2022 17:07:42 +0100
+
+pango1.0 (1.50.7+ds-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Drop patch that was applied upstream
+  * d/p/debian/Revert-expected-layouts-to-match-1.50.6.patch:
+    Add patch to work around test failures with Debian's older harfbuzz
+  * d/p/debian/tests-Treat-some-more-layout-tests-as-flaky.patch:
+    Future-proof layout tests against Harfbuzz being upgraded
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 04 May 2022 10:52:43 +0100
+
+pango1.0 (1.50.6+ds-2) unstable; urgency=medium
+
+  * Cherry-pick patch to fix RTL navigation between lines (LP: #1966613)
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Fri, 01 Apr 2022 14:08:05 -0400
+
+pango1.0 (1.50.6+ds-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Drop patches that were applied upstream
+  * Adjust how documentation is installed
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 22 Mar 2022 19:32:32 +0000
+
+pango1.0 (1.50.4+ds-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Drop patches that were applied upstream
+  * d/libpango-1.0-0.symbols: Add a new function
+  * d/p/Revert-Fix-layout-tests.patch:
+    Add patch from upstream to fix test failures
+  * d/p/tests-Install-DejaVuSans-Bold.ttf-for-use-by-installed-te.patch:
+    Add proposed patch to install another font in test data
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 16 Feb 2022 11:52:40 +0000
+
+pango1.0 (1.50.3+ds1-6) unstable; urgency=medium
+
+  * Cherry-pick patch to fix markup-parse test error on Ubuntu
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 30 Jan 2022 22:13:50 -0500
+
+pango1.0 (1.50.3+ds1-5) unstable; urgency=medium
+
+  * Team upload
+  * d/libpango1.0-doc.links: Simplify, and use unversioned symlinks.
+    devhelp wants the basename of the .devhelp file to match the basename
+    of the symlink in /usr/share/devhelp/books. Instead of creating symlinks
+    for the .devhelp files (in the wrong directory), make the symlink in
+    /usr/share/devhelp/books match the generated documentation.
+    (Closes: #1004124)
+  * Move to debhelper compat level 13
+    - Stop overriding dh_missing, --fail-missing is now the default
+  * d/rules: Remove workaround for scripts that used to be non-executable.
+    This was fixed in 1.48.1.
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 27 Jan 2022 19:01:30 +0000
+
+pango1.0 (1.50.3+ds1-4) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bicha <jbicha@debian.org>  Fri, 21 Jan 2022 06:05:30 -0500
+
+pango1.0 (1.50.3+ds1-3) experimental; urgency=medium
+
+  * Team upload
+  * Add proposed patch to fix tests on architectures with unsigned char
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 04 Jan 2022 20:02:08 +0000
+
+pango1.0 (1.50.3+ds1-2) experimental; urgency=medium
+
+  * Team upload
+  * d/control.in: Make installed fonts more predictable.
+    Explicitly depending on fonts-dejavu-core ensures that it will be chosen
+    for fontconfig-config's dependency, even on experimental buildds.
+  * d/tests/python3-gi: Avoid use of a deprecated function
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 04 Jan 2022 10:23:56 +0000
+
+pango1.0 (1.50.3+ds1-1) experimental; urgency=medium
+
+  * Team upload
+
+  [ Simon McVittie ]
+  * New upstream release
+  * d/control.in: Update build-dependencies
+  * d/control.in: Use libfontconfig-dev, not deprecated libfontconfig1-dev
+  * d/copyright: Update
+  * Refresh patch series
+  * Update symbols file
+  * d/p/Add-fonts-to-installed-tests.patch:
+    Add patch from upstream to install required font subsets alongside the
+    installed-tests
+  * d/p/debian/tests-Skip-a-test-that-fails-with-a-small-variation-on-i3.patch:
+    Skip a test that fails with a small variation on i386
+  * Standards-Version: 4.6.0 (no changes required)
+  * d/pango1.0-tests.lintian-overrides:
+    Add Lintian overrides for font subsets bundled as test data
+  * Upload to experimental to get some initial testing
+
+  [ Jeremy Bicha ]
+  * debian/control.in: Drop obsolete Suggests libpango1.0-dev > imagemagick
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 02 Jan 2022 15:33:03 +0000
+
+pango1.0 (1.48.10+ds1-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+    - Fix division by zero when rendering strikethrough
+      (Closes: #994522)
+    - pango-view: Support antialiasing freetype
+    - pango-view: Use graphicsmagick instead of imagemagick to convert
+      between formats
+  * pango1.0-tools Suggests graphicsmagick for optional functionality
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 17 Sep 2021 10:54:40 +0100
+
+pango1.0 (1.48.9+ds1-2) unstable; urgency=medium
+
+  * Build-Depend on dh-sequence-gir & dh-sequence-gnome
+  * Release to unstable (Closes: #992906)
+
+ -- Jeremy Bicha <jbicha@debian.org>  Sun, 29 Aug 2021 13:25:04 -0400
+
+pango1.0 (1.48.9+ds1-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * d/control.in: Update dependencies
+  * Drop patch that was applied upstream
+  * d/gbp.conf, d/control.in: Use debian/master branch.
+    Older 1.48.x releases were already uploaded to debian/master.
+  * d/p/tests-Skip-test-cases-that-are-laid-out-differently-with-.patch:
+    Work around old version of Cantarell in Debian by skipping some tests.
+    These tests rely on the size of particular glyphs in Cantarell, and
+    will not work correctly with our older version with less glyph coverage.
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 20 Aug 2021 11:21:25 +0100
+
+pango1.0 (1.48.7+ds1-2) experimental; urgency=medium
+
+  * debian/libpango1.0-doc.links: Use versioned devhelp2 files
+  * debian/patches: Use local values for size, fixing i386 test failures
+
+ -- Marco Trevisan (Treviño) <marco@ubuntu.com>  Wed, 21 Jul 2021 19:27:22 +0200
+
+pango1.0 (1.48.7+ds1-1) experimental; urgency=medium
+
+  [ Marco Trevisan (Treviño) ]
+  * New upstream release
+  * debian/copyright: Update gi-docgen files and licenses
+  * debian/patches: Refresh and drop the ones applied upstream
+
+  [ Simon McVittie ]
+  * libpango1.0-doc: Fix symlinks for devhelp
+
+  [ Laurent Bigonville ]
+  * debian/control: Switch dependencies from libfreetype6-dev to libfreetype-dev
+
+ -- Marco Trevisan (Treviño) <marco@ubuntu.com>  Tue, 13 Jul 2021 17:37:17 +0200
+
+pango1.0 (1.48.4+ds1-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Build documentation with gi-docgen
+    - d/control.in: Update dependencies for gi-docgen documentation
+    - d/copyright: Add licensing for bundled copy of gi-docgen.
+      Until it's declared stable, the upstream recommendation is to vendor
+      gi-docgen, which means Policy §4.13 allows an embedded code copy.
+    - d/p/gi-docgen/build-Disable-tests-on-subprojects.patch,
+      d/p/gi-docgen/build-Don-t-install-gi-docgen-used-as-a-subproject.patch:
+      Don't install gi-docgen
+    - d/p/gi-docgen/Disable-web-fonts-for-now.patch:
+      Disable use of remote or bundled fonts
+    - d/p/gi-docgen/templates-Remove-html5shiv.patch:
+      Disable use of remote html5shiv
+  * d/watch: Repack with bundled fonts and pregenerated docs excluded.
+    Excluding these is easier than sorting out their licensing.
+  * d/p/Tolerate-slightly-different-output-for-the-word-breaking-.patch:
+    Remove patch, fixed differently upstream
+  * pango1.0-tests: Override Lintian false-positive
+  * Standards-Version: 4.5.1 (no changes required)
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 15 Apr 2021 16:35:56 +0100
+
+pango1.0 (1.48.2-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream release
+    - Increase GLib build-dependency
+    - Drop patch that was applied upstream
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 12 Feb 2021 10:48:27 +0000
+
+pango1.0 (1.48.0-1) experimental; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Merge packaging from unstable, rejecting the changes
+    (not needed for 1.48.0)
+  * Refresh patch series, dropping a patch that was applied upstream
+  * d/rules: Make scripts executable where needed
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 17 Dec 2020 14:03:26 +0000
+
 pango1.0 (1.46.2-3) unstable; urgency=medium
 
   * Team upload
@@ -10,6 +256,18 @@ pango1.0 (1.46.2-3) unstable; urgency=medium
   * d/gbp.conf: Use upstream/1.46.x branch
 
  -- Gunnar Hjalmarsson <gunnarhj@ubuntu.com>  Tue, 10 Nov 2020 21:41:00 +0100
+
+pango1.0 (1.47.0-1) experimental; urgency=medium
+
+  * Team upload
+  * d/watch, d/gbp.conf, d/control.in: Branch for experimental.
+    GTK 4 needs pango 1.47, but that version is unlikely to be ready in
+    time for the Debian 11 freeze.
+  * New upstream development release
+  * Update symbols files
+  * Add patch to fix an introspection API break
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 06 Nov 2020 11:13:27 +0000
 
 pango1.0 (1.46.2-2) unstable; urgency=medium
 

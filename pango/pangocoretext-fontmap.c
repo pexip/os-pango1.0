@@ -24,6 +24,7 @@
 #include "config.h"
 
 #include "pango-fontmap.h"
+#include "pango-fontset.h"
 #include "pangocoretext-private.h"
 #include "pango-impl-utils.h"
 
@@ -116,6 +117,7 @@ typedef struct
 /* This map is based on empirical data from analyzing a large collection of
  * fonts and comparing the opentype value with the value that OSX returns.
  * see: https://bugzilla.gnome.org/show_bug.cgi?id=766148
+ * FIXME: This need recalibrating, values outside these bounds do occur!
  */
 
 static const PangoCTWeight ct_weight_map[] = {
@@ -315,6 +317,7 @@ ct_font_descriptor_get_weight (CTFontDescriptorRef desc)
   CFNumberRef cf_number;
   CGFloat value;
   PangoWeight weight = PANGO_WEIGHT_NORMAL;
+  guint i;
 
   dict = CTFontDescriptorCopyAttribute (desc, kCTFontTraitsAttribute);
   cf_number = (CFNumberRef)CFDictionaryGetValue (dict,
@@ -322,14 +325,13 @@ ct_font_descriptor_get_weight (CTFontDescriptorRef desc)
 
   if (cf_number != NULL && CFNumberGetValue (cf_number, kCFNumberCGFloatType, &value))
     {
-    if (value < ct_weight_min || value > ct_weight_max)
+    if (!(value >= ct_weight_min && value <= ct_weight_max))
       {
-        /* This is really an error */
-        weight = PANGO_WEIGHT_NORMAL;
+        i = value > ct_weight_max ? G_N_ELEMENTS (ct_weight_map) - 1 : 0;
+        weight = ct_weight_map[i].pango_weight;
       }
     else
       {
-        guint i;
         for (i = 1; value > ct_weight_map[i].ct_weight; ++i)
           ;
 
@@ -407,6 +409,8 @@ _pango_core_text_font_description_from_ct_font_descriptor (CTFontDescriptorRef d
   char *family_name;
   char *style_name;
   PangoFontDescription *font_desc;
+  CFNumberRef cf_number;
+  CGFloat pointsize;
 
   font_desc = pango_font_description_new ();
 
@@ -418,6 +422,11 @@ _pango_core_text_font_description_from_ct_font_descriptor (CTFontDescriptorRef d
   family_name = ct_font_descriptor_get_family_name (desc, FALSE);
   pango_font_description_set_family (font_desc, family_name);
   g_free (family_name);
+
+  /* Size (if we have one) */
+  cf_number = CTFontDescriptorCopyAttribute (desc, kCTFontSizeAttribute);
+  if (cf_number != NULL && CFNumberGetValue (cf_number, kCFNumberCGFloatType, &pointsize))
+    pango_font_description_set_size (font_desc, (pointsize / (96./72.)) * 1024);
 
   /* Weight */
   pango_font_description_set_weight (font_desc,
@@ -529,7 +538,8 @@ pango_core_text_face_list_sizes (PangoFontFace  *face,
                                  int            *n_sizes)
 {
   *n_sizes = 0;
-  *sizes = NULL;
+  if (sizes)
+    *sizes = NULL;
 }
 
 G_DEFINE_TYPE (PangoCoreTextFace, pango_core_text_face, PANGO_TYPE_FONT_FACE);
@@ -703,7 +713,7 @@ pango_core_text_family_list_faces (PangoFontFamily  *family,
     *n_faces = ctfamily->n_faces;
 
   if (faces)
-    *faces = g_memdup (ctfamily->faces, ctfamily->n_faces * sizeof (PangoFontFace *));
+    *faces = g_memdup2 (ctfamily->faces, ctfamily->n_faces * sizeof (PangoFontFace *));
 }
 
 static const char *
@@ -848,7 +858,7 @@ get_scaled_size (PangoCoreTextFontMap       *fontmap,
                  const PangoFontDescription *desc)
 {
   double size = pango_font_description_get_size (desc);
-  PangoMatrix *matrix = pango_context_get_matrix (context);
+  const PangoMatrix *matrix = pango_context_get_matrix (context);
   double scale_factor = pango_matrix_get_font_scale_factor (matrix);
   
   if (!pango_font_description_get_size_is_absolute(desc))
@@ -1421,7 +1431,7 @@ pango_core_text_font_map_load_fontset (PangoFontMap               *fontmap,
   /* Cannot use pango_core_text_fontset_key_free() here */
   pango_font_description_free (key.desc);
 
-  return g_object_ref (fontset);
+  return g_object_ref (PANGO_FONTSET (fontset));
 }
 
 static void
@@ -1686,10 +1696,7 @@ static PangoFont *
 pango_core_text_fontset_load_font (PangoCoreTextFontset *ctfontset,
                                    CTFontDescriptorRef   ctdescriptor)
 {
-  PangoCoreTextFontsetKey *key;
   PangoCoreTextFont *font;
-
-  key = pango_core_text_fontset_get_key (ctfontset);
 
   /* For now, we will default the fallbacks to not have synthetic italic,
    * in the future this may be improved.
@@ -1765,7 +1772,7 @@ pango_core_text_fontset_finalize (GObject *object)
     {
       PangoCoverage *coverage = g_ptr_array_index (ctfontset->coverages, i);
       if (coverage)
-        pango_coverage_unref (coverage);
+        g_object_unref (coverage);
     }
   g_ptr_array_free (ctfontset->coverages, TRUE);
 
@@ -1859,3 +1866,54 @@ pango_core_text_fontset_foreach (PangoFontset *fontset,
     }
 }
 
+PangoCoreTextFace *
+pango_core_text_font_map_find_face (PangoCoreTextFontMap       *map,
+                                    const PangoCoreTextFontKey *key)
+{
+  CTFontDescriptorRef desc;
+  gboolean synthetic_italic;
+  char *family;
+  char *family_name;
+  char *style_name;
+  PangoWeight weight;
+  CTFontSymbolicTraits traits;
+  PangoCoreTextFamily *font_family;
+  PangoCoreTextFace *result = NULL;
+
+  desc = pango_core_text_font_key_get_ctfontdescriptor (key);
+  synthetic_italic = pango_core_text_font_key_get_synthetic_italic (key);
+
+  family_name = ct_font_descriptor_get_family_name (desc, FALSE);
+  style_name = ct_font_descriptor_get_style_name (desc);
+  weight = ct_font_descriptor_get_weight (desc);
+  traits = ct_font_descriptor_get_traits (desc);
+
+  family = g_utf8_casefold (family_name, -1);
+
+  font_family = g_hash_table_lookup (map->families, family);
+
+  if (font_family)
+    {
+      pango_font_family_list_faces ((PangoFontFamily *)font_family, NULL, NULL);
+
+      for (int i = 0; i < font_family->n_faces; i++)
+        {
+          PangoCoreTextFace *face = (PangoCoreTextFace *)font_family->faces[i];
+
+          if (face->weight == weight &&
+              face->traits == traits &&
+              face->synthetic_italic == synthetic_italic &&
+              strcmp (face->style_name, style_name) == 0)
+            {
+              result = face;
+              break;
+            }
+        }
+    }
+
+  g_free (family);
+  g_free (family_name);
+  g_free (style_name);
+
+  return result;
+}

@@ -30,9 +30,12 @@
 #include "config.h"
 #include <pango/pangocairo.h>
 #include "test-common.h"
+#include "validate-log-attrs.h"
 
 
 static PangoContext *context;
+
+static gboolean opt_hex_chars;
 
 static gboolean
 test_file (const gchar *filename, GString *string)
@@ -41,15 +44,18 @@ test_file (const gchar *filename, GString *string)
   gsize  length;
   GError *error = NULL;
   PangoLogAttr *attrs;
+  const PangoLogAttr *attrs2;
   int len;
+  int len2;
   char *p;
   int i;
-  GString *s1, *s2, *s3, *s4;
+  GString *s1, *s2, *s3, *s4, *s5, *s6;
   int m;
   char *test;
   char *text;
   PangoAttrList *attributes;
   PangoLayout *layout;
+  PangoLayout *layout2;
 
   g_file_get_contents (filename, &contents, &length, &error);
   g_assert_no_error (error);
@@ -70,36 +76,59 @@ test_file (const gchar *filename, GString *string)
   pango_layout_set_text (layout, text, length);
   pango_layout_set_attributes (layout, attributes);
 
+#if 0
   if (pango_layout_get_unknown_glyphs_count (layout) > 0)
     {
-#if 0
-      // See https://github.com/mesonbuild/meson/issues/7515
       char *msg = g_strdup_printf ("Missing glyphs - skipping %s. Maybe fonts are missing?", filename);
-      g_test_skip (msg);
+      if (g_test_initialized())
+        g_test_skip (msg);
+      else
+        g_warning ("%s", msg);
       g_free (msg);
-#endif
       g_free (contents);
       g_object_unref (layout);
       pango_attr_list_unref (attributes);
       g_free (text);
       return FALSE;
     }
+#endif
 
   pango_layout_get_log_attrs (layout, &attrs, &len);
+  attrs2 = pango_layout_get_log_attrs_readonly (layout, &len2);
+
+  g_assert_cmpint (len, ==, len2);
+  g_assert_true (memcmp (attrs, attrs2, sizeof (PangoLogAttr) * len) == 0);
+  if (!pango_validate_log_attrs (text, length, attrs, len, &error))
+    {
+      g_warning ("%s: Log attrs invalid: %s", filename, error->message);
+//      g_assert_not_reached ();
+    }
+
+  layout2 = pango_layout_copy (layout);
+  attrs2 = pango_layout_get_log_attrs_readonly (layout2, &len2);
+
+  g_assert_cmpint (len, ==, len2);
+  g_assert_true (memcmp (attrs, attrs2, sizeof (PangoLogAttr) * len) == 0);
+
+  g_object_unref (layout2);
 
   s1 = g_string_new ("Breaks: ");
   s2 = g_string_new ("Whitespace: ");
-  s3 = g_string_new ("Words:");
-  s4 = g_string_new ("Sentences:");
+  s3 = g_string_new ("Sentences:");
+  s4 = g_string_new ("Words:");
+  s5 = g_string_new ("Graphemes:");
+  s6 = g_string_new ("Hyphens:");
 
   g_string_append (string, "Text: ");
 
-  m = MAX (MAX (s1->len, s2->len), MAX (s3->len, s4->len));
+  m = MAX (MAX (MAX (s1->len, s2->len), MAX (s3->len, s4->len)), s5->len);
 
   g_string_append_printf (s1, "%*s", (int)(m - s1->len), "");
   g_string_append_printf (s2, "%*s", (int)(m - s2->len), "");
   g_string_append_printf (s3, "%*s", (int)(m - s3->len), "");
   g_string_append_printf (s4, "%*s", (int)(m - s4->len), "");
+  g_string_append_printf (s5, "%*s", (int)(m - s5->len), "");
+  g_string_append_printf (s6, "%*s", (int)(m - s6->len), "");
   g_string_append_printf (string, "%*s", (int)(m - strlen ("Text: ")), "");
 
   for (i = 0, p = text; i < len; i++, p = g_utf8_next_char (p))
@@ -109,6 +138,8 @@ test_file (const gchar *filename, GString *string)
       int w = 0;
       int o = 0;
       int s = 0;
+      int g = 0;
+      int h = 0;
 
       if (log.is_mandatory_break)
         {
@@ -137,45 +168,64 @@ test_file (const gchar *filename, GString *string)
           w++;
         }
 
-      if (log.is_word_boundary)
-        {
-          g_string_append (s3, "b");
-          o++;
-        }
-      if (log.is_word_start)
-        {
-          g_string_append (s3, "s");
-          o++;
-        }
-      if (log.is_word_end)
-        {
-          g_string_append (s3, "e");
-          o++;
-        }
-
       if (log.is_sentence_boundary)
         {
-          g_string_append (s4, "b");
+          g_string_append (s3, "b");
           s++;
         }
       if (log.is_sentence_start)
         {
-          g_string_append (s4, "s");
+          g_string_append (s3, "s");
           s++;
         }
       if (log.is_sentence_end)
         {
-          g_string_append (s4, "e");
+          g_string_append (s3, "e");
           s++;
         }
 
-      m = MAX (MAX (b, w), MAX (o, s));
+      if (log.is_word_boundary)
+        {
+          g_string_append (s4, "b");
+          o++;
+        }
+      if (log.is_word_start)
+        {
+          g_string_append (s4, "s");
+          o++;
+        }
+      if (log.is_word_end)
+        {
+          g_string_append (s4, "e");
+          o++;
+        }
+
+      if (log.is_cursor_position)
+        {
+          g_string_append (s5, "b");
+          g++;
+        }
+
+      if (log.break_removes_preceding)
+        {
+          g_string_append (s6, "r");
+          h++;
+        }
+      if (log.break_inserts_hyphen)
+        {
+          g_string_append (s6, "i");
+          h++;
+        }
+
+      m = MAX (MAX (MAX (b, w), MAX (o, s)), MAX (g, h));
 
       g_string_append_printf (string, "%*s", m, "");
       g_string_append_printf (s1, "%*s", m - b, "");
       g_string_append_printf (s2, "%*s", m - w, "");
-      g_string_append_printf (s3, "%*s", m - o, "");
-      g_string_append_printf (s4, "%*s", m - s, "");
+      g_string_append_printf (s3, "%*s", m - s, "");
+      g_string_append_printf (s4, "%*s", m - o, "");
+      g_string_append_printf (s5, "%*s", m - g, "");
+      g_string_append_printf (s6, "%*s", m - h, "");
 
       if (i < len - 1)
         {
@@ -187,16 +237,23 @@ test_file (const gchar *filename, GString *string)
               g_string_append (s2, "   ");
               g_string_append (s3, "   ");
               g_string_append (s4, "   ");
+              g_string_append (s5, "   ");
+              g_string_append (s6, "   ");
             }
-          else if (g_unichar_isgraph (ch) &&
+          else if (!opt_hex_chars &&
+                   g_unichar_isgraph (ch) &&
                    !(g_unichar_type (ch) == G_UNICODE_LINE_SEPARATOR ||
                      g_unichar_type (ch) == G_UNICODE_PARAGRAPH_SEPARATOR))
             {
+              g_string_append_unichar (string, 0x2066); // LRI
               g_string_append_unichar (string, ch);
+              g_string_append_unichar (string, 0x2069); // PDI
               g_string_append (s1, " ");
               g_string_append (s2, " ");
               g_string_append (s3, " ");
               g_string_append (s4, " ");
+              g_string_append (s5, " ");
+              g_string_append (s6, " ");
             }
           else
             {
@@ -206,6 +263,8 @@ test_file (const gchar *filename, GString *string)
               g_string_append_printf (s2, "%*s", (int)strlen (str), "");
               g_string_append_printf (s3, "%*s", (int)strlen (str), "");
               g_string_append_printf (s4, "%*s", (int)strlen (str), "");
+              g_string_append_printf (s5, "%*s", (int)strlen (str), "");
+              g_string_append_printf (s6, "%*s", (int)strlen (str), "");
               g_free (str);
             }
         }
@@ -219,11 +278,17 @@ test_file (const gchar *filename, GString *string)
   g_string_append (string, "\n");
   g_string_append_len (string, s4->str, s4->len);
   g_string_append (string, "\n");
+  g_string_append_len (string, s5->str, s5->len);
+  g_string_append (string, "\n");
+  g_string_append_len (string, s6->str, s6->len);
+  g_string_append (string, "\n");
 
   g_string_free (s1, TRUE);
   g_string_free (s2, TRUE);
   g_string_free (s3, TRUE);
   g_string_free (s4, TRUE);
+  g_string_free (s5, TRUE);
+  g_string_free (s6, TRUE);
 
   g_object_unref (layout);
   g_free (attrs);
@@ -260,15 +325,12 @@ test_break (gconstpointer d)
   gchar *diff;
 
   char *old_locale = g_strdup (setlocale (LC_ALL, NULL));
-  setlocale (LC_ALL, "en_US.utf8");
+  setlocale (LC_ALL, "en_US.UTF-8");
   if (strstr (setlocale (LC_ALL, NULL), "en_US") == NULL)
     {
-#if 0
-      // See https://github.com/mesonbuild/meson/issues/7515
       char *msg = g_strdup_printf ("Locale en_US.UTF-8 not available, skipping break %s", filename);
       g_test_skip (msg);
       g_free (msg);
-#endif
       g_free (old_locale);
       return;
     }
@@ -318,39 +380,57 @@ main (int argc, char *argv[])
   GError *error = NULL;
   const gchar *name;
   gchar *path;
+  gboolean opt_legend = 0;
+  GOptionContext *option_context;
+  GOptionEntry entries[] = {
+    { "hex-chars", 0, 0, G_OPTION_ARG_NONE, &opt_hex_chars, "Print all chars in hex", NULL },
+    { "legend", 0, 0, G_OPTION_ARG_NONE, &opt_legend, "Explain the output", NULL },
+    { NULL, 0 },
+  };
 
-  g_test_init (&argc, &argv, NULL);
+  option_context = g_option_context_new ("");
+  g_option_context_add_main_entries (option_context, entries, NULL);
+  g_option_context_set_ignore_unknown_options (option_context, TRUE);
+  if (!g_option_context_parse (option_context, &argc, &argv, &error))
+    {
+      g_error ("failed to parse options: %s", error->message);
+      return 1;
+    }
+  g_option_context_free (option_context);
 
   setlocale (LC_ALL, "");
 
   context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
 
-  /* allow to easily generate expected output for new test cases */
-  if (argc > 1)
+  if (opt_legend)
     {
-      if (strcmp (argv[1], "--help") == 0)
-        {
-          g_print ("test-break uses the following symbols for log attrs\n\n");
-          g_print ("Breaks:                 Words:\n"
-                   " L - mandatory break     b - word boundary\n"
-                   " l - line break          s - word start\n"
-                   " c - char break          e - word end\n"
-                   "\n"
-                   "Whitespace:             Sentences:\n"
-                   " x - expandable space    s - sentence start\n"
-                   " w - whitespace          e - sentence end\n");
-        }
-      else
-        {
-          GString *string;
+      g_print ("test-break uses the following symbols for log attrs\n\n");
+      g_print ("Breaks:                 Words:                  Graphemes:\n"
+               " L - mandatory break     b - word boundary       b - grapheme boundary\n"
+               " l - line break          s - word start\n"
+               " c - char break          e - word end\n"
+               "\n"
+               "Whitespace:             Sentences:              Hyphens:\n"
+               " x - expandable space    b - sentence boundary   i - insert hyphen\n"
+               " w - whitespace          s - sentence start      r - remove preceding\n"
+               "                         e - sentence end\n");
+      return 0;
+    }
 
-          string = g_string_sized_new (0);
-          test_file (argv[1], string);
-          g_print ("%s", string->str);
-        }
+  if (argc > 1 && argv[1][0] != '-')
+    {
+      GString *string;
+
+      string = g_string_sized_new (0);
+      test_file (argv[1], string);
+      g_print ("%s", string->str);
+
+      g_string_free (string, TRUE);
 
       return 0;
     }
+
+  g_test_init (&argc, &argv, NULL);
 
   path = g_test_build_filename (G_TEST_DIST, "breaks", NULL);
   dir = g_dir_open (path, 0, &error);

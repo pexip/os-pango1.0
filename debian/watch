@@ -1,3 +1,4 @@
 version=4
-https://download.gnome.org/sources/pango/([\d\.]+[02468])/ \
+opts="repack,dversionmangle=s/[~+](?:dfsg|ds)[0-9]*//g,repacksuffix=+ds" \
+https://download.gnome.org/sources/pango/(1\.[0-8][0-9])/ \
 	pango@ANY_VERSION@@ARCHIVE_EXT@

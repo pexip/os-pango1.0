@@ -30,27 +30,29 @@
 
 /**
  * pango_glyph_item_split:
- * @orig: a #PangoItem
+ * @orig: a `PangoItem`
  * @text: text to which positions in @orig apply
- * @split_index: byte index of position to split item, relative to the start of the item
+ * @split_index: byte index of position to split item, relative to the
+ *   start of the item
  *
  * Modifies @orig to cover only the text after @split_index, and
  * returns a new item that covers the text before @split_index that
- * used to be in @orig. You can think of @split_index as the length of
- * the returned item. @split_index may not be 0, and it may not be
- * greater than or equal to the length of @orig (that is, there must
- * be at least one byte assigned to each item, you can't create a
- * zero-length item).
+ * used to be in @orig.
+ *
+ * You can think of @split_index as the length of the returned item.
+ * @split_index may not be 0, and it may not be greater than or equal
+ * to the length of @orig (that is, there must be at least one byte
+ * assigned to each item, you can't create a zero-length item).
  *
  * This function is similar in function to pango_item_split() (and uses
  * it internally.)
  *
- * Return value: the newly allocated item representing text before
- *               @split_index, which should be freed
- *               with pango_glyph_item_free().
+ * Returns: (transfer full) (nullable): the newly allocated item
+ *   representing text before @split_index, which should be freed
+ *   with pango_glyph_item_free().
  *
  * Since: 1.2
- **/
+ */
 PangoGlyphItem *
 pango_glyph_item_split (PangoGlyphItem *orig,
 			const char     *text,
@@ -127,21 +129,23 @@ pango_glyph_item_split (PangoGlyphItem *orig,
 
   pango_glyph_string_set_size (orig->glyphs, orig->glyphs->num_glyphs - num_glyphs);
 
+  new->y_offset = orig->y_offset;
+  new->start_x_offset = orig->start_x_offset;
+  new->end_x_offset = -orig->start_x_offset;
+
   return new;
 }
 
 /**
  * pango_glyph_item_copy:
- * @orig: (nullable): a #PangoGlyphItem, may be %NULL
+ * @orig: (nullable): a `PangoGlyphItem`
  *
- * Make a deep copy of an existing #PangoGlyphItem structure.
+ * Make a deep copy of an existing `PangoGlyphItem` structure.
  *
- * Return value: (nullable): the newly allocated #PangoGlyphItem, which should
- *               be freed with pango_glyph_item_free(), or %NULL
- *               if @orig was %NULL.
+ * Returns: (transfer full) (nullable): the newly allocated `PangoGlyphItem`
  *
  * Since: 1.20
- **/
+ */
 PangoGlyphItem *
 pango_glyph_item_copy  (PangoGlyphItem *orig)
 {
@@ -154,18 +158,21 @@ pango_glyph_item_copy  (PangoGlyphItem *orig)
 
   result->item = pango_item_copy (orig->item);
   result->glyphs = pango_glyph_string_copy (orig->glyphs);
+  result->y_offset = orig->y_offset;
+  result->start_x_offset = orig->start_x_offset;
+  result->end_x_offset = orig->end_x_offset;
 
   return result;
 }
 
 /**
  * pango_glyph_item_free:
- * @glyph_item: (nullable): a #PangoGlyphItem, may be %NULL
+ * @glyph_item: (nullable): a `PangoGlyphItem`
  *
- * Frees a #PangoGlyphItem and resources to which it points.
+ * Frees a `PangoGlyphItem` and resources to which it points.
  *
  * Since: 1.6
- **/
+ */
 void
 pango_glyph_item_free  (PangoGlyphItem *glyph_item)
 {
@@ -187,18 +194,16 @@ G_DEFINE_BOXED_TYPE (PangoGlyphItem, pango_glyph_item,
 
 /**
  * pango_glyph_item_iter_copy:
- * @orig: (nullable): a #PangoGlyphItemIter, may be %NULL
+ * @orig: (nullable): a `PangoGlyphItem`Iter
  *
- * Make a shallow copy of an existing #PangoGlyphItemIter structure.
+ * Make a shallow copy of an existing `PangoGlyphItemIter` structure.
  *
- * Return value: (nullable): the newly allocated #PangoGlyphItemIter, which should
- *               be freed with pango_glyph_item_iter_free(), or %NULL
- *               if @orig was %NULL.
+ * Returns: (transfer full) (nullable): the newly allocated `PangoGlyphItemIter`
  *
  * Since: 1.22
- **/
+ */
 PangoGlyphItemIter *
-pango_glyph_item_iter_copy  (PangoGlyphItemIter *orig)
+pango_glyph_item_iter_copy (PangoGlyphItemIter *orig)
 {
   PangoGlyphItemIter *result;
 
@@ -214,12 +219,12 @@ pango_glyph_item_iter_copy  (PangoGlyphItemIter *orig)
 
 /**
  * pango_glyph_item_iter_free:
- * @iter: (nullable): a #PangoGlyphItemIter, may be %NULL
+ * @iter: (nullable): a `PangoGlyphItemIter`
  *
- * Frees a #PangoGlyphItemIter created by pango_glyph_item_iter_copy().
+ * Frees a `PangoGlyphItem`Iter.
  *
  * Since: 1.22
- **/
+ */
 void
 pango_glyph_item_iter_free  (PangoGlyphItemIter *iter)
 {
@@ -235,16 +240,17 @@ G_DEFINE_BOXED_TYPE (PangoGlyphItemIter, pango_glyph_item_iter,
 
 /**
  * pango_glyph_item_iter_next_cluster:
- * @iter: a #PangoGlyphItemIter
+ * @iter: a `PangoGlyphItemIter`
  *
  * Advances the iterator to the next cluster in the glyph item.
- * See #PangoGlyphItemIter for details of cluster orders.
  *
- * Return value: %TRUE if the iterator was advanced, %FALSE if we were already on the
- *  last cluster.
+ * See `PangoGlyphItemIter` for details of cluster orders.
+ *
+ * Returns: %TRUE if the iterator was advanced,
+ *   %FALSE if we were already on the  last cluster.
  *
  * Since: 1.22
- **/
+ */
 gboolean
 pango_glyph_item_iter_next_cluster (PangoGlyphItemIter *iter)
 {
@@ -325,16 +331,16 @@ pango_glyph_item_iter_next_cluster (PangoGlyphItemIter *iter)
 
 /**
  * pango_glyph_item_iter_prev_cluster:
- * @iter: a #PangoGlyphItemIter
+ * @iter: a `PangoGlyphItemIter`
  *
  * Moves the iterator to the preceding cluster in the glyph item.
- * See #PangoGlyphItemIter for details of cluster orders.
+ * See `PangoGlyphItemIter` for details of cluster orders.
  *
- * Return value: %TRUE if the iterator was moved, %FALSE if we were already on the
- *  first cluster.
+ * Returns: %TRUE if the iterator was moved,
+ *   %FALSE if we were already on the first cluster.
  *
  * Since: 1.22
- **/
+ */
 gboolean
 pango_glyph_item_iter_prev_cluster (PangoGlyphItemIter *iter)
 {
@@ -418,18 +424,19 @@ pango_glyph_item_iter_prev_cluster (PangoGlyphItemIter *iter)
 
 /**
  * pango_glyph_item_iter_init_start:
- * @iter: a #PangoGlyphItemIter
+ * @iter: a `PangoGlyphItemIter`
  * @glyph_item: the glyph item to iterate over
  * @text: text corresponding to the glyph item
  *
- * Initializes a #PangoGlyphItemIter structure to point to the
+ * Initializes a `PangoGlyphItemIter` structure to point to the
  * first cluster in a glyph item.
- * See #PangoGlyphItemIter for details of cluster orders.
  *
- * Return value: %FALSE if there are no clusters in the glyph item
+ * See `PangoGlyphItemIter` for details of cluster orders.
+ *
+ * Returns: %FALSE if there are no clusters in the glyph item
  *
  * Since: 1.22
- **/
+ */
 gboolean
 pango_glyph_item_iter_init_start (PangoGlyphItemIter  *iter,
 				  PangoGlyphItem      *glyph_item,
@@ -456,18 +463,19 @@ pango_glyph_item_iter_init_start (PangoGlyphItemIter  *iter,
 
 /**
  * pango_glyph_item_iter_init_end:
- * @iter: a #PangoGlyphItemIter
+ * @iter: a `PangoGlyphItemIter`
  * @glyph_item: the glyph item to iterate over
  * @text: text corresponding to the glyph item
  *
- * Initializes a #PangoGlyphItemIter structure to point to the
+ * Initializes a `PangoGlyphItemIter` structure to point to the
  * last cluster in a glyph item.
- * See #PangoGlyphItemIter for details of cluster orders.
  *
- * Return value: %FALSE if there are no clusters in the glyph item
+ * See `PangoGlyphItemIter` for details of cluster orders.
+ *
+ * Returns: %FALSE if there are no clusters in the glyph item
  *
  * Since: 1.22
- **/
+ */
 gboolean
 pango_glyph_item_iter_init_end (PangoGlyphItemIter  *iter,
 				PangoGlyphItem      *glyph_item,
@@ -509,7 +517,7 @@ append_attrs (PangoGlyphItem *glyph_item,
     g_slist_concat (glyph_item->item->analysis.extra_attrs, attrs);
 }
 
-/* Make a deep copy of a #GSList of PangoAttribute
+/* Make a deep copy of a GSList of PangoAttribute
  */
 static GSList *
 attr_slist_copy (GSList *attrs)
@@ -554,32 +562,33 @@ split_before_cluster_start (ApplyAttrsState *state)
  * pango_glyph_item_apply_attrs:
  * @glyph_item: a shaped item
  * @text: text that @list applies to
- * @list: a #PangoAttrList
+ * @list: a `PangoAttrList`
  *
- * Splits a shaped item (PangoGlyphItem) into multiple items based
- * on an attribute list. The idea is that if you have attributes
- * that don't affect shaping, such as color or underline, to avoid
- * affecting shaping, you filter them out (pango_attr_list_filter()),
- * apply the shaping process and then reapply them to the result using
- * this function.
+ * Splits a shaped item (`PangoGlyphItem`) into multiple items based
+ * on an attribute list.
+ *
+ * The idea is that if you have attributes that don't affect shaping,
+ * such as color or underline, to avoid affecting shaping, you filter
+ * them out ([method@Pango.AttrList.filter]), apply the shaping process
+ * and then reapply them to the result using this function.
  *
  * All attributes that start or end inside a cluster are applied
  * to that cluster; for instance, if half of a cluster is underlined
  * and the other-half strikethrough, then the cluster will end
  * up with both underline and strikethrough attributes. In these
- * cases, it may happen that item->extra_attrs for some of the
+ * cases, it may happen that @item->extra_attrs for some of the
  * result items can have multiple attributes of the same type.
  *
  * This function takes ownership of @glyph_item; it will be reused
  * as one of the elements in the list.
  *
- * Return value: (transfer full) (element-type Pango.GlyphItem): a
+ * Returns: (transfer full) (element-type Pango.GlyphItem): a
  *   list of glyph items resulting from splitting @glyph_item. Free
- *   the elements using pango_glyph_item_free(), the list using
+ *   the elements using [method@Pango.GlyphItem.free], the list using
  *   g_slist_free().
  *
  * Since: 1.2
- **/
+ */
 GSList *
 pango_glyph_item_apply_attrs (PangoGlyphItem   *glyph_item,
 			      const char       *text,
@@ -711,10 +720,10 @@ pango_glyph_item_apply_attrs (PangoGlyphItem   *glyph_item,
 
 /**
  * pango_glyph_item_letter_space:
- * @glyph_item: a #PangoGlyphItem
+ * @glyph_item: a `PangoGlyphItem`
  * @text: text that @glyph_item corresponds to
  *   (glyph_item->item->offset is an offset from the
- *    start of @text)
+ *   start of @text)
  * @log_attrs: (array): logical attributes for the item
  *   (the first logical attribute refers to the position
  *   before the first character in the item)
@@ -726,7 +735,7 @@ pango_glyph_item_apply_attrs (PangoGlyphItem   *glyph_item,
  * give the effect of typographic letter spacing.
  *
  * Since: 1.6
- **/
+ */
 void
 pango_glyph_item_letter_space (PangoGlyphItem *glyph_item,
 			       const char     *text,
@@ -753,7 +762,16 @@ pango_glyph_item_letter_space (PangoGlyphItem *glyph_item,
        have_cluster = pango_glyph_item_iter_next_cluster (&iter))
     {
       if (!log_attrs[iter.start_char].is_cursor_position)
-        continue;
+        {
+          if (glyphs[iter.start_glyph].geometry.width == 0)
+            {
+              if (iter.start_glyph < iter.end_glyph) /* LTR */
+                glyphs[iter.start_glyph].geometry.x_offset -= space_right;
+              else
+                glyphs[iter.start_glyph].geometry.x_offset += space_left;
+            }
+          continue;
+        }
 
       if (iter.start_glyph < iter.end_glyph) /* LTR */
 	{
@@ -784,24 +802,24 @@ pango_glyph_item_letter_space (PangoGlyphItem *glyph_item,
 
 /**
  * pango_glyph_item_get_logical_widths:
- * @glyph_item: a #PangoGlyphItem
+ * @glyph_item: a `PangoGlyphItem`
  * @text: text that @glyph_item corresponds to
  *   (glyph_item->item->offset is an offset from the
- *    start of @text)
+ *   start of @text)
  * @logical_widths: (array): an array whose length is the number of
- *                  characters in glyph_item (equal to
- *                  glyph_item->item->num_chars) to be filled in with
- *                  the resulting character widths.
+ *   characters in glyph_item (equal to glyph_item->item->num_chars)
+ *   to be filled in with the resulting character widths.
  *
- * Given a #PangoGlyphItem and the corresponding
- * text, determine the screen width corresponding to each character. When
- * multiple characters compose a single cluster, the width of the entire
- * cluster is divided equally among the characters.
+ * Given a `PangoGlyphItem` and the corresponding text, determine the
+ * width corresponding to each character.
  *
- * See also pango_glyph_string_get_logical_widths().
+ * When multiple characters compose a single cluster, the width of the
+ * entire cluster is divided equally among the characters.
+ *
+ * See also [method@Pango.GlyphString.get_logical_widths].
  *
  * Since: 1.26
- **/
+ */
 void
 pango_glyph_item_get_logical_widths (PangoGlyphItem *glyph_item,
 				     const char     *text,

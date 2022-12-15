@@ -25,13 +25,15 @@
 #include "pango-font.h"
 #include "pango-impl-utils.h"
 
+#include <hb-ot.h>
+
 /**
  * pango_glyph_string_new:
  *
- * Create a new #PangoGlyphString.
+ * Create a new `PangoGlyphString`.
  *
- * Return value: the newly allocated #PangoGlyphString, which
- *               should be freed with pango_glyph_string_free().
+ * Return value: the newly allocated `PangoGlyphString`, which
+ *   should be freed with [method@Pango.GlyphString.free].
  */
 PangoGlyphString *
 pango_glyph_string_new (void)
@@ -48,8 +50,8 @@ pango_glyph_string_new (void)
 
 /**
  * pango_glyph_string_set_size:
- * @string:    a #PangoGlyphString.
- * @new_len:   the new length of the string.
+ * @string: a `PangoGlyphString`.
+ * @new_len: the new length of the string
  *
  * Resize a glyph string to the given length.
  */
@@ -97,13 +99,11 @@ G_DEFINE_BOXED_TYPE (PangoGlyphString, pango_glyph_string,
 
 /**
  * pango_glyph_string_copy:
- * @string: (nullable): a #PangoGlyphString, may be %NULL
+ * @string: (nullable): a `PangoGlyphString`
  *
  * Copy a glyph string and associated storage.
  *
- * Return value: (nullable): the newly allocated #PangoGlyphString,
- *               which should be freed with pango_glyph_string_free(),
- *               or %NULL if @string was %NULL.
+ * Return value: (nullable): the newly allocated `PangoGlyphString`
  */
 PangoGlyphString *
 pango_glyph_string_copy (PangoGlyphString *string)
@@ -112,22 +112,22 @@ pango_glyph_string_copy (PangoGlyphString *string)
 
   if (string == NULL)
     return NULL;
-  
+
   new_string = g_slice_new (PangoGlyphString);
 
   *new_string = *string;
 
-  new_string->glyphs = g_memdup (string->glyphs,
-				 string->space * sizeof (PangoGlyphInfo));
-  new_string->log_clusters = g_memdup (string->log_clusters,
-				       string->space * sizeof (gint));
+  new_string->glyphs = g_memdup2 (string->glyphs,
+                                  string->space * sizeof (PangoGlyphInfo));
+  new_string->log_clusters = g_memdup2 (string->log_clusters,
+                                        string->space * sizeof (gint));
 
   return new_string;
 }
 
 /**
  * pango_glyph_string_free:
- * @string: (nullable): a #PangoGlyphString, may be %NULL
+ * @string: (nullable): a `PangoGlyphString`, may be %NULL
  *
  * Free a glyph string and associated storage.
  */
@@ -144,23 +144,22 @@ pango_glyph_string_free (PangoGlyphString *string)
 
 /**
  * pango_glyph_string_extents_range:
- * @glyphs:   a #PangoGlyphString
- * @start:    start index
- * @end:      end index (the range is the set of bytes with
-	      indices such that start <= index < end)
- * @font:     a #PangoFont
+ * @glyphs: a `PangoGlyphString`
+ * @start: start index
+ * @end: end index (the range is the set of bytes with
+ *   indices such that start <= index < end)
+ * @font: a `PangoFont`
  * @ink_rect: (out caller-allocates) (optional): rectangle used to
- *            store the extents of the glyph string range as drawn or
- *            %NULL to indicate that the result is not needed.
+ *   store the extents of the glyph string range as drawn
  * @logical_rect: (out caller-allocates) (optional): rectangle used to
- *            store the logical extents of the glyph string range or
- *            %NULL to indicate that the result is not needed.
+ *   store the logical extents of the glyph string range
  *
- * Computes the extents of a sub-portion of a glyph string. The extents are
- * relative to the start of the glyph string range (the origin of their
- * coordinate system is at the start of the range, not at the start of the entire
- * glyph string).
- **/
+ * Computes the extents of a sub-portion of a glyph string.
+ *
+ * The extents are relative to the start of the glyph string range
+ * (the origin of their coordinate system is at the start of the range,
+ * not at the start of the entire glyph string).
+ */
 void
 pango_glyph_string_extents_range (PangoGlyphString *glyphs,
 				  int               start,
@@ -261,16 +260,15 @@ pango_glyph_string_extents_range (PangoGlyphString *glyphs,
 
 /**
  * pango_glyph_string_extents:
- * @glyphs:   a #PangoGlyphString
- * @font:     a #PangoFont
- * @ink_rect: (out) (allow-none): rectangle used to store the extents of the glyph string
- *            as drawn or %NULL to indicate that the result is not needed.
- * @logical_rect: (out) (allow-none): rectangle used to store the logical extents of the
- *            glyph string or %NULL to indicate that the result is not needed.
+ * @glyphs: a `PangoGlyphString`
+ * @font: a `PangoFont`
+ * @ink_rect: (out) (optional): rectangle used to store the extents of the glyph string as drawn
+ * @logical_rect: (out) (optional): rectangle used to store the logical extents of the glyph string
  *
- * Compute the logical and ink extents of a glyph string. See the documentation
- * for pango_font_get_glyph_extents() for details about the interpretation
- * of the rectangles.
+ * Compute the logical and ink extents of a glyph string.
+ *
+ * See the documentation for [method@Pango.Font.get_glyph_extents] for details
+ * about the interpretation of the rectangles.
  *
  * Examples of logical (red) and ink (green) rects:
  *
@@ -288,12 +286,14 @@ pango_glyph_string_extents (PangoGlyphString *glyphs,
 
 /**
  * pango_glyph_string_get_width:
- * @glyphs:   a #PangoGlyphString
+ * @glyphs:  a `PangoGlyphString`
  *
- * Computes the logical width of the glyph string as can also be computed
- * using pango_glyph_string_extents().  However, since this only computes the
- * width, it's much faster.  This is in fact only a convenience function that
- * computes the sum of geometry.width for each glyph in the @glyphs.
+ * Computes the logical width of the glyph string.
+ *
+ * This can also be computed using [method@Pango.GlyphString.extents].
+ * However, since this only computes the width, it's much faster. This
+ * is in fact only a convenience function that computes the sum of
+ * @geometry.width for each glyph in the @glyphs.
  *
  * Return value: the logical width of the glyph string.
  *
@@ -313,22 +313,22 @@ pango_glyph_string_get_width (PangoGlyphString *glyphs)
 
 /**
  * pango_glyph_string_get_logical_widths:
- * @glyphs: a #PangoGlyphString
+ * @glyphs: a `PangoGlyphString`
  * @text: the text corresponding to the glyphs
  * @length: the length of @text, in bytes
  * @embedding_level: the embedding level of the string
  * @logical_widths: (array): an array whose length is the number of
- *                  characters in text (equal to g_utf8_strlen (text,
- *                  length) unless text has NUL bytes) to be filled in
- *                  with the resulting character widths.
+ *   characters in text (equal to `g_utf8_strlen (text, length)` unless
+ *   text has `NUL` bytes) to be filled in with the resulting character widths.
  *
- * Given a #PangoGlyphString resulting from pango_shape() and the corresponding
- * text, determine the screen width corresponding to each character. When
- * multiple characters compose a single cluster, the width of the entire
- * cluster is divided equally among the characters.
+ * Given a `PangoGlyphString` and corresponding text, determine the width
+ * corresponding to each character.
  *
- * See also pango_glyph_item_get_logical_widths().
- **/
+ * When multiple characters compose a single cluster, the width of the
+ * entire cluster is divided equally among the characters.
+ *
+ * See also [method@Pango.GlyphItem.get_logical_widths].
+ */
 void
 pango_glyph_string_get_logical_widths (PangoGlyphString *glyphs,
 				       const char       *text,
@@ -358,28 +358,74 @@ pango_glyph_string_get_logical_widths (PangoGlyphString *glyphs,
 
 /**
  * pango_glyph_string_index_to_x:
- * @glyphs:    the glyphs return from pango_shape()
- * @text:      the text for the run
- * @length:    the number of bytes (not characters) in @text.
- * @analysis:  the analysis information return from pango_itemize()
- * @index_:    the byte index within @text
- * @trailing:  whether we should compute the result for the beginning (%FALSE)
- *             or end (%TRUE) of the character.
- * @x_pos:     (out): location to store result
+ * @glyphs: the glyphs return from [func@shape]
+ * @text: the text for the run
+ * @length: the number of bytes (not characters) in @text.
+ * @analysis: the analysis information return from [func@itemize]
+ * @index_: the byte index within @text
+ * @trailing: whether we should compute the result for the beginning (%FALSE)
+ *   or end (%TRUE) of the character.
+ * @x_pos: (out): location to store result
  *
- * Converts from character position to x position. (X position
- * is measured from the left edge of the run). Character positions
- * are computed by dividing up each cluster into equal portions.
+ * Converts from character position to x position.
+ *
+ * The X position is measured from the left edge of the run.
+ * Character positions are obtained using font metrics for ligatures
+ * where available, and computed by dividing up each cluster
+ * into equal portions, otherwise.
+ *
+ * <picture>
+ *   <source srcset="glyphstring-positions-dark.png" media="(prefers-color-scheme: dark)">
+ *   <img alt="Glyph positions" src="glyphstring-positions-light.png">
+ * </picture>
  */
-
 void
 pango_glyph_string_index_to_x (PangoGlyphString *glyphs,
-			       char             *text,
-			       int               length,
-			       PangoAnalysis    *analysis,
-			       int               index,
-			       gboolean          trailing,
-			       int              *x_pos)
+                               const char       *text,
+                               int               length,
+                               PangoAnalysis    *analysis,
+                               int               index,
+                               gboolean          trailing,
+                               int              *x_pos)
+{
+  pango_glyph_string_index_to_x_full (glyphs,
+                                      text, length,
+                                      analysis,
+                                      NULL,
+                                      index, trailing,
+                                      x_pos);
+}
+
+/**
+ * pango_glyph_string_index_to_x_full:
+ * @glyphs: the glyphs return from [func@shape]
+ * @text: the text for the run
+ * @length: the number of bytes (not characters) in @text.
+ * @analysis: the analysis information return from [func@itemize]
+ * @attrs: (nullable): `PangoLogAttr` array for @text
+ * @index_: the byte index within @text
+ * @trailing: whether we should compute the result for the beginning (%FALSE)
+ *   or end (%TRUE) of the character.
+ * @x_pos: (out): location to store result
+ *
+ * Converts from character position to x position.
+ *
+ * This variant of [method@Pango.GlyphString.index_to_x] additionally
+ * accepts a `PangoLogAttr` array. The grapheme boundary information
+ * in it can be used to disambiguate positioning inside some complex
+ * clusters.
+ *
+ * Since: 1.50
+ */
+void
+pango_glyph_string_index_to_x_full (PangoGlyphString *glyphs,
+                                    const char       *text,
+                                    int               length,
+                                    PangoAnalysis    *analysis,
+                                    PangoLogAttr     *attrs,
+                                    int               index,
+                                    gboolean          trailing,
+                                    int              *x_pos)
 {
   int i;
   int start_xpos = 0;
@@ -391,8 +437,10 @@ pango_glyph_string_index_to_x (PangoGlyphString *glyphs,
 
   int cluster_chars = 0;
   int cluster_offset = 0;
+  int start_glyph_pos = -1;
+  int end_glyph_pos = -1;
 
-  char *p;
+  const char *p;
 
   g_return_if_fail (glyphs != NULL);
   g_return_if_fail (length >= 0);
@@ -407,51 +455,74 @@ pango_glyph_string_index_to_x (PangoGlyphString *glyphs,
       return;
     }
 
+  start_glyph_pos = -1;
+  end_glyph_pos = -1;
+
   /* Calculate the starting and ending character positions
    * and x positions for the cluster
    */
   if (analysis->level % 2) /* Right to left */
     {
       for (i = glyphs->num_glyphs - 1; i >= 0; i--)
-	width += glyphs->glyphs[i].geometry.width;
+        width += glyphs->glyphs[i].geometry.width;
 
       for (i = glyphs->num_glyphs - 1; i >= 0; i--)
-	{
-	  if (glyphs->log_clusters[i] > index)
-	    {
-	      end_index = glyphs->log_clusters[i];
-	      end_xpos = width;
-	      break;
-	    }
+        {
+          if (glyphs->log_clusters[i] > index)
+            {
+              end_index = glyphs->log_clusters[i];
+              end_xpos = width;
+              break;
+            }
 
-	  if (glyphs->log_clusters[i] != start_index)
-	    {
-	      start_index = glyphs->log_clusters[i];
-	      start_xpos = width;
-	    }
+          if (glyphs->log_clusters[i] != start_index)
+            {
+              start_index = glyphs->log_clusters[i];
+              start_xpos = width;
+            }
 
-	  width -= glyphs->glyphs[i].geometry.width;
-	}
+          width -= glyphs->glyphs[i].geometry.width;
+        }
+
+      for (i = glyphs->num_glyphs - 1; i >= 0; i--)
+        {
+          if (glyphs->log_clusters[i] == start_index)
+            {
+              if (end_glyph_pos < 0)
+                end_glyph_pos = i;
+              start_glyph_pos = i;
+            }
+        }
     }
   else /* Left to right */
     {
       for (i = 0; i < glyphs->num_glyphs; i++)
-	{
-	  if (glyphs->log_clusters[i] > index)
-	    {
-	      end_index = glyphs->log_clusters[i];
-	      end_xpos = width;
-	      break;
-	    }
+        {
+          if (glyphs->log_clusters[i] > index)
+            {
+              end_index = glyphs->log_clusters[i];
+              end_xpos = width;
+              break;
+            }
 
-	  if (glyphs->log_clusters[i] != start_index)
-	    {
-	      start_index = glyphs->log_clusters[i];
-	      start_xpos = width;
-	    }
+          if (glyphs->log_clusters[i] != start_index)
+            {
+              start_index = glyphs->log_clusters[i];
+              start_xpos = width;
+            }
 
-	  width += glyphs->glyphs[i].geometry.width;
-	}
+          width += glyphs->glyphs[i].geometry.width;
+        }
+
+      for (i = 0; i < glyphs->num_glyphs; i++)
+        {
+          if (glyphs->log_clusters[i] == start_index)
+            {
+              if (start_glyph_pos < 0)
+                start_glyph_pos = i;
+              end_glyph_pos = i;
+            }
+        }
     }
 
   if (end_index == -1)
@@ -460,57 +531,124 @@ pango_glyph_string_index_to_x (PangoGlyphString *glyphs,
       end_xpos = (analysis->level % 2) ? 0 : width;
     }
 
-  /* Calculate offset of character within cluster */
-
-  p = text + start_index;
-  while (p < text + end_index)
+  /* Calculate offset of character within cluster.
+   * To come up with accurate answers here, we need to know grapheme
+   * boundaries.
+   */
+  for (p = text + start_index, i = attrs ? g_utf8_pointer_to_offset (text, text + start_index) : 0;
+       p < text + end_index;
+       p = g_utf8_next_char (p), i++)
     {
+      if (attrs && !attrs[i].is_cursor_position)
+        continue;
+
       if (p < text + index)
-	cluster_offset++;
+        cluster_offset++;
       cluster_chars++;
-      p = g_utf8_next_char (p);
     }
 
   if (trailing)
-    cluster_offset += 1;
+    cluster_offset = MIN (cluster_offset + 1, cluster_chars);
 
   if (G_UNLIKELY (!cluster_chars)) /* pedantic */
-    {
+     {
       *x_pos = start_xpos;
       return;
     }
 
+  /* Try to get a ligature caret position for the glyph from the font.
+   * This only makes sense if the cluster contains a single spacing
+   * glyph, so we need to check that all but one of them are marks.
+   */
+  if (cluster_offset > 0 && cluster_offset < cluster_chars)
+    {
+      hb_font_t *hb_font;
+      hb_position_t caret;
+      unsigned int caret_count = 1;
+      int glyph_pos;
+      int num_carets;
+
+      hb_font = pango_font_get_hb_font (analysis->font);
+
+      if (start_glyph_pos == end_glyph_pos)
+        glyph_pos = start_glyph_pos;
+      else
+        {
+          hb_face_t *hb_face;
+
+          hb_face = hb_font_get_face (hb_font);
+
+          glyph_pos = -1;
+          for (i = start_glyph_pos; i <= end_glyph_pos; i++)
+            {
+              if (hb_ot_layout_get_glyph_class (hb_face, glyphs->glyphs[i].glyph) != HB_OT_LAYOUT_GLYPH_CLASS_MARK)
+                {
+                  if (glyph_pos != -1)
+                    {
+                      /* multiple non-mark glyphs in cluster, giving up */
+                      goto fallback;
+                    }
+                  glyph_pos = i;
+                }
+            }
+          if (glyph_pos == -1)
+            {
+              /* no non-mark glyph in a multi-glyph cluster, giving up */
+              goto fallback;
+            }
+        }
+
+      num_carets = hb_ot_layout_get_ligature_carets (hb_font,
+                                                     (analysis->level % 2) ? HB_DIRECTION_RTL : HB_DIRECTION_LTR,
+                                                      glyphs->glyphs[glyph_pos].glyph,
+                                                      cluster_offset - 1, &caret_count, &caret);
+      if (caret_count == 0 || num_carets == 0)
+        {
+          /* no ligature caret information found for this glyph */
+          goto fallback;
+        }
+
+      if (analysis->level % 2) /* Right to left */
+        *x_pos = end_xpos + caret;
+      else
+        *x_pos = start_xpos + caret;
+      *x_pos += glyphs->glyphs[glyph_pos].geometry.x_offset;
+      return;
+    }
+
+fallback:
+
   *x_pos = ((cluster_chars - cluster_offset) * start_xpos +
-	    cluster_offset * end_xpos) / cluster_chars;
+            cluster_offset * end_xpos) / cluster_chars;
 }
 
 /**
  * pango_glyph_string_x_to_index:
- * @glyphs:    the glyphs returned from pango_shape()
- * @text:      the text for the run
- * @length:    the number of bytes (not characters) in text.
- * @analysis:  the analysis information return from pango_itemize()
- * @x_pos:     the x offset (in Pango units)
- * @index_:    (out): location to store calculated byte index within @text
- * @trailing:  (out): location to store a boolean indicating
- *             whether the user clicked on the leading or trailing
- *             edge of the character.
+ * @glyphs: the glyphs returned from [func@shape]
+ * @text: the text for the run
+ * @length: the number of bytes (not characters) in text.
+ * @analysis: the analysis information return from [func@itemize]
+ * @x_pos: the x offset (in Pango units)
+ * @index_: (out): location to store calculated byte index within @text
+ * @trailing: (out): location to store a boolean indicating whether the
+ *   user clicked on the leading or trailing edge of the character
  *
- * Convert from x offset to character position. Character positions
- * are computed by dividing up each cluster into equal portions.
- * In scripts where positioning within a cluster is not allowed
- * (such as Thai), the returned value may not be a valid cursor
- * position; the caller must combine the result with the logical
+ * Convert from x offset to character position.
+ *
+ * Character positions are computed by dividing up each cluster into
+ * equal portions. In scripts where positioning within a cluster is
+ * not allowed (such as Thai), the returned value may not be a valid
+ * cursor position; the caller must combine the result with the logical
  * attributes for the text to compute the valid cursor position.
  */
 void
 pango_glyph_string_x_to_index (PangoGlyphString *glyphs,
-			       char             *text,
-			       int               length,
-			       PangoAnalysis    *analysis,
-			       int               x_pos,
-			       int              *index,
-			       gboolean         *trailing)
+                               const char       *text,
+                               int               length,
+                               PangoAnalysis    *analysis,
+                               int               x_pos,
+                               int              *index,
+                               gboolean         *trailing)
 {
   int i;
   int start_xpos = 0;
@@ -521,7 +659,7 @@ pango_glyph_string_x_to_index (PangoGlyphString *glyphs,
   int end_index = -1;
 
   int cluster_chars = 0;
-  char *p;
+  const char *p;
 
   gboolean found = FALSE;
 
@@ -617,7 +755,7 @@ pango_glyph_string_x_to_index (PangoGlyphString *glyphs,
 	{
 	  if (index)
 	    {
-	      char *p = text + start_index;
+	      const char *p = text + start_index;
 	      int i = 0;
 
 	      while (i + 1 <= cp)
@@ -636,7 +774,7 @@ pango_glyph_string_x_to_index (PangoGlyphString *glyphs,
 	{
 	  if (index)
 	    {
-	      char *p = text + start_index;
+	      const char *p = text + start_index;
 	      int i = 0;
 
 	      while (i + 1 < cp)

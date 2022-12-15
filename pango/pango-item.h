@@ -10,7 +10,7 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Library General Public License for more details.
  *
  * You should have received a copy of the GNU Library General Public
@@ -34,7 +34,8 @@ typedef struct _PangoItem PangoItem;
  * PANGO_ANALYSIS_FLAG_CENTERED_BASELINE:
  *
  * Whether the segment should be shifted to center around the baseline.
- * Used in vertical writing directions mostly.
+ *
+ * This is mainly used in vertical writing directions.
  *
  * Since: 1.16
  */
@@ -43,8 +44,7 @@ typedef struct _PangoItem PangoItem;
 /**
  * PANGO_ANALYSIS_FLAG_IS_ELLIPSIS:
  *
- * This flag is used to mark runs that hold ellipsized text,
- * in an ellipsized layout.
+ * Whether this run holds ellipsized text.
  *
  * Since: 1.36.7
  */
@@ -53,8 +53,7 @@ typedef struct _PangoItem PangoItem;
 /**
  * PANGO_ANALYSIS_FLAG_NEED_HYPHEN:
  *
- * This flag tells Pango to add a hyphen at the end of the
- * run during shaping.
+ * Whether to add a hyphen at the end of the run during shaping.
  *
  * Since: 1.44
  */
@@ -62,23 +61,28 @@ typedef struct _PangoItem PangoItem;
 
 /**
  * PangoAnalysis:
- * @shape_engine: unused
- * @lang_engine: unused
+ * @shape_engine: unused, reserved
+ * @lang_engine: unused, reserved
  * @font: the font for this segment.
  * @level: the bidirectional level for this segment.
- * @gravity: the glyph orientation for this segment (A #PangoGravity).
+ * @gravity: the glyph orientation for this segment (A `PangoGravity`).
  * @flags: boolean flags for this segment (Since: 1.16).
- * @script: the detected script for this segment (A #PangoScript) (Since: 1.18).
+ * @script: the detected script for this segment (A `PangoScript`) (Since: 1.18).
  * @language: the detected language for this segment.
  * @extra_attrs: extra attributes for this segment.
  *
- * The #PangoAnalysis structure stores information about
+ * The `PangoAnalysis` structure stores information about
  * the properties of a segment of text.
  */
 struct _PangoAnalysis
 {
+#ifndef __GI_SCANNER__
   PangoEngineShape *shape_engine;
   PangoEngineLang  *lang_engine;
+#else
+  gpointer shape_engine;
+  gpointer lang_engine;
+#endif
   PangoFont *font;
 
   guint8 level;
@@ -96,36 +100,65 @@ struct _PangoAnalysis
  * @offset: byte offset of the start of this item in text.
  * @length: length of this item in bytes.
  * @num_chars: number of Unicode characters in the item.
+ * @char_offset: character offset of the start of this item in text. Since 1.50
  * @analysis: analysis results for the item.
  *
- * The #PangoItem structure stores information about a segment of text.
+ * The `PangoItem` structure stores information about a segment of text.
+ *
+ * You typically obtain `PangoItems` by itemizing a piece of text
+ * with [func@itemize].
  */
 struct _PangoItem
 {
-  gint offset;
-  gint length;
-  gint num_chars;
+  int offset;
+  int length;
+  int num_chars;
   PangoAnalysis analysis;
 };
 
 #define PANGO_TYPE_ITEM (pango_item_get_type ())
 
 PANGO_AVAILABLE_IN_ALL
-GType pango_item_get_type (void) G_GNUC_CONST;
+GType                   pango_item_get_type          (void) G_GNUC_CONST;
 
 PANGO_AVAILABLE_IN_ALL
-PangoItem *pango_item_new   (void);
+PangoItem *             pango_item_new               (void);
 PANGO_AVAILABLE_IN_ALL
-PangoItem *pango_item_copy  (PangoItem  *item);
+PangoItem *             pango_item_copy              (PangoItem         *item);
 PANGO_AVAILABLE_IN_ALL
-void       pango_item_free  (PangoItem  *item);
+void                    pango_item_free              (PangoItem         *item);
+
 PANGO_AVAILABLE_IN_ALL
-PangoItem *pango_item_split (PangoItem  *orig,
-			     int         split_index,
-			     int         split_offset);
+PangoItem *             pango_item_split             (PangoItem         *orig,
+                                                      int                split_index,
+                                                      int                split_offset);
+
 PANGO_AVAILABLE_IN_1_44
-void       pango_item_apply_attrs (PangoItem         *item,
-                                   PangoAttrIterator *iter);
+void                    pango_item_apply_attrs       (PangoItem         *item,
+                                                      PangoAttrIterator *iter);
+
+PANGO_AVAILABLE_IN_ALL
+GList *                 pango_reorder_items          (GList             *items);
+
+/* Itemization */
+
+PANGO_AVAILABLE_IN_ALL
+GList *                 pango_itemize                (PangoContext      *context,
+                                                      const char        *text,
+                                                      int                start_index,
+                                                      int                length,
+                                                      PangoAttrList     *attrs,
+                                                      PangoAttrIterator *cached_iter);
+
+PANGO_AVAILABLE_IN_1_4
+GList *                 pango_itemize_with_base_dir  (PangoContext      *context,
+                                                      PangoDirection     base_dir,
+                                                      const char        *text,
+                                                      int                start_index,
+                                                      int                length,
+                                                      PangoAttrList     *attrs,
+                                                      PangoAttrIterator *cached_iter);
+
 
 G_END_DECLS
 

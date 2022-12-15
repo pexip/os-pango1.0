@@ -27,7 +27,6 @@
 #include "pangocoretext.h"
 #include "pango-font-private.h"
 #include "pango-fontmap-private.h"
-#include "pango-fontset-private.h"
 
 G_BEGIN_DECLS
 
@@ -122,8 +121,6 @@ GType                 pango_core_text_font_map_get_type          (void) G_GNUC_C
 
 void                  _pango_core_text_font_set_font_map         (PangoCoreTextFont    *afont,
                                                                   PangoCoreTextFontMap *fontmap);
-void                  _pango_core_text_font_set_face             (PangoCoreTextFont    *afont, 
-                                                                  PangoCoreTextFace    *aface);
 PangoCoreTextFace *   _pango_core_text_font_get_face             (PangoCoreTextFont    *font);
 gpointer              _pango_core_text_font_get_context_key      (PangoCoreTextFont    *afont);
 void                  _pango_core_text_font_set_context_key      (PangoCoreTextFont    *afont,
@@ -151,6 +148,9 @@ _PANGO_EXTERN
 PangoGravity          pango_core_text_font_key_get_gravity          (const PangoCoreTextFontKey *key);
 _PANGO_EXTERN
 CTFontDescriptorRef   pango_core_text_font_key_get_ctfontdescriptor (const PangoCoreTextFontKey *key);
+
+PangoCoreTextFace *   pango_core_text_font_map_find_face (PangoCoreTextFontMap       *map,
+                                                          const PangoCoreTextFontKey *key);
 
 G_END_DECLS
 

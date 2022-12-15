@@ -31,6 +31,8 @@
 #include <pango/pangocairo.h>
 #include "test-common.h"
 
+#include "pango/pango-item-private.h"
+
 
 static PangoContext *context;
 
@@ -55,7 +57,7 @@ static gboolean
 affects_itemization (PangoAttribute *attr,
                      gpointer        data)
 {
-  switch (attr->klass->type)
+  switch ((int)attr->klass->type)
     {
     /* These affect font selection */
     case PANGO_ATTR_LANGUAGE:
@@ -71,12 +73,15 @@ affects_itemization (PangoAttribute *attr,
     case PANGO_ATTR_ABSOLUTE_SIZE:
     case PANGO_ATTR_GRAVITY:
     case PANGO_ATTR_GRAVITY_HINT:
+    case PANGO_ATTR_FONT_SCALE:
     /* These are part of ItemProperties, so need to break runs */
+    case PANGO_ATTR_LETTER_SPACING:
     case PANGO_ATTR_SHAPE:
     case PANGO_ATTR_RISE:
-    case PANGO_ATTR_UNDERLINE:
-    case PANGO_ATTR_STRIKETHROUGH:
-    case PANGO_ATTR_LETTER_SPACING:
+    case PANGO_ATTR_BASELINE_SHIFT:
+    case PANGO_ATTR_LINE_HEIGHT:
+    case PANGO_ATTR_ABSOLUTE_LINE_HEIGHT:
+    case PANGO_ATTR_TEXT_TRANSFORM:
       return TRUE;
     default:
       return FALSE;
@@ -104,13 +109,22 @@ apply_attributes_to_items (GList         *items,
   pango_attr_iterator_destroy (iter);
 }
 
+static int
+get_item_char_offset (PangoItem *item)
+{
+  if (item->analysis.flags & PANGO_ANALYSIS_FLAG_HAS_CHAR_OFFSET)
+    return ((PangoItemPrivate *)item)->char_offset;
+
+  return -1;
+}
+
 static void
 test_file (const gchar *filename, GString *string)
 {
   gchar *contents;
   gsize  length;
   GError *error = NULL;
-  GString *s1, *s2, *s3, *s4, *s5, *s6;
+  GString *s1, *s2, *s3, *s4, *s5, *s6, *s7;
   char *test;
   char *text;
   PangoAttrList *attrs;
@@ -136,6 +150,7 @@ test_file (const gchar *filename, GString *string)
   s4 = g_string_new ("Lang:   ");
   s5 = g_string_new ("Bidi:   ");
   s6 = g_string_new ("Attrs:  ");
+  s7 = g_string_new ("Chars:  ");
 
   length = strlen (text);
   if (text[length - 1] == '\n')
@@ -168,6 +183,7 @@ test_file (const gchar *filename, GString *string)
       g_string_append_printf (s4, "%s%s", sep, pango_language_to_string (item->analysis.language));
       g_string_append_printf (s5, "%s%d", sep, item->analysis.level);
       g_string_append_printf (s6, "%s", sep);
+      g_string_append_printf (s7, "%s%d(%d)", sep, item->num_chars, get_item_char_offset (item));
       for (a = item->analysis.extra_attrs; a; a = a->next)
         {
           PangoAttribute *attr = a->data;
@@ -189,10 +205,12 @@ test_file (const gchar *filename, GString *string)
       g_string_append_printf (s4, "%*s", (int)(m - s4->len), "");
       g_string_append_printf (s5, "%*s", (int)(m - s5->len), "");
       g_string_append_printf (s6, "%*s", (int)(m - s6->len), "");
+      g_string_append_printf (s7, "%*s", (int)(m - s7->len), "");
     }
 
   g_string_append_printf (string, "%s\n", test);
   g_string_append_printf (string, "%s\n", s1->str);
+  g_string_append_printf (string, "%s\n", s7->str);
   g_string_append_printf (string, "%s\n", s2->str);
   g_string_append_printf (string, "%s\n", s3->str);
   g_string_append_printf (string, "%s\n", s4->str);
@@ -205,6 +223,7 @@ test_file (const gchar *filename, GString *string)
   g_string_free (s4, TRUE);
   g_string_free (s5, TRUE);
   g_string_free (s6, TRUE);
+  g_string_free (s7, TRUE);
 
   g_list_free_full (items, (GDestroyNotify)pango_item_free);
   pango_attr_list_unref (attrs);
@@ -236,21 +255,41 @@ test_itemize (gconstpointer d)
   GError *error = NULL;
   GString *dump;
   gchar *diff;
+  PangoFontFamily **families;
+  int n_families;
+  gboolean found_cantarell;
 
-  const char *old_locale = setlocale (LC_ALL, NULL);
-  setlocale (LC_ALL, "en_US.utf8");
+  char *old_locale = g_strdup (setlocale (LC_ALL, NULL));
+  setlocale (LC_ALL, "en_US.UTF-8");
   if (strstr (setlocale (LC_ALL, NULL), "en_US") == NULL)
     {
-#if 0
-      // See https://github.com/mesonbuild/meson/issues/7515
       char *msg = g_strdup_printf ("Locale en_US.UTF-8 not available, skipping itemization %s", filename);
       g_test_skip (msg);
       g_free (msg);
-#endif
+      g_free (old_locale);
       return;
     }
 
-  context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  found_cantarell = FALSE;
+  pango_context_list_families (context, &families, &n_families);
+  for (int i = 0; i < n_families; i++)
+    {
+      if (strcmp (pango_font_family_get_name (families[i]), "Cantarell") == 0)
+        {
+          found_cantarell = TRUE;
+          break;
+        }
+    }
+  g_free (families);
+
+  if (!found_cantarell)
+    {
+      char *msg = g_strdup_printf ("Cantarell font not available, skipping itemization %s", filename);
+      g_test_skip (msg);
+      g_free (msg);
+      g_free (old_locale);
+      return;
+    }
 
   expected_file = get_expected_filename (filename);
 
@@ -262,6 +301,7 @@ test_itemize (gconstpointer d)
   g_assert_no_error (error);
 
   setlocale (LC_ALL, old_locale);
+  g_free (old_locale);
 
   if (diff && diff[0])
     {
@@ -292,10 +332,11 @@ main (int argc, char *argv[])
   const gchar *name;
   gchar *path;
 
-  g_test_init (&argc, &argv, NULL);
+  context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  pango_context_set_language (context, pango_language_from_string ("en-us"));
 
   /* allow to easily generate expected output for new test cases */
-  if (argc > 1)
+  if (argc > 1 && argv[1][0] != '-')
     {
       GString *string;
 
@@ -305,6 +346,8 @@ main (int argc, char *argv[])
 
       return 0;
     }
+
+  g_test_init (&argc, &argv, NULL);
 
   path = g_test_build_filename (G_TEST_DIST, "itemize", NULL);
   dir = g_dir_open (path, 0, &error);

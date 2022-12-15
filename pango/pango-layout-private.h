@@ -58,6 +58,7 @@ struct _PangoLayout
   float line_spacing;           /* factor to apply to line height */
 
   guint justify : 1;
+  guint justify_last_line : 1;
   guint alignment : 2;
   guint single_paragraph : 1;
   guint auto_dir : 1;
@@ -73,6 +74,7 @@ struct _PangoLayout
   PangoRectangle logical_rect;
   PangoRectangle ink_rect;
   int tab_width;		/* Cached width of a tab. -1 == not yet calculated */
+  gunichar decimal;
 
   int copy_end;
 
@@ -111,11 +113,12 @@ struct _PangoLayoutIter
   Extents *line_extents;
   int line_index;
 
-  /* X position of the current run */
+  /* Position of the current run */
   int run_x;
 
-  /* Width of the current run */
+  /* Width and end offset of the current run */
   int run_width;
+  int end_x_offset;
 
   /* this run is left-to-right */
   gboolean ltr;

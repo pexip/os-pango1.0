@@ -29,310 +29,62 @@
 
 #include "config.h"
 #include <pango/pangocairo.h>
+#include <pango/pangocairo-fc.h>
+#include <pango/pangofc-fontmap.h>
 #include "test-common.h"
 
-
-static PangoContext *context;
-
-
-static const gchar *
-enum_value_nick (GType type, gint value)
-{
-  GEnumClass *eclass;
-  GEnumValue *ev;
-
-  eclass = g_type_class_ref (type);
-  ev = g_enum_get_value (eclass, value);
-  g_type_class_unref (eclass);
-
-  if (ev)
-    return ev->value_nick;
-  else
-    return "?";
-}
-
-static const gchar *
-direction_name (PangoDirection dir)
-{
-  return enum_value_nick (PANGO_TYPE_DIRECTION, dir);
-}
-
-static const gchar *
-gravity_name (PangoGravity gravity)
-{
-  return enum_value_nick (PANGO_TYPE_GRAVITY, gravity);
-}
-
-static const gchar *
-script_name (PangoScript script)
-{
-  return enum_value_nick (PANGO_TYPE_SCRIPT, script);
-}
-
-static gchar *
-font_name (PangoFont *font)
-{
-  PangoFontDescription *desc;
-  gchar *name;
-
-  desc = pango_font_describe (font);
-  name = pango_font_description_to_string (desc);
-  pango_font_description_free (desc);
-
-  return name;
-}
-
-static void
-dump_lines (PangoLayout *layout, GString *string)
-{
-  PangoLayoutIter *iter;
-  const gchar *text;
-  gint index, index2;
-  gboolean has_more;
-  gchar *char_str;
-  gint i;
-  PangoLayoutLine *line;
-
-  text = pango_layout_get_text (layout);
-  iter = pango_layout_get_iter (layout);
-
-  has_more = TRUE;
-  index = pango_layout_iter_get_index (iter);
-  index2 = 0;
-  i = 0;
-  while (has_more)
-    {
-      line = pango_layout_iter_get_line (iter);
-      has_more = pango_layout_iter_next_line (iter);
-      i++;
-
-      if (has_more)
-        {
-          index2 = pango_layout_iter_get_index (iter);
-          char_str = g_strndup (text + index, index2 - index);
-        }
-      else
-        {
-          char_str = g_strdup (text + index);
-        }
-
-      g_string_append_printf (string, "i=%d, index=%d, paragraph-start=%d, dir=%s '%s'\n",
-                              i, index, line->is_paragraph_start, direction_name (line->resolved_dir),
-                              char_str);
-      g_free (char_str);
-
-      index = index2;
-    }
-  pango_layout_iter_free (iter);
-}
-
-static void
-dump_runs (PangoLayout *layout, GString *string)
-{
-  PangoLayoutIter *iter;
-  PangoLayoutRun *run;
-  PangoItem *item;
-  const gchar *text;
-  gint index;
-  gboolean has_more;
-  gchar *char_str;
-  gint i;
-  gchar *font = 0;
-
-  text = pango_layout_get_text (layout);
-  iter = pango_layout_get_iter (layout);
-
-  has_more = TRUE;
-  i = 0;
-  while (has_more)
-    {
-      run = pango_layout_iter_get_run (iter);
-      index = pango_layout_iter_get_index (iter);
-      has_more = pango_layout_iter_next_run (iter);
-      i++;
-
-      if (run)
-        {
-          item = ((PangoGlyphItem*)run)->item;
-          char_str = g_strndup (text + item->offset, item->length);
-          font = font_name (item->analysis.font);
-          g_string_append_printf (string, "i=%d, index=%d, chars=%d, level=%d, gravity=%s, flags=%d, font=%s, script=%s, language=%s, '%s'\n",
-                                  i, index, item->num_chars, item->analysis.level,
-                                  gravity_name (item->analysis.gravity),
-                                  item->analysis.flags,
-                                  "OMITTED", /* for some reason, this fails on build.gnome.org, so leave it out */
-                                  script_name (item->analysis.script),
-                                  pango_language_to_string (item->analysis.language),
-                                  char_str);
-          print_attributes (item->analysis.extra_attrs, string);
-          g_free (font);
-          g_free (char_str);
-        }
-      else
-        {
-          g_string_append_printf (string, "i=%d, index=%d, no run, line end\n",
-                                  i, index);
-        }
-    }
-  pango_layout_iter_free (iter);
-}
-
-static void
-parse_params (const gchar        *str,
-              gint               *width,
-              gint               *ellipsize_at,
-              PangoEllipsizeMode *ellipsize,
-              PangoWrapMode      *wrap)
-{
-  gchar **strings;
-  gchar **str2;
-  gint i;
-  GEnumClass *eclass;
-  GEnumValue *ev;
-
-  strings = g_strsplit (str, ",", -1);
-  for (i = 0; strings[i]; i++)
-    {
-      str2 = g_strsplit (strings[i], "=", -1);
-      if (strcmp (str2[0], "width") == 0)
-        *width = (gint) g_ascii_strtoll (str2[1], NULL, 10);
-      else if (strcmp (str2[0], "ellipsize-at") == 0)
-        *ellipsize_at = (gint) g_ascii_strtoll (str2[1], NULL, 10);
-      else if (strcmp (str2[0], "ellipsize") == 0)
-        {
-          eclass = g_type_class_ref (PANGO_TYPE_ELLIPSIZE_MODE);
-          ev = g_enum_get_value_by_name (eclass, str2[1]);
-          if (!ev)
-            ev = g_enum_get_value_by_nick (eclass, str2[1]);
-          if (ev)
-            *ellipsize = ev->value;
-          g_type_class_unref (eclass);
-        }
-      else if (strcmp (str2[0], "wrap") == 0)
-        {
-          eclass = g_type_class_ref (PANGO_TYPE_WRAP_MODE);
-          ev = g_enum_get_value_by_name (eclass, str2[1]);
-          if (!ev)
-            ev = g_enum_get_value_by_nick (eclass, str2[1]);
-          if (ev)
-            *wrap = ev->value;
-          g_type_class_unref (eclass);
-        }
-      g_strfreev (str2);
-    }
-  g_strfreev (strings);
-}
-
-static void
-test_file (const gchar *filename, GString *string)
-{
-  gchar *contents;
-  gchar *markup;
-  gsize  length;
-  GError *error = NULL;
-  PangoLayout *layout;
-  gchar *p;
-  gint width = 0;
-  gint ellipsize_at = 0;
-  PangoEllipsizeMode ellipsize = PANGO_ELLIPSIZE_NONE;
-  PangoWrapMode wrap = PANGO_WRAP_WORD;
-  PangoFontDescription *desc;
-
-  if (context == NULL)
-    context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
-
-  g_file_get_contents (filename, &contents, &length, &error);
-  g_assert_no_error (error);
-
-  p = strchr (contents, '\n');
-  g_assert (p);
-  markup = p + 1;
-  *p = '\0';
-  length = strlen (markup);
-
-  parse_params (contents, &width, &ellipsize_at, &ellipsize, &wrap);
-
-  layout = pango_layout_new (context);
-  desc = pango_font_description_from_string ("Cantarell 11");
-  pango_layout_set_font_description (layout, desc);
-  pango_font_description_free (desc);
-
-  pango_layout_set_markup (layout, markup, length);
-  g_free (contents);
-
-  if (width != 0)
-    pango_layout_set_width (layout, width * PANGO_SCALE);
-  pango_layout_set_ellipsize (layout, ellipsize);
-  pango_layout_set_wrap (layout, wrap);
-
-  g_string_append (string, pango_layout_get_text (layout));
-  g_string_append (string, "\n--- parameters\n\n");
-  g_string_append_printf (string, "wrapped: %d\n", pango_layout_is_wrapped (layout));
-  g_string_append_printf (string, "ellipsized: %d\n", pango_layout_is_ellipsized (layout));
-  g_string_append_printf (string, "lines: %d\n", pango_layout_get_line_count (layout));
-  if (width != 0)
-    g_string_append_printf (string, "width: %d\n", pango_layout_get_width (layout));
-  g_string_append (string, "\n--- attributes\n\n");
-  print_attr_list (pango_layout_get_attributes (layout), string);
-  g_string_append (string, "\n--- lines\n\n");
-  dump_lines (layout, string);
-  g_string_append (string, "\n--- runs\n\n");
-  dump_runs (layout, string);
-
-  g_object_unref (layout);
-}
-
-static gchar *
-get_expected_filename (const gchar *filename)
-{
-  gchar *f, *p, *expected;
-
-  f = g_strdup (filename);
-  p = strstr (f, ".markup");
-  if (p)
-    *p = 0;
-  expected = g_strconcat (f, ".expected", NULL);
-
-  g_free (f);
-
-  return expected;
-}
 
 static void
 test_layout (gconstpointer d)
 {
-  const gchar *filename = d;
-  gchar *expected_file;
+  const char *filename = d;
   GError *error = NULL;
-  GString *dump;
-  gchar *diff;
+  char *diff;
+  GBytes *bytes;
+  char *contents;
+  gsize length;
+  GBytes *orig;
+  PangoContext *context;
+  PangoLayout *layout;
 
-  const char *old_locale = setlocale (LC_ALL, NULL);
-  setlocale (LC_ALL, "en_US.utf8");
-  if (strstr (setlocale (LC_ALL, NULL), "en_US") == NULL)
+  if (!PANGO_IS_FC_FONT_MAP (pango_cairo_font_map_get_default ()))
     {
-#if 0
-      // See https://github.com/mesonbuild/meson/issues/7515
-      char *msg = g_strdup_printf ("Locale en_US.UTF-8 not available, skipping layout %s", filename);
-      g_test_skip (msg);
-      g_free (msg);
-#endif
+      g_test_skip ("Not an fc fontmap. Skipping...");
       return;
     }
 
-  if (context == NULL)
-    context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  char *old_locale = g_strdup (setlocale (LC_ALL, NULL));
+  setlocale (LC_ALL, "en_US.UTF-8");
+  if (strstr (setlocale (LC_ALL, NULL), "en_US") == NULL)
+    {
+      char *msg = g_strdup_printf ("Locale en_US.UTF-8 not available, skipping layout %s", filename);
+      g_test_skip (msg);
+      g_free (msg);
+      g_free (old_locale);
+      return;
+    }
 
-  expected_file = get_expected_filename (filename);
+  g_file_get_contents (filename, &contents, &length, &error);
+  g_assert_no_error (error);
+  orig = g_bytes_new_take (contents, length);
 
-  dump = g_string_sized_new (0);
-
-  test_file (filename, dump);
-
-  diff = diff_with_file (expected_file, dump->str, dump->len, &error);
+  context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  layout = pango_layout_deserialize (context, orig, PANGO_LAYOUT_DESERIALIZE_CONTEXT, &error);
   g_assert_no_error (error);
 
+  bytes = pango_layout_serialize (layout, PANGO_LAYOUT_SERIALIZE_CONTEXT | PANGO_LAYOUT_SERIALIZE_OUTPUT);
+
+  g_object_unref (layout);
+  g_object_unref (context);
+
+  diff = diff_bytes (orig, bytes, &error);
+  g_assert_no_error (error);
+
+  g_bytes_unref (bytes);
+  g_bytes_unref (orig);
+
   setlocale (LC_ALL, old_locale);
+  g_free (old_locale);
 
   if (diff && diff[0])
     {
@@ -350,8 +102,37 @@ test_layout (gconstpointer d)
     }
 
   g_free (diff);
-  g_string_free (dump, TRUE);
-  g_free (expected_file);
+}
+
+static void
+install_fonts (const char *dir)
+{
+  FcConfig *config;
+  PangoFontMap *map;
+  char *path;
+  gsize len;
+  char *conf;
+
+  map = g_object_new (PANGO_TYPE_CAIRO_FC_FONT_MAP, NULL);
+
+  config = FcConfigCreate ();
+
+  path = g_build_filename (dir, "fonts.conf", NULL);
+  g_file_get_contents (path, &conf, &len, NULL);
+
+  if (!FcConfigParseAndLoadFromMemory (config, (const FcChar8 *) conf, TRUE))
+    g_error ("Failed to parse fontconfig configuration");
+
+  g_free (conf);
+  g_free (path);
+
+  FcConfigAppFontAddDir (config, (const FcChar8 *) dir);
+  pango_fc_font_map_set_config (PANGO_FC_FONT_MAP (map), config);
+  FcConfigDestroy (config);
+
+  pango_cairo_font_map_set_default (PANGO_CAIRO_FONT_MAP (map));
+
+  g_object_unref (map);
 }
 
 int
@@ -359,24 +140,71 @@ main (int argc, char *argv[])
 {
   GDir *dir;
   GError *error = NULL;
+  char *opt_fonts = NULL;
   const gchar *name;
-  gchar *path;
+  char *path;
+  GOptionContext *option_context;
+  GOptionEntry entries[] = {
+    { "fonts", 0, 0, G_OPTION_ARG_FILENAME, &opt_fonts, "Fonts to use", "DIR" },
+    { NULL, 0 },
+  };
+
+  setlocale (LC_ALL, "");
+  option_context = g_option_context_new ("");
+  g_option_context_add_main_entries (option_context, entries, NULL);
+  g_option_context_set_ignore_unknown_options (option_context, TRUE);
+  if (!g_option_context_parse (option_context, &argc, &argv, &error))
+    {
+      g_error ("failed to parse options: %s", error->message);
+      return 1;
+    }
+  g_option_context_free (option_context);
+
+  if (opt_fonts)
+    {
+      install_fonts (opt_fonts);
+      g_free (opt_fonts);
+    }
 
   /* allow to easily generate expected output for new test cases */
   if (argc > 1 && argv[1][0] != '-')
     {
-      GString *string;
+      char *contents;
+      gsize length;
+      GError *error = NULL;
+      GBytes *orig;
+      GBytes *bytes;
+      PangoContext *context;
+      PangoLayout *layout;
 
-      setlocale (LC_ALL, "en_US.utf8");
+      g_file_get_contents (argv[1], &contents, &length, &error);
+      g_assert_no_error (error);
+      orig = g_bytes_new_take (contents, length);
+      context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+      layout = pango_layout_deserialize (context, orig, PANGO_LAYOUT_DESERIALIZE_CONTEXT, &error);
+      g_assert_no_error (error);
 
-      string = g_string_sized_new (0);
-      test_file (argv[1], string);
-      g_test_message ("%s", string->str);
+      bytes = pango_layout_serialize (layout, PANGO_LAYOUT_SERIALIZE_CONTEXT | PANGO_LAYOUT_SERIALIZE_OUTPUT);
+
+      g_object_unref (layout);
+      g_object_unref (context);
+
+      g_print ("%s", (const char *)g_bytes_get_data (bytes, NULL));
+
+      g_bytes_unref (bytes);
+      g_bytes_unref (orig);
 
       return 0;
     }
 
   g_test_init (&argc, &argv, NULL);
+
+  if (!opt_fonts)
+    {
+      path = g_test_build_filename (G_TEST_DIST, "fonts", NULL);
+      install_fonts (path);
+      g_free (path);
+    }
 
   path = g_test_build_filename (G_TEST_DIST, "layouts", NULL);
   dir = g_dir_open (path, 0, &error);
@@ -384,7 +212,7 @@ main (int argc, char *argv[])
   g_assert_no_error (error);
   while ((name = g_dir_read_name (dir)) != NULL)
     {
-      if (!strstr (name, "markup"))
+      if (!g_str_has_suffix (name, ".layout"))
         continue;
 
       path = g_strdup_printf ("/layout/%s", name);

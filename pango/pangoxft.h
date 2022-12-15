@@ -23,6 +23,7 @@
 #ifndef __PANGOXFT_H__
 #define __PANGOXFT_H__
 
+#include <pango/pangofc-fontmap.h>
 #include <pango/pango-context.h>
 #include <pango/pango-ot.h>
 #include <pango/pangofc-font.h>
@@ -48,9 +49,9 @@ G_BEGIN_DECLS
 /**
  * PangoXftFontMap:
  *
- * #PangoXftFontMap is an implementation of #PangoFcFontMap suitable for
+ * `PangoXftFontMap` is an implementation of `PangoFcFontMap` suitable for
  * the Xft library as the renderer.  It is used in to create fonts of
- * type #PangoXftFont.
+ * type `PangoXftFont`.
  */
 
 /* This is a hack needed because PangoXft hijacks the Pango namespace
@@ -72,8 +73,8 @@ typedef struct _PangoXftFontMap      PangoXftFontMap;
 /**
  * PangoXftFont:
  *
- * #PangoXftFont is an implementation of #PangoFcFont using the Xft
- * library for rendering.  It is used in conjunction with #PangoXftFontMap.
+ * `PangoXftFont` is an implementation of `PangoFcFont` using the Xft
+ * library for rendering.  It is used in conjunction with `PangoXftFontMap`.
  */
 typedef struct _PangoXftFont    PangoXftFont;
 
@@ -85,7 +86,7 @@ typedef struct _PangoXftFont    PangoXftFont;
  * Function type for doing final config tweaking on prepared FcPatterns.
  */
 typedef void (*PangoXftSubstituteFunc) (FcPattern *pattern,
-					gpointer   data);
+				        gpointer   data);
 
 /* Calls for applications
  */
@@ -101,15 +102,17 @@ PANGO_AVAILABLE_IN_1_2
 void          pango_xft_shutdown_display (Display *display,
 					  int      screen);
 
-PANGO_AVAILABLE_IN_1_2
+#ifndef PANGO_DISABLE_DEPRECATED
+PANGO_DEPRECATED_IN_1_48_FOR(pango_fc_font_map_set_default_substitute)
 void pango_xft_set_default_substitute (Display                *display,
 				       int                     screen,
 				       PangoXftSubstituteFunc  func,
 				       gpointer                data,
 				       GDestroyNotify          notify);
-PANGO_AVAILABLE_IN_1_2
+PANGO_DEPRECATED_IN_1_48_FOR(pango_fc_font_map_substitute_changed)
 void pango_xft_substitute_changed     (Display                *display,
 				       int                     screen);
+#endif
 
 PANGO_AVAILABLE_IN_ALL
 GType pango_xft_font_map_get_type (void) G_GNUC_CONST;

@@ -1,4 +1,3 @@
-Revert-testsuite-Don-t-use-g_test_skip.patch
-Tolerate-slightly-different-output-for-the-word-breaking-.patch
-fc_Sort-faces-of-a-family.patch
-fontconfig_Try-harder-to-return-a-default-face.patch
+debian/tests-Skip-a-test-that-fails-with-a-small-variation-on-i3.patch
+debian/tests-Treat-some-more-layout-tests-as-flaky.patch
+debian/Work-around-1014417-in-Meson.patch
