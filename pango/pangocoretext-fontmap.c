@@ -1686,10 +1686,7 @@ static PangoFont *
 pango_core_text_fontset_load_font (PangoCoreTextFontset *ctfontset,
                                    CTFontDescriptorRef   ctdescriptor)
 {
-  PangoCoreTextFontsetKey *key;
   PangoCoreTextFont *font;
-
-  key = pango_core_text_fontset_get_key (ctfontset);
 
   /* For now, we will default the fallbacks to not have synthetic italic,
    * in the future this may be improved.
