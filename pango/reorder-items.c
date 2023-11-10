@@ -20,7 +20,7 @@
  */
 
 #include "config.h"
-#include "pango-glyph.h"
+#include "pango-item.h"
 
 /*
  * NB: The contents of the file implement the exact same algorithm
@@ -31,27 +31,30 @@ static GList *reorder_items_recurse (GList *items, int n_items);
 
 /**
  * pango_reorder_items:
- * @logical_items: (element-type Pango.Item): a #GList of #PangoItem in logical order.
+ * @items: (element-type Pango.Item): a `GList` of `PangoItem`
+ *   in logical order.
  *
- * From a list of items in logical order and the associated
- * directional levels, produce a list in visual order.
- * The original list is unmodified.
+ * Reorder items from logical order to visual order.
  *
- * Returns: (transfer full) (element-type Pango.Item): a #GList
- *          of #PangoItem structures in visual order.
+ * The visual order is determined from the associated directional
+ * levels of the items. The original list is unmodified.
  *
  * (Please open a bug if you use this function.
  *  It is not a particularly convenient interface, and the code
  *  is duplicated elsewhere in Pango for that reason.)
+ *
+ * Returns: (transfer full) (element-type Pango.Item): a `GList`
+ *   of `PangoItem` structures in visual order.
  */
 GList *
-pango_reorder_items (GList *logical_items)
+pango_reorder_items (GList *items)
 {
-  return reorder_items_recurse (logical_items, g_list_length (logical_items));
+  return reorder_items_recurse (items, g_list_length (items));
 }
 
 static GList *
-reorder_items_recurse (GList *items, int n_items)
+reorder_items_recurse (GList *items,
+                       int    n_items)
 {
   GList *tmp_list, *level_start_node;
   int i, level_start_i;

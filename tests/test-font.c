@@ -23,6 +23,7 @@
 #include <string.h>
 #include <locale.h>
 
+#include <gio/gio.h>
 #include <pango/pangocairo.h>
 
 static PangoContext *context;
@@ -30,9 +31,12 @@ static PangoContext *context;
 static void
 test_parse (void)
 {
+  PangoFontDescription **descs;
   PangoFontDescription *desc;
 
-  desc = pango_font_description_from_string ("Cantarell 14");
+  descs = g_new (PangoFontDescription *, 2);
+
+  descs[0] = desc = pango_font_description_from_string ("Cantarell 14");
 
   g_assert_cmpstr (pango_font_description_get_family (desc), ==, "Cantarell");
   g_assert (!pango_font_description_get_size_is_absolute (desc));
@@ -44,9 +48,7 @@ test_parse (void)
   g_assert_cmpint (pango_font_description_get_gravity (desc), ==, PANGO_GRAVITY_SOUTH);
   g_assert_cmpint (pango_font_description_get_set_fields (desc), ==, PANGO_FONT_MASK_FAMILY | PANGO_FONT_MASK_STYLE | PANGO_FONT_MASK_VARIANT | PANGO_FONT_MASK_WEIGHT | PANGO_FONT_MASK_STRETCH | PANGO_FONT_MASK_SIZE);
 
-  pango_font_description_free (desc); 
-
-  desc = pango_font_description_from_string ("Sans Bold Italic Condensed 22.5px");
+  descs[1] = desc = pango_font_description_from_string ("Sans Bold Italic Condensed 22.5px");
 
   g_assert_cmpstr (pango_font_description_get_family (desc), ==, "Sans");
   g_assert (pango_font_description_get_size_is_absolute (desc)); 
@@ -57,30 +59,30 @@ test_parse (void)
   g_assert_cmpint (pango_font_description_get_stretch (desc), ==, PANGO_STRETCH_CONDENSED); 
   g_assert_cmpint (pango_font_description_get_gravity (desc), ==, PANGO_GRAVITY_SOUTH);  g_assert_cmpint (pango_font_description_get_set_fields (desc), ==, PANGO_FONT_MASK_FAMILY | PANGO_FONT_MASK_STYLE | PANGO_FONT_MASK_VARIANT | PANGO_FONT_MASK_WEIGHT | PANGO_FONT_MASK_STRETCH | PANGO_FONT_MASK_SIZE);
 
-  pango_font_description_free (desc); 
+  pango_font_descriptions_free (descs, 2);
 }
 
 static void
 test_roundtrip (void)
 {
   PangoFontDescription *desc;
- gchar *str;
+  char *str;
 
   desc = pango_font_description_from_string ("Cantarell 14");
   str = pango_font_description_to_string (desc);
   g_assert_cmpstr (str, ==, "Cantarell 14");
-  pango_font_description_free (desc); 
+  pango_font_description_free (desc);
   g_free (str);
 
   desc = pango_font_description_from_string ("Sans Bold Italic Condensed 22.5px");
   str = pango_font_description_to_string (desc);
   g_assert_cmpstr (str, ==, "Sans Bold Italic Condensed 22.5px");
-  pango_font_description_free (desc); 
+  pango_font_description_free (desc);
   g_free (str);
 }
 
 static void
-test_variation (void)
+test_variations (void)
 {
   PangoFontDescription *desc1;
   PangoFontDescription *desc2;
@@ -114,6 +116,32 @@ test_variation (void)
 
   pango_font_description_free (desc1);
   pango_font_description_free (desc2);
+}
+
+static void
+test_empty_variations (void)
+{
+  PangoFontDescription *desc;
+  gchar *str;
+
+  desc = pango_font_description_from_string ("Cantarell 14");
+  g_assert_nonnull (desc);
+  g_assert_cmpint ((pango_font_description_get_set_fields (desc) & PANGO_FONT_MASK_VARIATIONS), ==, 0);
+  g_assert_null (pango_font_description_get_variations (desc));
+
+  str = pango_font_description_to_string (desc);
+  g_assert_cmpstr (str, ==, "Cantarell 14");
+  g_free (str);
+
+  pango_font_description_set_variations (desc, "");
+  g_assert_cmpint ((pango_font_description_get_set_fields (desc) & PANGO_FONT_MASK_VARIATIONS), ==, PANGO_FONT_MASK_VARIATIONS);
+  g_assert_cmpstr (pango_font_description_get_variations (desc), ==, "");
+
+  str = pango_font_description_to_string (desc);
+  g_assert_cmpstr (str, ==, "Cantarell 14");
+  g_free (str);
+
+  pango_font_description_free (desc);
 }
 
 static void
@@ -158,15 +186,18 @@ test_metrics (void)
 static void
 test_extents (void)
 {
-  char *str = "Composer";
+  const char *str = "Composer";
   GList *items;
   PangoItem *item;
   PangoGlyphString *glyphs;
   PangoRectangle ink, log;
   PangoContext *context;
+  PangoFontDescription *desc;
 
   context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
-  pango_context_set_font_description (context, pango_font_description_from_string ("Cantarell 11"));
+  desc = pango_font_description_from_string("Cantarell 11");
+  pango_context_set_font_description (context, desc);
+  pango_font_description_free (desc);
 
   items = pango_itemize (context, str, 0, strlen (str), NULL, NULL);
   glyphs = pango_glyph_string_new ();
@@ -217,7 +248,7 @@ test_enumerate (void)
   for (i = 0; i < n_faces; i++)
     {
       face = pango_font_family_get_face (families[0], pango_font_face_get_face_name (faces[i]));
-      g_assert_true (face == faces[i]);
+      g_assert_cmpstr (pango_font_face_get_face_name (face), ==, pango_font_face_get_face_name (faces[i]));
     }
 
   desc = pango_font_description_new ();
@@ -240,15 +271,295 @@ test_enumerate (void)
   g_object_unref (font);
   pango_font_description_free (desc);
   g_free (faces);
-  g_free (families); 
+  g_free (families);
   g_object_unref (context);
-  g_object_unref (fontmap);
+}
+
+static void
+test_roundtrip_plain (void)
+{
+  PangoFontMap *fontmap;
+  PangoContext *context;
+  PangoFontDescription *desc, *desc2;
+  PangoFont *font;
+
+#ifdef HAVE_CARBON
+  desc = pango_font_description_from_string ("Helvetica 11");
+#else
+  desc = pango_font_description_from_string ("Cantarell 11");
+#endif
+
+  fontmap = pango_cairo_font_map_get_default ();
+  context = pango_font_map_create_context (fontmap);
+
+
+  font = pango_context_load_font (context, desc);
+  desc2 = pango_font_describe (font);
+
+  g_assert_true (pango_font_description_equal (desc2, desc));
+
+  pango_font_description_free (desc2);
+  g_object_unref (font);
+  pango_font_description_free (desc);
+  g_object_unref (context);
+}
+
+static void
+test_roundtrip_small_caps (void)
+{
+  PangoFontMap *fontmap;
+  PangoContext *context;
+  PangoFontDescription *desc, *desc2;
+  PangoFont *font;
+  hb_feature_t features[32];
+  guint num = 0;
+
+  if (strcmp (G_OBJECT_TYPE_NAME (pango_cairo_font_map_get_default ()), "PangoCairoCoreTextFontMap") == 0)
+    {
+      g_test_skip ("Small Caps support needs to be added to PangoCoreTextFontMap");
+      return;
+    }
+
+  fontmap = pango_cairo_font_map_get_default ();
+  context = pango_font_map_create_context (fontmap);
+
+  desc = pango_font_description_from_string ("Cantarell Small-Caps 11");
+  g_assert_true (pango_font_description_get_variant (desc) == PANGO_VARIANT_SMALL_CAPS);
+
+  font = pango_context_load_font (context, desc);
+  desc2 = pango_font_describe (font);
+
+  num = 0;
+  pango_font_get_features (font, features, G_N_ELEMENTS (features), &num);
+  g_assert_true (num == 1);
+  g_assert_true (features[0].tag == HB_TAG ('s', 'm', 'c', 'p'));
+  g_assert_true (features[0].value == 1);
+  g_assert_true (pango_font_description_get_variant (desc2) == PANGO_VARIANT_SMALL_CAPS);
+  g_assert_true (pango_font_description_equal (desc2, desc));
+
+  pango_font_description_free (desc2);
+  g_object_unref (font);
+  pango_font_description_free (desc);
+
+  desc = pango_font_description_from_string ("Cantarell All-Small-Caps 11");
+  g_assert_true (pango_font_description_get_variant (desc) == PANGO_VARIANT_ALL_SMALL_CAPS);
+
+  font = pango_context_load_font (context, desc);
+  desc2 = pango_font_describe (font);
+
+  num = 0;
+  pango_font_get_features (font, features, G_N_ELEMENTS (features), &num);
+  g_assert_true (num == 2);
+  g_assert_true (features[0].tag == HB_TAG ('s', 'm', 'c', 'p'));
+  g_assert_true (features[0].value == 1);
+  g_assert_true (features[1].tag == HB_TAG ('c', '2', 's', 'c'));
+  g_assert_true (features[1].value == 1);
+  g_assert_true (pango_font_description_get_variant (desc2) == PANGO_VARIANT_ALL_SMALL_CAPS);
+  g_assert_true (pango_font_description_equal (desc2, desc));
+
+  pango_font_description_free (desc2);
+  g_object_unref (font);
+  pango_font_description_free (desc);
+
+  desc = pango_font_description_from_string ("Cantarell Unicase 11");
+  g_assert_true (pango_font_description_get_variant (desc) == PANGO_VARIANT_UNICASE);
+
+  font = pango_context_load_font (context, desc);
+  desc2 = pango_font_describe (font);
+
+  num = 0;
+  pango_font_get_features (font, features, G_N_ELEMENTS (features), &num);
+  g_assert_true (num == 1);
+  g_assert_true (features[0].tag == HB_TAG ('u', 'n', 'i', 'c'));
+  g_assert_true (features[0].value == 1);
+  g_assert_true (pango_font_description_get_variant (desc2) == PANGO_VARIANT_UNICASE);
+  g_assert_true (pango_font_description_equal (desc2, desc));
+
+  pango_font_description_free (desc2);
+  g_object_unref (font);
+  pango_font_description_free (desc);
+
+  g_object_unref (context);
+}
+
+static void
+test_roundtrip_emoji (void)
+{
+  PangoFontMap *fontmap;
+  PangoContext *context;
+  PangoFontDescription *desc, *desc2;
+  PangoFont *font;
+
+  fontmap = pango_cairo_font_map_get_default ();
+  context = pango_font_map_create_context (fontmap);
+
+  /* This is how pango_itemize creates the emoji font desc */
+  desc = pango_font_description_from_string ("Cantarell 11");
+  pango_font_description_set_family_static (desc, "emoji");
+
+  font = pango_context_load_font (context, desc);
+  desc2 = pango_font_describe (font);
+
+  /* We can't expect the family name to match, since we go in with
+   * a generic family
+   */
+  pango_font_description_unset_fields (desc, PANGO_FONT_MASK_FAMILY);
+  pango_font_description_unset_fields (desc2, PANGO_FONT_MASK_FAMILY);
+  g_assert_true (pango_font_description_equal (desc2, desc));
+
+  pango_font_description_free (desc2);
+  g_object_unref (font);
+  pango_font_description_free (desc);
+  g_object_unref (context);
+}
+
+static void
+test_font_models (void)
+{
+  PangoFontMap *map = pango_cairo_font_map_get_default ();
+  gboolean monospace_found = FALSE;
+  int n_families = 0;
+  int n_variable_families = 0;
+  int n_monospace_families = 0;
+
+  g_assert_true (g_list_model_get_item_type (G_LIST_MODEL (map)) == PANGO_TYPE_FONT_FAMILY);
+
+  for (guint i = 0; i < g_list_model_get_n_items (G_LIST_MODEL (map)); i++)
+    {
+      GObject *obj = g_list_model_get_item (G_LIST_MODEL (map), i);
+
+      g_assert_true (PANGO_IS_FONT_FAMILY (obj));
+
+      g_assert_true (g_list_model_get_item_type (G_LIST_MODEL (obj)) == PANGO_TYPE_FONT_FACE);
+
+      if (g_ascii_strcasecmp (pango_font_family_get_name (PANGO_FONT_FAMILY (obj)), "monospace") == 0)
+        {
+          g_assert_true (pango_font_family_is_monospace (PANGO_FONT_FAMILY (obj)));
+        }
+
+      n_families++;
+
+      if (pango_font_family_is_variable (PANGO_FONT_FAMILY (obj)))
+        n_variable_families++;
+
+      if (pango_font_family_is_monospace (PANGO_FONT_FAMILY (obj)))
+        n_monospace_families++;
+
+      for (guint j = 0; j < g_list_model_get_n_items (G_LIST_MODEL (obj)); j++)
+        {
+          GObject *obj2 = g_list_model_get_item (G_LIST_MODEL (obj), j);
+          int *sizes;
+          int n_sizes;
+
+          g_assert_true (PANGO_IS_FONT_FACE (obj2));
+
+          g_assert_true (pango_font_face_get_family (PANGO_FONT_FACE (obj2)) == (PangoFontFamily *)obj);
+
+          pango_font_face_list_sizes (PANGO_FONT_FACE (obj2), &sizes, &n_sizes);
+          g_assert_true ((sizes == NULL) == (n_sizes == 0));
+          g_free (sizes);
+
+          if (pango_font_family_is_monospace (PANGO_FONT_FAMILY (obj)))
+            {
+              if (pango_font_face_is_synthesized (PANGO_FONT_FACE (obj2)))
+                {
+                  monospace_found = TRUE;
+                }
+            }
+
+          g_object_unref (obj2);
+        }
+
+      g_object_unref (obj);
+    }
+
+  g_assert_true (monospace_found);
+
+  g_print ("# %d font families, %d monospace, %d variable\n",
+           n_families, n_monospace_families, n_variable_families);
+}
+
+static void
+test_glyph_extents (void)
+{
+  PangoRectangle ink, logical;
+
+  pango_font_get_glyph_extents (NULL, 0, &ink, &logical);
+  g_assert_cmpint (ink.height, ==, (PANGO_UNKNOWN_GLYPH_HEIGHT - 2) * PANGO_SCALE);
+  g_assert_cmpint (ink.width, ==, (PANGO_UNKNOWN_GLYPH_WIDTH - 2) * PANGO_SCALE);
+  g_assert_cmpint (logical.height, ==, PANGO_UNKNOWN_GLYPH_HEIGHT * PANGO_SCALE);
+  g_assert_cmpint (logical.width, ==, PANGO_UNKNOWN_GLYPH_WIDTH * PANGO_SCALE);
+}
+
+static void
+test_font_metrics (void)
+{
+  PangoFontMetrics *metrics;
+
+  metrics = pango_font_get_metrics (NULL, NULL);
+
+  g_assert_cmpint (metrics->approximate_char_width, ==, PANGO_SCALE * PANGO_UNKNOWN_GLYPH_WIDTH);
+  g_assert_cmpint (metrics->approximate_digit_width, ==, PANGO_SCALE * PANGO_UNKNOWN_GLYPH_WIDTH);
+
+  pango_font_metrics_unref (metrics);
+}
+
+static void
+test_to_filename (void)
+{
+  PangoFontDescription *desc;
+  char *str;
+
+  desc = pango_font_description_from_string ("Futura Medium Italic 14");
+  str = pango_font_description_to_filename (desc);
+
+  g_assert_nonnull (strstr (str, "futura"));
+  g_assert_nonnull (strstr (str, "medium"));
+  g_assert_nonnull (strstr (str, "italic"));
+
+  g_free (str);
+
+  pango_font_description_free (desc);
+}
+
+static void
+test_set_gravity (void)
+{
+  PangoFontDescription *desc;
+
+  desc = pango_font_description_from_string ("Futura Medium Italic 14");
+  pango_font_description_set_gravity (desc, PANGO_GRAVITY_SOUTH);
+  g_assert_true (pango_font_description_get_set_fields (desc) & PANGO_FONT_MASK_GRAVITY);
+
+  pango_font_description_set_gravity (desc, PANGO_GRAVITY_AUTO);
+  g_assert_false (pango_font_description_get_set_fields (desc) & PANGO_FONT_MASK_GRAVITY);
+
+  pango_font_description_free (desc);
+}
+
+static void
+test_match (void)
+{
+  PangoFontDescription *desc;
+  PangoFontDescription *desc1;
+  PangoFontDescription *desc2;
+
+  desc = pango_font_description_from_string ("Futura Medium Italic 14");
+  desc1 = pango_font_description_from_string ("Futura Bold 16");
+  pango_font_description_set_style (desc1, PANGO_STYLE_OBLIQUE);
+  desc2 = pango_font_description_from_string ("Futura Medium 16");
+  pango_font_description_set_style (desc2, PANGO_STYLE_ITALIC);
+
+  g_assert_true (pango_font_description_better_match (desc, desc1, desc2));
+
+  pango_font_description_free (desc);
+  pango_font_description_free (desc1);
+  pango_font_description_free (desc2);
 }
 
 int
 main (int argc, char *argv[])
 {
-  g_setenv ("LC_ALL", "C", TRUE);
   setlocale (LC_ALL, "");
 
   g_test_init (&argc, &argv, NULL);
@@ -258,9 +569,19 @@ main (int argc, char *argv[])
   g_test_add_func ("/pango/font/metrics", test_metrics);
   g_test_add_func ("/pango/fontdescription/parse", test_parse);
   g_test_add_func ("/pango/fontdescription/roundtrip", test_roundtrip);
-  g_test_add_func ("/pango/fontdescription/variation", test_variation);
+  g_test_add_func ("/pango/fontdescription/variations", test_variations);
+  g_test_add_func ("/pango/fontdescription/empty-variations", test_empty_variations);
+  g_test_add_func ("/pango/fontdescription/to-filename", test_to_filename);
+  g_test_add_func ("/pango/fontdescription/set-gravity", test_set_gravity);
+  g_test_add_func ("/pango/fontdescription/match", test_match);
   g_test_add_func ("/pango/font/extents", test_extents);
   g_test_add_func ("/pango/font/enumerate", test_enumerate);
+  g_test_add_func ("/pango/font/roundtrip/plain", test_roundtrip_plain);
+  g_test_add_func ("/pango/font/roundtrip/small-caps", test_roundtrip_small_caps);
+  g_test_add_func ("/pango/font/roundtrip/emoji", test_roundtrip_emoji);
+  g_test_add_func ("/pango/font/models", test_font_models);
+  g_test_add_func ("/pango/font/glyph-extents", test_glyph_extents);
+  g_test_add_func ("/pango/font/font-metrics", test_font_metrics);
 
   return g_test_run ();
 }

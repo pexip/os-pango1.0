@@ -19,28 +19,12 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/**
- * SECTION:pangofc-font
- * @short_description:Base font class for Fontconfig-based backends
- * @title:PangoFcFont
- * @see_also:
- * <variablelist><varlistentry><term>#PangoFcFontMap</term> <listitem>The base class for font maps; creating a new
- * Fontconfig-based backend involves deriving from both
- * #PangoFcFontMap and #PangoFcFont.</listitem></varlistentry></variablelist>
- *
- * #PangoFcFont is a base class for font implementation using the
- * Fontconfig and FreeType libraries. It is used in the
- * <link linkend="pango-Xft-Fonts-and-Rendering">Xft</link> and
- * <link linkend="pango-FreeType-Fonts-and-Rendering">FreeType</link>
- * backends shipped with Pango, but can also be used when creating
- * new backends. Any backend deriving from this base class will
- * take advantage of the wide range of shapers implemented using
- * FreeType that come with Pango.
- */
 #include "config.h"
 
+#include "pango-font-private.h"
 #include "pangofc-font-private.h"
 #include "pangofc-fontmap.h"
+#include "pangofc-fontmap-private.h"
 #include "pangofc-private.h"
 #include "pango-layout.h"
 #include "pango-impl-utils.h"
@@ -87,6 +71,15 @@ static void                  pango_fc_font_get_features (PangoFont        *font,
                                                          guint             len,
                                                          guint            *num_features);
 static hb_font_t *           pango_fc_font_create_hb_font (PangoFont        *font);
+static PangoLanguage **     _pango_fc_font_get_languages  (PangoFont        *font);
+static gboolean             _pango_fc_font_is_hinted      (PangoFont        *font);
+static void                 _pango_fc_font_get_scale_factors (PangoFont     *font,
+                                                              double        *x_scale,
+                                                              double        *y_scale);
+static void                 pango_fc_font_get_matrix      (PangoFont        *font,
+                                                           PangoMatrix      *matrix);
+static int                  pango_fc_font_get_absolute_size (PangoFont        *font);
+static PangoVariant         pango_fc_font_get_variant       (PangoFont        *font);
 
 #define PANGO_FC_FONT_LOCK_FACE(font)	(PANGO_FC_FONT_GET_CLASS (font)->lock_face (font))
 #define PANGO_FC_FONT_UNLOCK_FACE(font)	(PANGO_FC_FONT_GET_CLASS (font)->unlock_face (font))
@@ -99,6 +92,7 @@ pango_fc_font_class_init (PangoFcFontClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
   PangoFontClass *font_class = PANGO_FONT_CLASS (class);
+  PangoFontClassPrivate *pclass;
 
   class->has_char = pango_fc_font_real_has_char;
   class->get_glyph = pango_fc_font_real_get_glyph;
@@ -114,14 +108,33 @@ pango_fc_font_class_init (PangoFcFontClass *class)
   font_class->get_font_map = pango_fc_font_get_font_map;
   font_class->get_features = pango_fc_font_get_features;
   font_class->create_hb_font = pango_fc_font_create_hb_font;
-  font_class->get_features = pango_fc_font_get_features;
 
+  pclass = g_type_class_get_private ((GTypeClass *) class, PANGO_TYPE_FONT);
+
+  pclass->get_languages = _pango_fc_font_get_languages;
+  pclass->is_hinted = _pango_fc_font_is_hinted;
+  pclass->get_scale_factors = _pango_fc_font_get_scale_factors;
+  pclass->get_matrix = pango_fc_font_get_matrix;
+  pclass->get_absolute_size = pango_fc_font_get_absolute_size;
+  pclass->get_variant = pango_fc_font_get_variant;
+
+  /**
+   * PangoFcFont:pattern:
+   *
+   * The fontconfig pattern for this font.
+   */
   g_object_class_install_property (object_class, PROP_PATTERN,
 				   g_param_spec_pointer ("pattern",
 							 "Pattern",
 							 "The fontconfig pattern for this font",
 							 G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY |
 							 G_PARAM_STATIC_STRINGS));
+
+  /**
+   * PangoFcFont:fontmap:
+   *
+   * The PangoFc font map this font is associated with.
+   */
   g_object_class_install_property (object_class, PROP_FONTMAP,
 				   g_param_spec_object ("fontmap",
 							"Font Map",
@@ -162,8 +175,8 @@ pango_fc_font_finalize (GObject *object)
       g_object_unref (fontmap);
     }
 
-  FcPatternDestroy (fcfont->font_pattern);
   pango_font_description_free (fcfont->description);
+  FcPatternDestroy (fcfont->font_pattern);
 
   if (priv->decoder)
     _pango_fc_font_set_decoder (fcfont, NULL);
@@ -199,9 +212,9 @@ pattern_is_transformed (FcPattern *pattern)
 
 static void
 pango_fc_font_set_property (GObject       *object,
-			    guint          prop_id,
-			    const GValue  *value,
-			    GParamSpec    *pspec)
+                            guint          prop_id,
+                            const GValue  *value,
+                            GParamSpec    *pspec)
 {
   PangoFcFont *fcfont = PANGO_FC_FONT (object);
 
@@ -209,25 +222,25 @@ pango_fc_font_set_property (GObject       *object,
     {
     case PROP_PATTERN:
       {
-	FcPattern *pattern = g_value_get_pointer (value);
+        FcPattern *pattern = g_value_get_pointer (value);
 
-	g_return_if_fail (pattern != NULL);
-	g_return_if_fail (fcfont->font_pattern == NULL);
+        g_return_if_fail (pattern != NULL);
+        g_return_if_fail (fcfont->font_pattern == NULL);
 
-	FcPatternReference (pattern);
-	fcfont->font_pattern = pattern;
-	fcfont->description = pango_fc_font_description_from_pattern (pattern, TRUE);
-	fcfont->is_hinted = pattern_is_hinted (pattern);
-	fcfont->is_transformed = pattern_is_transformed (pattern);
+        FcPatternReference (pattern);
+        fcfont->font_pattern = pattern;
+        fcfont->description = font_description_from_pattern (pattern, TRUE, TRUE);
+        fcfont->is_hinted = pattern_is_hinted (pattern);
+        fcfont->is_transformed = pattern_is_transformed (pattern);
       }
       goto set_decoder;
 
     case PROP_FONTMAP:
       {
-	PangoFcFontMap *fcfontmap = PANGO_FC_FONT_MAP (g_value_get_object (value));
+        PangoFcFontMap *fcfontmap = PANGO_FC_FONT_MAP (g_value_get_object (value));
 
-	g_return_if_fail (fcfont->fontmap == NULL);
-	g_weak_ref_set ((GWeakRef *) &fcfont->fontmap, fcfontmap);
+        g_return_if_fail (fcfont->fontmap == NULL);
+        g_weak_ref_set ((GWeakRef *) &fcfont->fontmap, fcfontmap);
       }
       goto set_decoder;
 
@@ -292,6 +305,25 @@ pango_fc_font_describe_absolute (PangoFont *font)
   return desc;
 }
 
+static int
+pango_fc_font_get_absolute_size (PangoFont *font)
+{
+  PangoFcFont *fcfont = (PangoFcFont *)font;
+  double size;
+
+  if (FcPatternGetDouble (fcfont->font_pattern, FC_PIXEL_SIZE, 0, &size) == FcResultMatch)
+    return (int) (size * PANGO_SCALE);
+
+  return 0;
+}
+
+static PangoVariant
+pango_fc_font_get_variant (PangoFont *font)
+{
+  PangoFcFont *fcfont = (PangoFcFont *)font;
+  return pango_font_description_get_variant (fcfont->description);
+}
+
 static PangoCoverage *
 pango_fc_font_get_coverage (PangoFont     *font,
 			    PangoLanguage *language G_GNUC_UNUSED)
@@ -326,10 +358,11 @@ pango_fc_font_get_coverage (PangoFont     *font,
  */
 static void
 get_face_metrics (PangoFcFont      *fcfont,
-		  PangoFontMetrics *metrics)
+                  PangoFontMetrics *metrics)
 {
   hb_font_t *hb_font = pango_font_get_hb_font (PANGO_FONT (fcfont));
   hb_font_extents_t extents;
+  hb_position_t position;
 
   FcMatrix *fc_matrix;
   gboolean have_transform = FALSE;
@@ -337,10 +370,10 @@ get_face_metrics (PangoFcFont      *fcfont,
   hb_font_get_extents_for_direction (hb_font, HB_DIRECTION_LTR, &extents);
 
   if  (FcPatternGetMatrix (fcfont->font_pattern,
-			   FC_MATRIX, 0, &fc_matrix) == FcResultMatch)
+                           FC_MATRIX, 0, &fc_matrix) == FcResultMatch)
     {
       have_transform = (fc_matrix->xx != 1 || fc_matrix->xy != 0 ||
-			fc_matrix->yx != 0 || fc_matrix->yy != 1);
+                        fc_matrix->yx != 0 || fc_matrix->yy != 1);
     }
 
   if (have_transform)
@@ -356,27 +389,29 @@ get_face_metrics (PangoFcFont      *fcfont,
       metrics->height = extents.ascender - extents.descender + extents.line_gap;
     }
 
-  metrics->underline_thickness = PANGO_SCALE;
-  metrics->underline_position = - PANGO_SCALE;
-  metrics->strikethrough_thickness = PANGO_SCALE;
-  metrics->strikethrough_position = metrics->ascent / 2;
-
-  /* FIXME: use the right hb version */
-#if HB_VERSION_ATLEAST(2,5,4)
-  hb_position_t position;
-
-  if (hb_ot_metrics_get_position (hb_font, HB_OT_METRICS_TAG_UNDERLINE_SIZE, &position))
+  if (hb_ot_metrics_get_position (hb_font, HB_OT_METRICS_TAG_UNDERLINE_SIZE, &position) &&
+      position != 0)
     metrics->underline_thickness = position;
+  else
+    metrics->underline_thickness = PANGO_SCALE;
 
-  if (hb_ot_metrics_get_position (hb_font, HB_OT_METRICS_TAG_UNDERLINE_OFFSET, &position))
+  if (hb_ot_metrics_get_position (hb_font, HB_OT_METRICS_TAG_UNDERLINE_OFFSET, &position) &&
+      position != 0)
     metrics->underline_position = position;
+  else
+    metrics->underline_position = - PANGO_SCALE;
 
-  if (hb_ot_metrics_get_position (hb_font, HB_OT_METRICS_TAG_STRIKEOUT_SIZE, &position))
+  if (hb_ot_metrics_get_position (hb_font, HB_OT_METRICS_TAG_STRIKEOUT_SIZE, &position) &&
+      position != 0)
     metrics->strikethrough_thickness = position;
+  else
+    metrics->strikethrough_thickness = PANGO_SCALE;
 
-  if (hb_ot_metrics_get_position (hb_font, HB_OT_METRICS_TAG_STRIKEOUT_OFFSET, &position))
+  if (hb_ot_metrics_get_position (hb_font, HB_OT_METRICS_TAG_STRIKEOUT_OFFSET, &position) &&
+      position != 0)
     metrics->strikethrough_position = position;
-#endif
+  else
+    metrics->strikethrough_position = metrics->ascent / 2;
 }
 
 PangoFontMetrics *
@@ -466,7 +501,6 @@ pango_fc_font_get_metrics (PangoFont     *font,
           /* Compute derived metrics */
           PangoLayout *layout;
           PangoRectangle extents;
-          const char *sample_str = pango_language_get_sample_string (language);
           PangoFontDescription *desc = pango_font_describe_with_absolute_size (font);
           gulong sample_str_width;
 
@@ -534,17 +568,18 @@ pango_fc_font_real_get_glyph (PangoFcFont *font,
 
 /**
  * pango_fc_font_lock_face: (skip)
- * @font: a #PangoFcFont.
+ * @font: a `PangoFcFont`.
  *
- * Gets the FreeType `FT_Face` associated with a font,
+ * Gets the FreeType `FT_Face` associated with a font.
+ *
  * This face will be kept around until you call
- * pango_fc_font_unlock_face().
+ * [method@PangoFc.Font.unlock_face].
  *
  * Return value: the FreeType `FT_Face` associated with @font.
  *
  * Since: 1.4
  * Deprecated: 1.44: Use pango_font_get_hb_font() instead
- **/
+ */
 FT_Face
 pango_fc_font_lock_face (PangoFcFont *font)
 {
@@ -555,14 +590,14 @@ pango_fc_font_lock_face (PangoFcFont *font)
 
 /**
  * pango_fc_font_unlock_face:
- * @font: a #PangoFcFont.
+ * @font: a `PangoFcFont`.
  *
  * Releases a font previously obtained with
- * pango_fc_font_lock_face().
+ * [method@PangoFc.Font.lock_face].
  *
  * Since: 1.4
  * Deprecated: 1.44: Use pango_font_get_hb_font() instead
- **/
+ */
 void
 pango_fc_font_unlock_face (PangoFcFont *font)
 {
@@ -573,7 +608,7 @@ pango_fc_font_unlock_face (PangoFcFont *font)
 
 /**
  * pango_fc_font_has_char:
- * @font: a #PangoFcFont
+ * @font: a `PangoFcFont`
  * @wc: Unicode codepoint to look up
  *
  * Determines whether @font has a glyph for the codepoint @wc.
@@ -581,8 +616,8 @@ pango_fc_font_unlock_face (PangoFcFont *font)
  * Return value: %TRUE if @font has the requested codepoint.
  *
  * Since: 1.4
- * Deprecated: 1.44: Use pango_font_has_char()
- **/
+ * Deprecated: 1.44: Use [method@Pango.Font.has_char]
+ */
 gboolean
 pango_fc_font_has_char (PangoFcFont *font,
 			gunichar     wc)
@@ -603,18 +638,20 @@ pango_fc_font_has_char (PangoFcFont *font,
 
 /**
  * pango_fc_font_get_glyph:
- * @font: a #PangoFcFont
+ * @font: a `PangoFcFont`
  * @wc: Unicode character to look up
  *
  * Gets the glyph index for a given Unicode character
- * for @font. If you only want to determine
- * whether the font has the glyph, use pango_fc_font_has_char().
+ * for @font.
+ *
+ * If you only want to determine whether the font has
+ * the glyph, use [method@PangoFc.Font.has_char].
  *
  * Return value: the glyph index, or 0, if the Unicode
  *   character doesn't exist in the font.
  *
  * Since: 1.4
- **/
+ */
 PangoGlyph
 pango_fc_font_get_glyph (PangoFcFont *font,
 			 gunichar     wc)
@@ -636,18 +673,18 @@ pango_fc_font_get_glyph (PangoFcFont *font,
 
 /**
  * pango_fc_font_get_unknown_glyph:
- * @font: a #PangoFcFont
+ * @font: a `PangoFcFont`
  * @wc: the Unicode character for which a glyph is needed.
  *
- * Returns the index of a glyph suitable for drawing @wc as an
- * unknown character.
+ * Returns the index of a glyph suitable for drawing @wc
+ * as an unknown character.
  *
  * Use PANGO_GET_UNKNOWN_GLYPH() instead.
  *
  * Return value: a glyph index into @font.
  *
  * Since: 1.4
- **/
+ */
 PangoGlyph
 pango_fc_font_get_unknown_glyph (PangoFcFont *font,
 				 gunichar     wc)
@@ -669,18 +706,17 @@ _pango_fc_font_shutdown (PangoFcFont *font)
 
 /**
  * pango_fc_font_kern_glyphs:
- * @font: a #PangoFcFont
- * @glyphs: a #PangoGlyphString
+ * @font: a `PangoFcFont`
+ * @glyphs: a `PangoGlyphString`
  *
  * This function used to adjust each adjacent pair of glyphs
  * in @glyphs according to kerning information in @font.
  *
  * Since 1.44, it does nothing.
  *
- *
  * Since: 1.4
  * Deprecated: 1.32
- **/
+ */
 void
 pango_fc_font_kern_glyphs (PangoFcFont      *font,
 			   PangoGlyphString *glyphs)
@@ -689,15 +725,14 @@ pango_fc_font_kern_glyphs (PangoFcFont      *font,
 
 /**
  * _pango_fc_font_get_decoder:
- * @font: a #PangoFcFont
+ * @font: a `PangoFcFont`
  *
  * This will return any custom decoder set on this font.
  *
  * Return value: The custom decoder
  *
  * Since: 1.6
- **/
-
+ */
 PangoFcDecoder *
 _pango_fc_font_get_decoder (PangoFcFont *font)
 {
@@ -708,15 +743,15 @@ _pango_fc_font_get_decoder (PangoFcFont *font)
 
 /**
  * _pango_fc_font_set_decoder:
- * @font: a #PangoFcFont
- * @decoder: a #PangoFcDecoder to set for this font
+ * @font: a `PangoFcFont`
+ * @decoder: a `PangoFcDecoder` to set for this font
  *
- * This sets a custom decoder for this font.  Any previous decoder
- * will be released before this one is set.
+ * This sets a custom decoder for this font.
+ *
+ * Any previous decoder will be released before this one is set.
  *
  * Since: 1.6
- **/
-
+ */
 void
 _pango_fc_font_set_decoder (PangoFcFont    *font,
 			    PangoFcDecoder *decoder)
@@ -751,16 +786,17 @@ _pango_fc_font_set_font_key (PangoFcFont    *fcfont,
 
 /**
  * pango_fc_font_get_raw_extents:
- * @fcfont: a #PangoFcFont
+ * @fcfont: a `PangoFcFont`
  * @glyph: the glyph index to load
  * @ink_rect: (out) (optional): location to store ink extents of the
- *   glyph, or %NULL
+ *   glyph
  * @logical_rect: (out) (optional): location to store logical extents
- *   of the glyph or %NULL
+ *   of the glyph
  *
- * Gets the extents of a single glyph from a font. The extents are in
- * user space; that is, they are not transformed by any matrix in effect
- * for the font.
+ * Gets the extents of a single glyph from a font.
+ *
+ * The extents are in user space; that is, they are not transformed
+ * by any matrix in effect for the font.
  *
  * Long term, this functionality probably belongs in the default
  * implementation of the get_glyph_extents() virtual function.
@@ -769,7 +805,7 @@ _pango_fc_font_set_font_key (PangoFcFont    *fcfont,
  * caching functionality similar to pango_ft2_font_set_glyph_info().
  *
  * Since: 1.6
- **/
+ */
 void
 pango_fc_font_get_raw_extents (PangoFcFont    *fcfont,
 			       PangoGlyph      glyph,
@@ -843,7 +879,7 @@ pango_fc_font_get_features (PangoFont    *font,
       char *s;
       while (*num_features < len &&
              FcResultMatch == FcPatternGetString (fc_font->font_pattern,
-                                                  PANGO_FC_FONT_FEATURES,
+                                                  FC_FONT_FEATURES,
                                                   *num_features,
                                                   (FcChar8 **) &s))
         {
@@ -875,29 +911,25 @@ pango_fc_font_key_get_gravity (PangoFcFontKey *key)
   return gravity;
 }
 
-static double
-get_font_size (PangoFcFontKey *key)
+static void
+get_font_size (PangoFcFontKey *key,
+               double         *pixel_size,
+               double         *point_size)
 {
   const FcPattern *pattern;
-  double size;
   double dpi;
 
   pattern = pango_fc_font_key_get_pattern (key);
-  if (FcPatternGetDouble (pattern, FC_PIXEL_SIZE, 0, &size) == FcResultMatch)
-    return size;
+  if (FcPatternGetDouble (pattern, FC_SIZE, 0, point_size) != FcResultMatch)
+    *point_size = 13.;
 
-  /* Just in case FC_PIXEL_SIZE got unset between pango_fc_make_pattern()
-   * and here.  That would be very weird.
-   */
+  if (FcPatternGetDouble (pattern, FC_PIXEL_SIZE, 0, pixel_size) != FcResultMatch)
+    {
+      if (FcPatternGetDouble (pattern, FC_DPI, 0, &dpi) != FcResultMatch)
+        dpi = 72.;
 
-  if (FcPatternGetDouble (pattern, FC_DPI, 0, &dpi) != FcResultMatch)
-    dpi = 72;
-
-  if (FcPatternGetDouble (pattern, FC_SIZE, 0, &size) == FcResultMatch)
-    return size * dpi / 72.;
-
-  /* Whatever */
-  return 18.;
+      *pixel_size = *point_size * dpi / 72.;
+    }
 }
 
 static void
@@ -940,34 +972,40 @@ pango_fc_font_create_hb_font (PangoFont *font)
   hb_font_t *hb_font;
   double x_scale_inv, y_scale_inv;
   double x_scale, y_scale;
-  double size;
+  double pixel_size;
+  double point_size;
+  double slant G_GNUC_UNUSED;
 
   x_scale_inv = y_scale_inv = 1.0;
-  size = 1.0;
+  pixel_size = 1.0;
+  point_size = 1.0;
+  slant = 0.0;
 
   key = _pango_fc_font_get_font_key (fc_font);
   if (key)
     {
       const FcPattern *pattern = pango_fc_font_key_get_pattern (key);
-      const PangoMatrix *matrix;
-      PangoMatrix matrix2;
+      const PangoMatrix *ctm;
+      PangoMatrix font_matrix;
       PangoGravity gravity;
       FcMatrix fc_matrix, *fc_matrix_val;
       double x, y;
       int i;
 
-      matrix = pango_fc_font_key_get_matrix (key);
-      pango_matrix_get_font_scale_factors (matrix, &x_scale_inv, &y_scale_inv);
+      ctm = pango_fc_font_key_get_matrix (key);
+      pango_matrix_get_font_scale_factors (ctm, &x_scale_inv, &y_scale_inv);
 
       FcMatrixInit (&fc_matrix);
       for (i = 0; FcPatternGetMatrix (pattern, FC_MATRIX, i, &fc_matrix_val) == FcResultMatch; i++)
         FcMatrixMultiply (&fc_matrix, &fc_matrix, fc_matrix_val);
 
-      matrix2.xx = fc_matrix.xx;
-      matrix2.yx = fc_matrix.yx;
-      matrix2.xy = fc_matrix.xy;
-      matrix2.yy = fc_matrix.yy;
-      pango_matrix_get_font_scale_factors (&matrix2, &x, &y);
+      font_matrix.xx = fc_matrix.xx;
+      font_matrix.yx = - fc_matrix.yx;
+      font_matrix.xy = fc_matrix.xy;
+      font_matrix.yy = - fc_matrix.yy;
+
+      pango_matrix_get_font_scale_factors (&font_matrix, &x, &y);
+      slant = pango_matrix_get_slant_ratio (&font_matrix);
 
       x_scale_inv /= x;
       y_scale_inv /= y;
@@ -978,7 +1016,8 @@ pango_fc_font_create_hb_font (PangoFont *font)
           x_scale_inv = -x_scale_inv;
           y_scale_inv = -y_scale_inv;
         }
-      size = get_font_size (key);
+
+      get_font_size (key, &pixel_size, &point_size);
     }
 
   x_scale = 1. / x_scale_inv;
@@ -988,8 +1027,13 @@ pango_fc_font_create_hb_font (PangoFont *font)
 
   hb_font = hb_font_create (hb_face);
   hb_font_set_scale (hb_font,
-                     size * PANGO_SCALE * x_scale,
-                     size * PANGO_SCALE * y_scale);
+                     pixel_size * PANGO_SCALE * x_scale,
+                     pixel_size * PANGO_SCALE * y_scale);
+  hb_font_set_ptem (hb_font, point_size);
+
+#if HB_VERSION_ATLEAST (3, 3, 0)
+  hb_font_set_synthetic_slant (hb_font, slant);
+#endif
 
   if (key)
     {
@@ -1019,7 +1063,7 @@ pango_fc_font_create_hb_font (PangoFont *font)
           hb_ot_var_named_instance_get_design_coords (hb_face, instance, &n_axes, coords);
         }
 
-      if (FcPatternGetString (pattern, PANGO_FC_FONT_VARIATIONS, 0, (FcChar8 **)&variations) == FcResultMatch)
+      if (FcPatternGetString (pattern, FC_FONT_VARIATIONS, 0, (FcChar8 **)&variations) == FcResultMatch)
         parse_variations (variations, axes, n_axes, coords);
 
       variations = pango_fc_font_key_get_variations (key);
@@ -1034,4 +1078,98 @@ pango_fc_font_create_hb_font (PangoFont *font)
 
 done:
   return hb_font;
+}
+
+/**
+ * pango_fc_font_get_languages:
+ * @font: a `PangoFcFont`
+ *
+ * Returns the languages that are supported by @font.
+ *
+ * This corresponds to the FC_LANG member of the FcPattern.
+ *
+ * The returned array is only valid as long as the font
+ * and its fontmap are valid.
+ *
+ * Returns: (transfer none) (nullable) (array zero-terminated=1): a
+ *   %NULL-terminated array of `PangoLanguage`*
+ *
+ * Since: 1.48
+ * Deprecated: 1.50: Use pango_font_get_language()
+ */
+PangoLanguage **
+pango_fc_font_get_languages (PangoFcFont *font)
+{
+  return pango_font_get_languages (PANGO_FONT (font));
+}
+
+static PangoLanguage **
+_pango_fc_font_get_languages (PangoFont *font)
+{
+  PangoFcFont * fcfont = PANGO_FC_FONT (font);
+  PangoFcFontMap *fontmap;
+  PangoLanguage **languages;
+
+  fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
+  if (!fontmap)
+    return NULL;
+
+  languages  = _pango_fc_font_map_get_languages (fontmap, fcfont);
+  g_object_unref (fontmap);
+
+  return languages;
+}
+
+/**
+ * pango_fc_font_get_pattern: (skip)
+ * @font: a `PangoFcFont`
+ *
+ * Returns the FcPattern that @font is based on.
+ *
+ * Returns: the fontconfig pattern for this font
+ *
+ * Since: 1.48
+ */
+FcPattern *
+pango_fc_font_get_pattern (PangoFcFont *font)
+{
+  return font->font_pattern;
+}
+
+gboolean
+_pango_fc_font_is_hinted (PangoFont *font)
+{
+  PangoFcFont *fcfont = PANGO_FC_FONT (font);
+
+  return fcfont->is_hinted;
+}
+
+void
+_pango_fc_font_get_scale_factors (PangoFont *font,
+                                  double    *x_scale,
+                                  double    *y_scale)
+{
+  PangoFcFont *fcfont = PANGO_FC_FONT (font);
+  PangoFcFontPrivate *priv = fcfont->priv;
+
+  pango_matrix_get_font_scale_factors (pango_fc_font_key_get_matrix (priv->key), x_scale, y_scale);
+}
+
+static void
+pango_fc_font_get_matrix (PangoFont   *font,
+                          PangoMatrix *matrix)
+{
+  PangoFcFont *fcfont = PANGO_FC_FONT (font);
+  FcMatrix fc_matrix, *fc_matrix_val;
+
+  FcMatrixInit (&fc_matrix);
+  for (int i = 0; FcPatternGetMatrix (fcfont->font_pattern, FC_MATRIX, i, &fc_matrix_val) == FcResultMatch; i++)
+    FcMatrixMultiply (&fc_matrix, &fc_matrix, fc_matrix_val);
+
+  matrix->xx = fc_matrix.xx;
+  matrix->xy = - fc_matrix.xy;
+  matrix->yx = - fc_matrix.yx;
+  matrix->yy = fc_matrix.yy;
+  matrix->x0 = 0.;
+  matrix->y0 = 0.;
 }

@@ -31,7 +31,7 @@
 
 #include <errno.h>
 #include <string.h>
-#ifdef HAVE_UNISTD_H
+#ifndef G_OS_WIN32
 #include <unistd.h>
 #endif
 #include <stdio.h>
@@ -125,7 +125,7 @@ int main (int argc, char **argv)
 
       /* ... */
 
-      pango_coverage_unref (coverage);
+      g_object_unref (coverage);
       pango_font_description_free (desc);
       g_object_unref (font);
     }
@@ -239,7 +239,7 @@ int main (int argc, char **argv)
 	  pango_glyph_string_free (glyphs);
 	  pango_item_free (item);
 
-	  pango_coverage_unref (coverage);
+	  g_object_unref (coverage);
 	  g_object_unref (font);
 	}
       pango_font_description_free (desc);

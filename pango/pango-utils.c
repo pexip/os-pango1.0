@@ -19,24 +19,6 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/**
- * SECTION:pango-version
- * @short_description:Tools for checking Pango version at compile- and run-time.
- * @title:Version Checking
- *
- * The capital-letter macros defined here can be used to check the version of Pango
- * at compile-time, and to <firstterm>encode</firstterm> Pango versions into integers.
- *
- * The functions can be used to check the version of the linked Pango library at run-time.
- */
-/**
- * SECTION:utils
- * @short_description:Various convenience and utility functions
- * @title: Miscellaneous Utilities
- *
- * The functions and utilities in this section are mostly used from Pango
- * backends and modules, but may be useful for other purposes too.
- */
 #include "config.h"
 #include <errno.h>
 #include <string.h>
@@ -52,13 +34,11 @@
 
 #include <glib/gstdio.h>
 
-#ifndef HAVE_FLOCKFILE
-#  define flockfile(f) (void)1
-#  define funlockfile(f) (void)1
-#  define getc_unlocked(f) getc(f)
-#endif /* !HAVE_FLOCKFILE */
-
 #ifdef G_OS_WIN32
+
+#define flockfile(f) (void)1
+#define funlockfile(f) (void)1
+#define getc_unlocked(f) getc(f)
 
 #include <sys/types.h>
 
@@ -70,18 +50,16 @@
 /**
  * pango_version:
  *
- * This is similar to the macro %PANGO_VERSION except that
- * it returns the encoded version of Pango available at run-time,
- * as opposed to the version available at compile-time.
+ * Returns the encoded version of Pango available at run-time.
  *
- * A version number can be encoded into an integer using
- * PANGO_VERSION_ENCODE().
+ * This is similar to the macro %PANGO_VERSION except that the macro
+ * returns the encoded version available at compile-time. A version
+ * number can be encoded into an integer using PANGO_VERSION_ENCODE().
  *
- * Returns: The encoded version of Pango library
- *   available at run time.
+ * Returns: The encoded version of Pango library available at run time.
  *
  * Since: 1.16
- **/
+ */
 int
 pango_version (void)
 {
@@ -91,17 +69,17 @@ pango_version (void)
 /**
  * pango_version_string:
  *
- * This is similar to the macro %PANGO_VERSION_STRING except that
- * it returns the version of Pango available at run-time, as opposed to
- * the version available at compile-time.
+ * Returns the version of Pango available at run-time.
  *
- * Returns: A string containing the version of Pango library
- *   available at run time.
- *   The returned string is owned by Pango and should not be modified
- *   or freed.
+ * This is similar to the macro %PANGO_VERSION_STRING except that the
+ * macro returns the version available at compile-time.
+ *
+ * Returns: (transfer none): A string containing the version of Pango library available
+ *   at run time. The returned string is owned by Pango and should not
+ *   be modified or freed.
  *
  * Since: 1.16
- **/
+ */
 const char *
 pango_version_string (void)
 {
@@ -110,16 +88,18 @@ pango_version_string (void)
 
 /**
  * pango_version_check:
- * @required_major: the required major version.
- * @required_minor: the required minor version.
- * @required_micro: the required major version.
+ * @required_major: the required major version
+ * @required_minor: the required minor version
+ * @required_micro: the required major version
  *
  * Checks that the Pango library in use is compatible with the
- * given version. Generally you would pass in the constants
- * %PANGO_VERSION_MAJOR, %PANGO_VERSION_MINOR, %PANGO_VERSION_MICRO
- * as the three arguments to this function; that produces
- * a check that the library in use at run-time is compatible with
- * the version of Pango the application or module was compiled against.
+ * given version.
+ *
+ * Generally you would pass in the constants %PANGO_VERSION_MAJOR,
+ * %PANGO_VERSION_MINOR, %PANGO_VERSION_MICRO as the three arguments
+ * to this function; that produces a check that the library in use at
+ * run-time is compatible with the version of Pango the application or
+ * module was compiled against.
  *
  * Compatibility is defined by two things: first the version
  * of the running library is newer than the version
@@ -130,13 +110,13 @@ pango_version_string (void)
  *
  * For compile-time version checking use PANGO_VERSION_CHECK().
  *
- * Return value: (nullable): %NULL if the Pango library is compatible
+ * Returns: (transfer none) (nullable): %NULL if the Pango library is compatible
  *   with the given version, or a string describing the version
  *   mismatch.  The returned string is owned by Pango and should not
  *   be modified or freed.
  *
  * Since: 1.16
- **/
+ */
 const gchar*
 pango_version_check (int required_major,
 		     int required_minor,
@@ -145,6 +125,8 @@ pango_version_check (int required_major,
   gint pango_effective_micro = 100 * PANGO_VERSION_MINOR + PANGO_VERSION_MICRO;
   gint required_effective_micro = 100 * required_minor + required_micro;
 
+  if (required_major > PANGO_VERSION_MAJOR)
+    return "Pango version too old (major mismatch)";
   if (required_major < PANGO_VERSION_MAJOR)
     return "Pango version too new (major mismatch)";
   if (required_effective_micro < pango_effective_micro - PANGO_BINARY_AGE)
@@ -160,10 +142,10 @@ pango_version_check (int required_major,
  *
  * Trims leading and trailing whitespace from a string.
  *
- * Return value: A newly-allocated string that must be freed with g_free()
+ * Returns: (transfer full): A newly-allocated string that must be freed with g_free()
  *
  * Deprecated: 1.38
- **/
+ */
 char *
 pango_trim_string (const char *str)
 {
@@ -194,11 +176,11 @@ _pango_trim_string (const char *str)
  * Splits a %G_SEARCHPATH_SEPARATOR-separated list of files, stripping
  * white space and substituting ~/ with $HOME/.
  *
- * Return value: (transfer full) (array zero-terminated=1): a list of
- * strings to be freed with g_strfreev()
+ * Returns: (transfer full) (array zero-terminated=1): a list of
+ *   strings to be freed with g_strfreev()
  *
  * Deprecated: 1.38
- **/
+ */
 char **
 pango_split_file_list (const char *str)
 {
@@ -256,22 +238,23 @@ pango_split_file_list (const char *str)
 /**
  * pango_read_line:
  * @stream: a stdio stream
- * @str: #GString buffer into which to write the result
+ * @str: `GString` buffer into which to write the result
  *
- * Reads an entire line from a file into a buffer. Lines may
- * be delimited with '\n', '\r', '\n\r', or '\r\n'. The delimiter
+ * Reads an entire line from a file into a buffer.
+ *
+ * Lines may be delimited with '\n', '\r', '\n\r', or '\r\n'. The delimiter
  * is not written into the buffer. Text after a '#' character is treated as
  * a comment and skipped. '\' can be used to escape a # character.
  * '\' proceeding a line delimiter combines adjacent lines. A '\' proceeding
  * any other character is ignored and written into the output buffer
  * unmodified.
  *
- * Return value: 0 if the stream was already at an %EOF character, otherwise
- *               the number of lines read (this is useful for maintaining
- *               a line number counter which doesn't combine lines with '\')
+ * Returns: 0 if the stream was already at an %EOF character,
+ *   otherwise the number of lines read (this is useful for maintaining
+ *   a line number counter which doesn't combine lines with '\')
  *
  * Deprecated: 1.38
- **/
+ */
 gint
 pango_read_line (FILE *stream, GString *str)
 {
@@ -371,11 +354,11 @@ pango_read_line (FILE *stream, GString *str)
  *
  * Skips 0 or more characters of white space.
  *
- * Return value: %FALSE if skipping the white space leaves
- * the position at a '\0' character.
+ * Returns: %FALSE if skipping the white space leaves
+ *   the position at a '\0' character.
  *
  * Deprecated: 1.38
- **/
+ */
 gboolean
 pango_skip_space (const char **pos)
 {
@@ -392,16 +375,17 @@ pango_skip_space (const char **pos)
 /**
  * pango_scan_word:
  * @pos: (inout): in/out string position
- * @out: a #GString into which to write the result
+ * @out: a `GString` into which to write the result
  *
- * Scans a word into a #GString buffer. A word consists
- * of [A-Za-z_] followed by zero or more [A-Za-z_0-9]
- * Leading white space is skipped.
+ * Scans a word into a `GString` buffer.
  *
- * Return value: %FALSE if a parse error occurred.
+ * A word consists of [A-Za-z_] followed by zero or more
+ * [A-Za-z_0-9]. Leading white space is skipped.
+ *
+ * Returns: %FALSE if a parse error occurred
  *
  * Deprecated: 1.38
- **/
+ */
 gboolean
 pango_scan_word (const char **pos, GString *out)
 {
@@ -436,17 +420,18 @@ pango_scan_word (const char **pos, GString *out)
 /**
  * pango_scan_string:
  * @pos: (inout): in/out string position
- * @out: a #GString into which to write the result
+ * @out: a `GString` into which to write the result
  *
- * Scans a string into a #GString buffer. The string may either
- * be a sequence of non-white-space characters, or a quoted
- * string with '"'. Instead a quoted string, '\"' represents
+ * Scans a string into a `GString` buffer.
+ *
+ * The string may either be a sequence of non-white-space characters,
+ * or a quoted string with '"'. Instead a quoted string, '\"' represents
  * a literal quote. Leading white space outside of quotes is skipped.
  *
- * Return value: %FALSE if a parse error occurred.
+ * Returns: %FALSE if a parse error occurred
  *
  * Deprecated: 1.38
- **/
+ */
 gboolean
 pango_scan_string (const char **pos, GString *out)
 {
@@ -531,12 +516,13 @@ pango_scan_string (const char **pos, GString *out)
  * @out: (out): an int into which to write the result
  *
  * Scans an integer.
+ *
  * Leading white space is skipped.
  *
- * Return value: %FALSE if a parse error occurred.
+ * Returns: %FALSE if a parse error occurred
  *
  * Deprecated: 1.38
- **/
+ */
 gboolean
 pango_scan_int (const char **pos, int *out)
 {
@@ -570,14 +556,14 @@ _pango_scan_int (const char **pos, int *out)
 
 /**
  * pango_config_key_get_system:
- * @key: Key to look up, in the form "SECTION/KEY".
+ * @key: Key to look up, in the form "SECTION/KEY"
  *
  * Do not use.  Does not do anything.
  *
- * Return value: %NULL
+ * Returns: (nullable): %NULL
  *
  * Deprecated: 1.38
- **/
+ */
 char *
 pango_config_key_get_system (const char *key)
 {
@@ -586,14 +572,14 @@ pango_config_key_get_system (const char *key)
 
 /**
  * pango_config_key_get:
- * @key: Key to look up, in the form "SECTION/KEY".
+ * @key: Key to look up, in the form "SECTION/KEY"
  *
  * Do not use.  Does not do anything.
  *
- * Return value: %NULL
+ * Returns: (nullable): %NULL
  *
  * Deprecated: 1.38
- **/
+ */
 char *
 pango_config_key_get (const char *key)
 {
@@ -606,7 +592,7 @@ pango_config_key_get (const char *key)
  * Returns the name of the "pango" subdirectory of SYSCONFDIR
  * (which is set at compile time).
  *
- * Return value: the Pango sysconf directory. The returned string should
+ * Returns: (transfer none): the Pango sysconf directory. The returned string should
  * not be freed.
  *
  * Deprecated: 1.38
@@ -635,7 +621,7 @@ pango_get_sysconf_subdirectory (void)
  * Returns the name of the "pango" subdirectory of LIBDIR
  * (which is set at compile time).
  *
- * Return value: the Pango lib directory. The returned string should
+ * Returns: (transfer none): the Pango lib directory. The returned string should
  * not be freed.
  *
  * Deprecated: 1.38
@@ -686,28 +672,30 @@ parse_int (const char *word,
 
 /**
  * pango_parse_enum:
- * @type: enum type to parse, eg. %PANGO_TYPE_ELLIPSIZE_MODE.
- * @str: (allow-none): string to parse.  May be %NULL.
- * @value: (out) (allow-none): integer to store the result in, or %NULL.
- * @warn: if %TRUE, issue a g_warning() on bad input.
- * @possible_values: (out) (allow-none): place to store list of possible values on failure, or %NULL.
+ * @type: enum type to parse, eg. %PANGO_TYPE_ELLIPSIZE_MODE
+ * @str: (nullable): string to parse
+ * @value: (out) (optional): integer to store the result in
+ * @warn: if %TRUE, issue a g_warning() on bad input
+ * @possible_values: (out) (optional): place to store list of possible
+ *   values on failure
  *
  * Parses an enum type and stores the result in @value.
  *
- * If @str does not match the nick name of any of the possible values for the
- * enum and is not an integer, %FALSE is returned, a warning is issued
- * if @warn is %TRUE, and a
- * string representing the list of possible values is stored in
- * @possible_values.  The list is slash-separated, eg.
- * "none/start/middle/end".  If failed and @possible_values is not %NULL,
- * returned string should be freed using g_free().
+ * If @str does not match the nick name of any of the possible values
+ * for the enum and is not an integer, %FALSE is returned, a warning
+ * is issued if @warn is %TRUE, and a string representing the list of
+ * possible values is stored in @possible_values. The list is
+ * slash-separated, eg. "none/start/middle/end".
  *
- * Return value: %TRUE if @str was successfully parsed.
+ * If failed and @possible_values is not %NULL, returned string should
+ * be freed using g_free().
+ *
+ * Returns: %TRUE if @str was successfully parsed
  *
  * Deprecated: 1.38
  *
  * Since: 1.16
- **/
+ */
 gboolean
 pango_parse_enum (GType       type,
 		  const char *str,
@@ -836,12 +824,13 @@ pango_parse_flags (GType        type,
 
 /**
  * pango_lookup_aliases:
- * @fontname: an ascii string
- * @families: (out) (array length=n_families): will be set to an array of font family names.
- *    this array is owned by pango and should not be freed.
- * @n_families: (out): will be set to the length of the @families array.
+ * @fontname: an ASCII string
+ * @families: (out) (array length=n_families): will be set to an array of
+ *   font family names. This array is owned by Pango and should not be freed
+ * @n_families: (out): will be set to the length of the @families array
  *
  * Look up all user defined aliases for the alias @fontname.
+ *
  * The resulting font family names will be stored in @families,
  * and the number of families in @n_families.
  *
@@ -861,14 +850,14 @@ pango_lookup_aliases (const char   *fontname,
 
 /**
  * pango_find_base_dir:
- * @text:   the text to process. Must be valid UTF-8
+ * @text: the text to process. Must be valid UTF-8
  * @length: length of @text in bytes (may be -1 if @text is nul-terminated)
  *
  * Searches a string the first character that has a strong
  * direction, according to the Unicode bidirectional algorithm.
  *
- * Return value: The direction corresponding to the first strong character.
- * If no such character is found, then %PANGO_DIRECTION_NEUTRAL is returned.
+ * Returns: The direction corresponding to the first strong character.
+ *   If no such character is found, then %PANGO_DIRECTION_NEUTRAL is returned.
  *
  * Since: 1.4
  */
@@ -903,13 +892,14 @@ pango_find_base_dir (const gchar *text,
  * pango_is_zero_width:
  * @ch: a Unicode character
  *
- * Checks @ch to see if it is a character that should not be
- * normally rendered on the screen.  This includes all Unicode characters
- * with "ZERO WIDTH" in their name, as well as <firstterm>bidi</firstterm> formatting characters, and
- * a few other ones.  This is totally different from g_unichar_iszerowidth()
- * and is at best misnamed.
+ * Checks if a character that should not be normally rendered.
  *
- * Return value: %TRUE if @ch is a zero-width character, %FALSE otherwise
+ * This includes all Unicode characters with "ZERO WIDTH" in their name,
+ * as well as *bidi* formatting characters, and a few other ones.
+ *
+ * This is totally different from [func@GLib.unichar_iszerowidth] and is at best misnamed.
+ *
+ * Returns: %TRUE if @ch is a zero-width character, %FALSE otherwise
  *
  * Since: 1.10
  */
@@ -929,16 +919,21 @@ pango_is_zero_width (gunichar ch)
  *
  *  2028  LINE SEPARATOR
  *
+ *  2060  WORD JOINER
+ *  2061  FUNCTION APPLICATION
+ *  2062  INVISIBLE TIMES
+ *  2063  INVISIBLE SEPARATOR
+ *
+ *  2066  LEFT-TO-RIGHT ISOLATE
+ *  2067  RIGHT-TO-LEFT ISOLATE
+ *  2068  FIRST STRONG ISOLATE
+ *  2069  POP DIRECTIONAL ISOLATE
+ *
  *  202A  LEFT-TO-RIGHT EMBEDDING
  *  202B  RIGHT-TO-LEFT EMBEDDING
  *  202C  POP DIRECTIONAL FORMATTING
  *  202D  LEFT-TO-RIGHT OVERRIDE
  *  202E  RIGHT-TO-LEFT OVERRIDE
- *
- *  2060  WORD JOINER
- *  2061  FUNCTION APPLICATION
- *  2062  INVISIBLE TIMES
- *  2063  INVISIBLE SEPARATOR
  *
  *  FEFF  ZERO WIDTH NO-BREAK SPACE
  */
@@ -946,6 +941,7 @@ pango_is_zero_width (gunichar ch)
 		(ch >= 0x200B && ch <= 0x200F) ||
 		(ch >= 0x202A && ch <= 0x202E) ||
 		(ch >= 0x2060 && ch <= 0x2063) ||
+                (ch >= 0x2066 && ch <= 0x2069) ||
 		(ch == 0x2028)
 	 )) || G_UNLIKELY (ch == 0x00AD
 			|| ch == 0x034F
@@ -957,10 +953,10 @@ pango_is_zero_width (gunichar ch)
  * @thickness: (inout): pointer to the thickness of a line, in Pango units
  * @position: (inout): corresponding position
  *
- * Quantizes the thickness and position of a line, typically an
- * underline or strikethrough, to whole device pixels, that is integer
- * multiples of %PANGO_SCALE. The purpose of this function is to avoid
- * such lines looking blurry.
+ * Quantizes the thickness and position of a line to whole device pixels.
+ *
+ * This is typically used for underline or strikethrough. The purpose of
+ * this function is to avoid such lines looking blurry.
  *
  * Care is taken to make sure @thickness is at least one pixel when this
  * function returns, but returned @position may become zero as a result
@@ -994,10 +990,12 @@ pango_quantize_line_geometry (int *thickness,
  * pango_units_from_double:
  * @d: double floating-point value
  *
- * Converts a floating-point number to Pango units: multiplies
- * it by %PANGO_SCALE and rounds to nearest integer.
+ * Converts a floating-point number to Pango units.
  *
- * Return value: the value in Pango units.
+ * The conversion is done by multiplying @d by %PANGO_SCALE and
+ * rounding the result to nearest integer.
+ *
+ * Returns: the value in Pango units.
  *
  * Since: 1.16
  */
@@ -1011,10 +1009,11 @@ pango_units_from_double (double d)
  * pango_units_to_double:
  * @i: value in Pango units
  *
- * Converts a number in Pango units to floating-point: divides
- * it by %PANGO_SCALE.
+ * Converts a number in Pango units to floating-point.
  *
- * Return value: the double value.
+ * The conversion is done by dividing @i by %PANGO_SCALE.
+ *
+ * Returns: the double value.
  *
  * Since: 1.16
  */
@@ -1026,27 +1025,29 @@ pango_units_to_double (int i)
 
 /**
  * pango_extents_to_pixels:
- * @inclusive: (allow-none): rectangle to round to pixels inclusively, or %NULL.
- * @nearest: (allow-none): rectangle to round to nearest pixels, or %NULL.
+ * @inclusive: (nullable): rectangle to round to pixels inclusively
+ * @nearest: (nullable): rectangle to round to nearest pixels
  *
- * Converts extents from Pango units to device units, dividing by the
- * %PANGO_SCALE factor and performing rounding.
+ * Converts extents from Pango units to device units.
  *
- * The @inclusive rectangle is converted by flooring the x/y coordinates and extending
- * width/height, such that the final rectangle completely includes the original
- * rectangle.
+ * The conversion is done by dividing by the %PANGO_SCALE factor and
+ * performing rounding.
+ *
+ * The @inclusive rectangle is converted by flooring the x/y coordinates
+ * and extending width/height, such that the final rectangle completely
+ * includes the original rectangle.
  *
  * The @nearest rectangle is converted by rounding the coordinates
  * of the rectangle to the nearest device unit (pixel).
  *
  * The rule to which argument to use is: if you want the resulting device-space
- * rectangle to completely contain the original rectangle, pass it in as @inclusive.
- * If you want two touching-but-not-overlapping rectangles stay
+ * rectangle to completely contain the original rectangle, pass it in as
+ * @inclusive. If you want two touching-but-not-overlapping rectangles stay
  * touching-but-not-overlapping after rounding to device units, pass them in
  * as @nearest.
  *
  * Since: 1.16
- **/
+ */
 void
 pango_extents_to_pixels (PangoRectangle *inclusive,
 			 PangoRectangle *nearest)
@@ -1152,3 +1153,105 @@ _pango_shape_get_extents (gint              n_chars,
     }
 }
 
+/**
+ * pango_find_paragraph_boundary:
+ * @text: UTF-8 text
+ * @length: length of @text in bytes, or -1 if nul-terminated
+ * @paragraph_delimiter_index: (out): return location for index of
+ *   delimiter
+ * @next_paragraph_start: (out): return location for start of next
+ *   paragraph
+ *
+ * Locates a paragraph boundary in @text.
+ *
+ * A boundary is caused by delimiter characters, such as
+ * a newline, carriage return, carriage return-newline pair,
+ * or Unicode paragraph separator character.
+ *
+ * The index of the run of delimiters is returned in
+ * @paragraph_delimiter_index. The index of the start of the
+ * next paragraph (index after all delimiters) is stored n
+ * @next_paragraph_start.
+ *
+ * If no delimiters are found, both @paragraph_delimiter_index
+ * and @next_paragraph_start are filled with the length of @text
+ * (an index one off the end).
+ */
+void
+pango_find_paragraph_boundary (const char *text,
+                               int         length,
+                               int        *paragraph_delimiter_index,
+                               int        *next_paragraph_start)
+{
+  const char *p = text;
+  const char *end;
+  const char *start = NULL;
+  const char *delimiter = NULL;
+
+  /* Only one character has type G_UNICODE_PARAGRAPH_SEPARATOR in
+   * Unicode 5.0; update the following code if that changes.
+   */
+
+  /* prev_sep is the first byte of the previous separator.  Since
+   * the valid separators are \r, \n, and PARAGRAPH_SEPARATOR, the
+   * first byte is enough to identify it.
+   */
+  char prev_sep;
+
+#define PARAGRAPH_SEPARATOR_STRING "\xE2\x80\xA9"
+
+  if (length < 0)
+    length = strlen (text);
+
+  end = text + length;
+
+  if (paragraph_delimiter_index)
+    *paragraph_delimiter_index = length;
+
+  if (next_paragraph_start)
+    *next_paragraph_start = length;
+
+  if (length == 0)
+    return;
+
+  prev_sep = 0;
+  while (p < end)
+    {
+      if (prev_sep == '\n' ||
+          prev_sep == PARAGRAPH_SEPARATOR_STRING[0])
+        {
+          g_assert (delimiter);
+          start = p;
+          break;
+        }
+      else if (prev_sep == '\r')
+        {
+          /* don't break between \r and \n */
+          if (*p != '\n')
+            {
+              g_assert (delimiter);
+              start = p;
+              break;
+            }
+        }
+
+      if (*p == '\n' ||
+           *p == '\r' ||
+           !strncmp(p, PARAGRAPH_SEPARATOR_STRING, strlen (PARAGRAPH_SEPARATOR_STRING)))
+        {
+          if (delimiter == NULL)
+            delimiter = p;
+          prev_sep = *p;
+        }
+      else
+        prev_sep = 0;
+
+      p = g_utf8_next_char (p);
+    }
+
+  if (delimiter && paragraph_delimiter_index)
+    *paragraph_delimiter_index = delimiter - text;
+
+  if (start && next_paragraph_start)
+    *next_paragraph_start = start - text;
+}

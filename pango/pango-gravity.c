@@ -19,64 +19,6 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/**
- * SECTION:vertical
- * @short_description:Laying text out in vertical directions
- * @title:Vertical Text
- * @see_also: pango_context_get_base_gravity(),
- * pango_context_set_base_gravity(),
- * pango_context_get_gravity(),
- * pango_context_get_gravity_hint(),
- * pango_context_set_gravity_hint(),
- * pango_font_description_set_gravity(),
- * pango_font_description_get_gravity(),
- * pango_attr_gravity_new(),
- * pango_attr_gravity_hint_new()
- *
- * Since 1.16, Pango is able to correctly lay vertical text out.  In fact, it can
- * set layouts of mixed vertical and non-vertical text.  This section describes
- * the types used for setting vertical text parameters.
- *
- * The way this is implemented is through the concept of
- * <firstterm>gravity</firstterm>.  Gravity of normal Latin text is south.  A
- * gravity value of east means that glyphs will be rotated ninety degrees
- * counterclockwise.  So, to render vertical text one needs to set the gravity
- * and rotate the layout using the matrix machinery already in place.  This has
- * the huge advantage that most algorithms working on a #PangoLayout do not need
- * any change as the assumption that lines run in the X direction and stack in
- * the Y direction holds even for vertical text layouts.
- *
- * Applications should only need to set base gravity on #PangoContext in use, and
- * let Pango decide the gravity assigned to each run of text.  This automatically
- * handles text with mixed scripts.  A very common use is to set the context base
- * gravity to auto using pango_context_set_base_gravity()
- * and rotate the layout normally.  Pango will make sure that
- * Asian languages take the right form, while other scripts are rotated normally.
- *
- * The correct way to set gravity on a layout is to set it on the context
- * associated with it using pango_context_set_base_gravity().  The context
- * of a layout can be accessed using pango_layout_get_context().  The currently
- * set base gravity of the context can be accessed using
- * pango_context_get_base_gravity() and the <firstterm>resolved</firstterm>
- * gravity of it using pango_context_get_gravity().  The resolved gravity is
- * the same as the base gravity for the most part, except that if the base
- * gravity is set to %PANGO_GRAVITY_AUTO, the resolved gravity will depend
- * on the current matrix set on context, and is derived using
- * pango_gravity_get_for_matrix().
- *
- * The next thing an application may want to set on the context is the
- * <firstterm>gravity hint</firstterm>.  A #PangoGravityHint instructs how
- * different scripts should react to the set base gravity.
- *
- * Font descriptions have a gravity property too, that can be set using
- * pango_font_description_set_gravity() and accessed using
- * pango_font_description_get_gravity().  However, those are rarely useful
- * from application code and are mainly used by #PangoLayout internally.
- *
- * Last but not least, one can create #PangoAttribute<!---->s for gravity
- * and gravity hint using pango_attr_gravity_new() and
- * pango_attr_gravity_hint_new().
- */
 #include "config.h"
 
 #include "pango-gravity.h"
@@ -85,13 +27,12 @@
 
 /**
  * pango_gravity_to_rotation:
- * @gravity: gravity to query
+ * @gravity: gravity to query, should not be %PANGO_GRAVITY_AUTO
  *
- * Converts a #PangoGravity value to its natural rotation in radians.
- * @gravity should not be %PANGO_GRAVITY_AUTO.
+ * Converts a `PangoGravity` value to its natural rotation in radians.
  *
- * Note that pango_matrix_rotate() takes angle in degrees, not radians.
- * So, to call pango_matrix_rotate() with the output of this function
+ * Note that [method@Pango.Matrix.rotate] takes angle in degrees, not radians.
+ * So, to call [method@Pango.Matrix,rotate] with the output of this function
  * you should multiply it by (180. / G_PI).
  *
  * Return value: the rotation value corresponding to @gravity.
@@ -120,10 +61,10 @@ pango_gravity_to_rotation (PangoGravity gravity)
 
 /**
  * pango_gravity_get_for_matrix:
- * @matrix: (nullable): a #PangoMatrix
+ * @matrix: (nullable): a `PangoMatrix`
  *
  * Finds the gravity that best matches the rotation component
- * in a #PangoMatrix.
+ * in a `PangoMatrix`.
  *
  * Return value: the gravity of @matrix, which will never be
  * %PANGO_GRAVITY_AUTO, or %PANGO_GRAVITY_SOUTH if @matrix is %NULL
@@ -254,7 +195,7 @@ const PangoScriptProperties script_properties[] =
       {LTR, NONE, S, FALSE},	/* Tfng */
       {LTR, NONE, S, FALSE},	/* Sylo */
       {LTR, NONE, S, FALSE},	/* Xpeo */
-      {LTR, NONE, S, FALSE},	/* Khar */
+      {RTL, NONE, S, FALSE},	/* Khar */
 
       /* Unicode-5.0 additions */
       {LTR, NONE, S, FALSE},	/* Zzzz */
@@ -262,7 +203,125 @@ const PangoScriptProperties script_properties[] =
       {LTR, NONE, S, FALSE},	/* Xsux */
       {RTL, NONE, S, FALSE},	/* Phnx */
       {LTR, NONE, S, FALSE},	/* Phag */
-      {RTL, NONE, S, FALSE}	/* Nkoo */
+      {RTL, NONE, S, FALSE},    /* Nkoo */
+
+      /* Unicode-5.1 additions */
+      {LTR, NONE, S, FALSE},	/* Kali */
+      {LTR, NONE, S, FALSE},	/* Lepc */
+      {LTR, NONE, S, FALSE},	/* Rjng */
+      {LTR, NONE, S, FALSE},	/* Sund */
+      {LTR, NONE, S, FALSE},	/* Saur */
+      {LTR, NONE, S, FALSE},	/* Cham */
+      {LTR, NONE, S, FALSE},	/* Olck */
+      {LTR, NONE, S, FALSE},	/* Vaii */
+      {LTR, NONE, S, FALSE},	/* Cari */
+      {LTR, NONE, S, FALSE},	/* Lyci */
+      {RTL, NONE, S, FALSE},	/* Lydi */
+
+      /* Unicode-5.2 additions */
+      {RTL, NONE, S, FALSE},	/* Avst */
+      {LTR, NONE, S, FALSE},	/* Bamu */
+      {LTR, NONE, S, FALSE},	/* Egyp */
+      {RTL, NONE, S, FALSE},	/* Armi */
+      {RTL, NONE, S, FALSE},	/* Phli */
+      {RTL, NONE, S, FALSE},	/* Prti */
+      {LTR, NONE, S, FALSE},	/* Java */
+      {LTR, NONE, S, FALSE},	/* Kthi */
+      {LTR, NONE, S, FALSE},	/* Lisu */
+      {LTR, NONE, S, FALSE},	/* Mtei */
+      {RTL, NONE, S, FALSE},	/* Sarb */
+      {RTL, NONE, S, FALSE},	/* Orkh */
+      {RTL, TTB,  S, FALSE},	/* Samr */
+      {LTR, NONE, S, FALSE},	/* Lana */
+      {LTR, NONE, S, FALSE},	/* Tavt */
+
+      /* Unicode-6.0 additions */
+      {LTR, NONE, S, FALSE},	/* Batk */
+      {LTR, NONE, S, FALSE},	/* Brah */
+      {RTL, NONE, S, FALSE},	/* Mand */
+
+      /* Unicode-6.1 additions */
+      {LTR, NONE, S, FALSE},	/* Cakm */
+      {RTL, NONE, S, FALSE},	/* Merc */
+      {RTL, NONE, S, FALSE},	/* Mero */
+      {LTR, NONE, S, FALSE},	/* Plrd */
+      {LTR, NONE, S, FALSE},	/* Shrd */
+      {LTR, NONE, S, FALSE},	/* Sora */
+      {LTR, NONE, S, FALSE},	/* Takr */
+
+      /* Unicode-7.0 additions */
+      {LTR, NONE, S, FALSE},	/* Bass */
+      {LTR, NONE, S, FALSE},	/* Aghb */
+      {LTR, NONE, S, FALSE},	/* Dupl */
+      {LTR, NONE, S, FALSE},	/* Elba */
+      {LTR, NONE, S, FALSE},	/* Gran */
+      {LTR, NONE, S, FALSE},	/* Khoj */
+      {LTR, NONE, S, FALSE},	/* Sind */
+      {LTR, NONE, S, FALSE},	/* Lina */
+      {LTR, NONE, S, FALSE},	/* Mahj */
+      {RTL, NONE, S, FALSE},	/* Mani */
+      {RTL, NONE, S, FALSE},	/* Mend */
+      {LTR, NONE, S, FALSE},	/* Modi */
+      {LTR, NONE, S, FALSE},	/* Mroo */
+      {RTL, NONE, S, FALSE},	/* Nbat */
+      {RTL, NONE, S, FALSE},	/* Narb */
+      {LTR, NONE, S, FALSE},	/* Perm */
+      {LTR, NONE, S, FALSE},	/* Hmng */
+      {RTL, NONE, S, FALSE},	/* Palm */
+      {LTR, NONE, S, FALSE},	/* Pauc */
+      {RTL, NONE, S, FALSE},	/* Phlp */
+      {LTR, NONE, S, FALSE},	/* Sidd */
+      {LTR, NONE, S, FALSE},	/* Tirh */
+      {LTR, NONE, S, FALSE},	/* Wara */
+
+      /* Unicode-8.0 additions */
+      {LTR, NONE, S, FALSE},	/* Ahom */
+      {LTR, NONE, S, FALSE},	/* Hluw */
+      {RTL, NONE, S, FALSE},	/* Hatr */
+      {LTR, NONE, S, FALSE},    /* Mult */
+      {LTR, NONE, S, FALSE},	/* Hung */
+      {LTR, NONE, S, FALSE},	/* Sgnw */
+
+      /* Unicode-9.0 additions */
+      {RTL, NONE, S, FALSE},	/* Adlm */
+      {LTR, NONE, S, FALSE},	/* Bhks */
+      {LTR, NONE, S, FALSE},	/* Marc */
+      {LTR, NONE, S, FALSE},	/* Newa */
+      {LTR, NONE, S, FALSE},	/* Osge */
+      {LTR, NONE, S, FALSE},	/* Tang */
+
+      /* Unicode-10.0 additions */
+      {LTR, NONE, S, FALSE},	/* Gonm */
+      {LTR, NONE, S, FALSE},	/* Nshu */
+      {LTR, NONE, S, FALSE},	/* Soyo */
+      {LTR, NONE, S, FALSE},	/* Zanb */
+
+      /* Unicode-11.0 additions */
+      {LTR, NONE, S, FALSE},	/* Dogr */
+      {LTR, NONE, S, FALSE},	/* Gong */
+      {RTL, NONE, S, FALSE},	/* Rohg */
+      {LTR, NONE, S, FALSE},	/* Maka */
+      {LTR, NONE, S, FALSE},	/* Medf */
+      {RTL, NONE, S, FALSE},	/* Sogo */
+      {RTL, NONE, S, FALSE},	/* Sogd */
+
+      /* Unicode-12.0 additions */
+      {RTL, NONE, S, FALSE},	/* Elym */
+      {LTR, NONE, S, FALSE},	/* Nand */
+      {LTR, NONE, S, FALSE},	/* Rohg */
+      {LTR, NONE, S, FALSE},	/* Wcho */
+
+      /* Unicode-13.0 additions */
+      {RTL, NONE, S, FALSE},	/* Chrs */
+      {LTR, NONE, S, FALSE},	/* Diak */
+      {LTR, NONE, S, FALSE},	/* Kits */
+      {RTL, NONE, S, FALSE},	/* Yezi */
+
+      {LTR, NONE, S, FALSE},    /* Cpmn */
+      {RTL, NONE, S, FALSE},    /* Ougr */
+      {LTR, NONE, S, FALSE},    /* Tnsa */
+      {LTR, NONE, S, FALSE},    /* Toto */
+      {LTR, NONE, S, FALSE},    /* Vith */
 };
 
 #undef NONE
@@ -291,51 +350,51 @@ get_script_properties (PangoScript script)
 
 /**
  * pango_gravity_get_for_script:
- * @script: #PangoScript to query
+ * @script: `PangoScript` to query
  * @base_gravity: base gravity of the paragraph
  * @hint: orientation hint
  *
- * Based on the script, base gravity, and hint, returns actual gravity
- * to use in laying out a single #PangoItem.
+ * Returns the gravity to use in laying out a `PangoItem`.
+ *
+ * The gravity is determined based on the script, base gravity, and hint.
  *
  * If @base_gravity is %PANGO_GRAVITY_AUTO, it is first replaced with the
  * preferred gravity of @script.  To get the preferred gravity of a script,
  * pass %PANGO_GRAVITY_AUTO and %PANGO_GRAVITY_HINT_STRONG in.
  *
  * Return value: resolved gravity suitable to use for a run of text
- * with @script.
+ * with @script
  *
  * Since: 1.16
  */
 PangoGravity
 pango_gravity_get_for_script (PangoScript      script,
-			      PangoGravity     base_gravity,
-			      PangoGravityHint hint)
+                              PangoGravity     base_gravity,
+                              PangoGravityHint hint)
 {
   PangoScriptProperties props = get_script_properties (script);
 
-  if (G_UNLIKELY (base_gravity == PANGO_GRAVITY_AUTO))
-    base_gravity = props.preferred_gravity;
-
   return pango_gravity_get_for_script_and_width (script, props.wide,
-						 base_gravity, hint);
+                                                 base_gravity, hint);
 }
 
 /**
  * pango_gravity_get_for_script_and_width:
- * @script: #PangoScript to query
+ * @script: `PangoScript` to query
  * @wide: %TRUE for wide characters as returned by g_unichar_iswide()
  * @base_gravity: base gravity of the paragraph
  * @hint: orientation hint
  *
- * Based on the script, East Asian width, base gravity, and hint,
- * returns actual gravity to use in laying out a single character
- * or #PangoItem.
+ * Returns the gravity to use in laying out a single character
+ * or `PangoItem`.
  *
- * This function is similar to pango_gravity_get_for_script() except
+ * The gravity is determined based on the script, East Asian width,
+ * base gravity, and hint,
+ *
+ * This function is similar to [func@Pango.Gravity.get_for_script] except
  * that this function makes a distinction between narrow/half-width and
- * wide/full-width characters also.  Wide/full-width characters always
- * stand <emphasis>upright</emphasis>, that is, they always take the base gravity,
+ * wide/full-width characters also. Wide/full-width characters always
+ * stand *upright*, that is, they always take the base gravity,
  * whereas narrow/full-width characters are always rotated in vertical
  * context.
  *
@@ -348,14 +407,13 @@ pango_gravity_get_for_script (PangoScript      script,
  * Since: 1.26
  */
 PangoGravity
-pango_gravity_get_for_script_and_width (PangoScript        script,
-					gboolean           wide,
-					PangoGravity       base_gravity,
-					PangoGravityHint   hint)
+pango_gravity_get_for_script_and_width (PangoScript      script,
+                                        gboolean         wide,
+                                        PangoGravity     base_gravity,
+                                        PangoGravityHint hint)
 {
   PangoScriptProperties props = get_script_properties (script);
   gboolean vertical;
-
 
   if (G_UNLIKELY (base_gravity == PANGO_GRAVITY_AUTO))
     base_gravity = props.preferred_gravity;

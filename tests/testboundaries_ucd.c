@@ -232,15 +232,14 @@ do_test (const gchar *filename,
   channel = g_io_channel_new_file (filename, "r", &error);
   if (g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
     {
-#if 0
       g_test_skip ("Test file not found");
-#endif
+      g_error_free (error);
       return;
     }
 
   g_assert_no_error (error);
 
-  g_test_message ("Filename: %s", filename);
+  if (g_test_verbose ()) g_test_message ("Filename: %s", filename);
 
   i = 1;
   for (;;)
@@ -264,20 +263,23 @@ do_test (const gchar *filename,
           case G_IO_STATUS_NORMAL:
             line[terminator_pos] = '\0';
             break;
+
+          default:
+            break;
         }
 
-      g_test_message ("Parsing line: %s", line);
+      if (g_test_verbose ()) g_test_message ("Parsing line: %s", line);
       g_assert_true (parse_line (line, bits, &string, &expected_attrs, &num_attrs));
       
       if (num_attrs > 0)
         {
-          PangoLogAttr *attrs = g_new (PangoLogAttr, num_attrs);
+          PangoLogAttr *attrs = g_new0 (PangoLogAttr, num_attrs);
           pango_get_log_attrs (string, -1, 0, pango_language_from_string ("C"), attrs, num_attrs);
 
           if (! attrs_equal (attrs, expected_attrs, num_attrs, bits))
             {
               gchar *str = make_test_string (string, attrs, bits);
-              gchar *comments = strchr (line, '#');
+              char *comments = strchr (line, '#');
               if (comments) /* don't print the # comment in the error message.  print it separately */
 	        {
 		  *comments = '\0';
@@ -285,13 +287,13 @@ do_test (const gchar *filename,
 		}
 	      else
 	        {
-		  comments = "";
+		  comments = (char *)"";
 		}
 
-              g_test_message ("%s: line %d failed", filename, i);
-              g_test_message ("   expected: %s", line);
-              g_test_message ("   returned: %s", str);
-              g_test_message ("   comments: %s", comments);
+              if (g_test_verbose ()) g_test_message ("%s: line %d failed", filename, i);
+              if (g_test_verbose ()) g_test_message ("   expected: %s", line);
+              if (g_test_verbose ()) g_test_message ("   returned: %s", str);
+              if (g_test_verbose ()) g_test_message ("   comments: %s", comments);
 
               g_free (str);
               failed = TRUE;

@@ -1,3 +1,254 @@
+Overview of changes in 1.50.12, xx-xx-xxxx
+==========================================
+- Fix weight conversion on MacOS
+- Update to Unicode 15
+- Some introspection annotation fixes
+- Improve PangoAttrList serialization
+- Fix char offset calculatiosn in multi-paragraph
+  layouts
+
+Overview of changes in 1.50.11, 03-10-2022
+==========================================
+- Don't crash for lack of fonts
+- Avoid a crash in shaping
+
+Overview of changes in 1.50.10, 16-09-2022
+=========================================
+- Avoid some unnecessary strdups
+- Fix line height computations with a non-trivial CTM
+
+Overview of changes in 1.50.9, 09-08-2022
+=========================================
+- Apply show flags to line separators
+- Fix a thread-safety problem
+
+Overview of changes in 1.50.8, 02-07-2022
+=========================================
+- Add some properties to fontmap and family
+- Fix handling of ligature carets in mixed directions
+
+Overview of changes in 1.50.7, 14-04-2022
+=========================================
+- coretext: Fix the build
+- editing: Fix moving across paragraph boundaries in rtl
+- layout: Try harder to survive without fonts
+- Windows: Register a sans-serif font
+- Windows: Try harder to load a font
+
+Overview of changes in 1.50.6, 19-03-2022
+=========================================
+- Drop hb-glib dependency
+- Fix test font configuration
+- Maintain order in pango_attr_list_change
+- Fix a use-after-free in pango_attr_list_change
+
+Overview of changes in 1.50.5, 03-03-2022
+=========================================
+* Fix compiler warnings
+* Enable cairo by default
+* pango-view: Show more baselines
+* layout: Handle baselines
+* Windows: build cleanups
+
+Overview of changes in 1.50.4, 09-02-2022
+=========================================
+* Tweak synthetic space sizes
+* itemize: Try harder to avoid NULL fonts
+* docs: Some additions
+* Pass synthetic slant to harfbuzz
+* Make sloped carets work with uneven scales
+* Fix serialiation on arm
+* Avoid an uninitialized variable warning
+* Reinstate previous behavior of pango_attr_list_splice
+* Deprecated pango_coverage_ref/unref
+* Fix serialization on non-glibc systems
+* Fix allow-breaks handling
+
+Overview of changes in 1.50.3, 21-12-2021
+=========================================
+* pango-view: Add --serialize-to option for easy bug reporting
+* Revert a transformation change that broke metrics for vertical text
+* Handle fonts without space glyph (such as icon fonts) better
+* Fix some corner cases of line width accounting
+* Fix line height with emulated Small Caps
+
+Overview of changes in 1.50.2, 16-12-2021
+=========================================
+* Fix a problem with font fallback for Arabic
+* Fix handling of fonts without a space glyph
+* Various documentation improvements
+* Fix build issues
+
+Overview of changes in 1.50.1, 10-12-2021
+=========================================
+* Fix a crash in tab handling
+* Fix tab positioning without line wrapping
+* Fix an assertion failure found by fuzzing
+* Make underlines work again for broken fonts
+
+Overview of changes in 1.50.0, 02-12-2021
+=========================================
+* Fix glyph placement in gravity east
+* Fix line heights in improper gravities
+* Only shown selected ignorables with nicks
+* Support tab alignments other than left
+* Support custom decimal points on decimal tabs
+* Fix a pango-view crash
+* Optimize handling of many tabs
+* Drop json-glib dependency
+
+Overview of changes in 1.49.4, 27-11-2021
+=========================================
+* Require fontconfig 2.13
+* Require harfbuzz 2.6
+* Many fixes to line breaking accuracy
+* coretext: Correctly clamp text weights at min/max values
+* Add serialization api for PangoLayout, PangoFont and PangoAttrList
+* Require json-glib
+* tests: Use serialized layouts for test cases
+* tests: Include fonts in git
+* pango-view: Accept serialized layouts
+* Fix a rounding problem with font metrics
+* Fix visible space display using ␣
+
+Overview of changes in 1.49.3
+=============================
+* Fix hinting of glyph metrics
+* Fix logical glyph extents in vertical gravities
+* Visualize more default-ignorable glyphs
+* Fix advance widths in transformed contexts
+* Implement Small Caps and other casing variations
+
+Overview of changes in 1.49.2
+=============================
+* Update Unicode data to Unicode 14
+* Fix underlining of spaces
+* Round font metrics when appropriate
+* Fix some corner cases of cursor positioning
+* Handle Catalan middle-dot in text segmentation
+
+Overview of changes in 1.49.1
+=============================
+* Only recompute log attrs when needed
+* Validate log attrs
+* Fix conformance issues in Thai and Indic linebreaking
+* Add pango_attr_break to support customizing line and word breaks
+* Add font-dependent baseline shifts and sizing for super- and subscripts
+* Improve hyphenation support
+* pango-view: Visualize caret positions and slopes
+* pango-view: Show glyph rects
+* pango-view: Make --annotate easier to use
+* Add pango_layout_get_caret_pos to support sloped carets
+* Improve caret positioning for ligatures
+* Better under- and overline placement
+* layout: Allocate a bit less
+* layout: Fix cluster extents with rise
+* Add pango_layout_iter_get_run_baseline
+* Add pango_glyph_string_index_to_x_full
+* coretext: Set size on font descriptions
+* Add color information to PangoGlyphVisAttr
+
+Overview of changes in 1.49.0
+=============================
+* Rename git `master` branch to `main` (#579)
+* Bump version to 1.49
+* Require fribidi 1.0.6
+* Fix threadsafety issues with Thai
+* Fix a rounding problem on i386
+* Fix font choice for ellipsis (#575)
+* New api: pango_font_get_languages
+* New api: Introspection helpers for attributes (#476)
+* Ignore width in horizontal context when itemizing (#503)
+* markup: Allow specifying size and rise in points (#67)
+* markup: Allow specifying size as percentage (#23)
+* Rewrite pango_layout_move_cursor_visually (#157, #585, #587)
+* Add a line-height attribute and make logical line extents respect it
+* Add pango_justify_last_line (#74)
+* Add pango_shape_item
+* Add a text-transform attribute and implement it
+* Clean up fribidi api usage
+* Fix a bug in the gravity data table (#597)
+* pango-view: Improve the --annotate option
+* Fix a possible crash in rendering strikethroughs (#599)
+
+Overview of changes in 1.48.7
+=============================
+- Fix a thread-safety issue in fontmap initialization
+- Small documentation improvements
+
+Overview of changes in 1.48.6
+=============================
+- Avoid attribute index overflow
+- Add a new pango-segmentation utility
+- Documentation cleanups and fixes
+- Update script property data for gravity
+- Bring back careful glyph position rounding
+- Add a few missing bidi types
+- Add more tests
+
+Overview of changes in 1.48.5
+=============================
+- Only initialize fontconfig once
+- Add missing deprecation notices
+- Add some missing apis to the markup docs
+- Speed up Emoji classification
+- win32: Fix msvc build
+- Fix hangs and memory leaks
+- Don't insert hyphens at word boundaries
+- Handle empty lines better
+- Avoid width fluctuations with ellipsized text
+- Add a utility to show text segmentation
+
+Overview of changes in 1.48.4
+=============================
+- Include docs in the dist tarball
+- Include gi-docgen in the dist tarball, too
+- win32: Fix 'Cursive' fallback
+- Fix placement of marks in vertical text
+- Cache metrics for the current font
+- Improve letterspacing with combining marks
+
+Overview of changes in 1.48.3
+=============================
+- Miscellaneous introspection fixes
+- Make pango_attr_list_splice clip inserted attrbiutes
+- Do costly fontconfig calls in threads
+- markup: Fix issues with accel handling
+- docs: Convert docs to use gi-docgen
+- Fix build against harfbuzz < 2.6
+
+Overview of changes in 1.48.2
+=============================
+- Fix memory leaks reported by asan
+- Avoid overflow in pango_attr_list_update
+- Add a valgrind suppression file
+- Make tests more robust
+- Fix pango_font_describe for Emoji fonts
+
+Overview of changes in 1.48.1
+=============================
+- Require GLib 2.62
+- Require meson 0.55.3
+- ci: Add a MacOS build
+- macos: Implement pango_font_get_face
+- Fix itemization of multi-paragraph layouts
+- Fix a few memory leaks
+- Fix glyph origins in vertical layout
+
+Overview of changes in 1.48.0
+=============================
+- docs: Clarify use of PangoAnalysis in shaping
+- fontconfig: Make pango_font_family_get_face more reliable
+- introspection: Fix use of PangoFcSubstituteFunc
+- introspection: Skip fontconfig types
+- build: Use yielding meson feature for introspection
+
+Overview of changes in 1.47.0
+=============================
+- Add pango_language_get_preferred
+- Add pango_fc_font_get_languages
+- Sort faces of a family by slant and weight
+
 Overview of changes in 1.46.2
 =============================
 - Fix pango_win32_font_map_load_font with falback families

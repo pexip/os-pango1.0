@@ -34,6 +34,11 @@ static void
 substitute_func (FcPattern *pattern,
 		 gpointer   data G_GNUC_UNUSED)
 {
+  if (opt_antialias != ANTIALIAS_DEFAULT)
+    {
+      FcPatternDel (pattern, FC_ANTIALIAS);
+      FcPatternAddBool (pattern, FC_ANTIALIAS, opt_antialias != ANTIALIAS_NONE);
+    }
   if (opt_hinting != HINT_DEFAULT)
     {
       FcPatternDel (pattern, FC_HINTING);
@@ -51,7 +56,7 @@ pangoft2_view_create (const PangoViewer *klass G_GNUC_UNUSED)
   fontmap = pango_ft2_font_map_new ();
 
   pango_ft2_font_map_set_resolution (PANGO_FT2_FONT_MAP (fontmap), opt_dpi, opt_dpi);
-  pango_ft2_font_map_set_default_substitute (PANGO_FT2_FONT_MAP (fontmap), substitute_func, NULL, NULL);
+  pango_fc_font_map_set_default_substitute (PANGO_FC_FONT_MAP (fontmap), substitute_func, NULL, NULL);
 
   return fontmap;
 }

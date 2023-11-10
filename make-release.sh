@@ -9,17 +9,14 @@ if [ -d ${release_build_dir} ]; then
   exit 1
 fi
 
-# we include gtk-doc since we need the gtk-doc-for-gtk4 branch
-meson setup --force-fallback-for gtk-doc ${release_build_dir} || exit
+# make sure included subprojects are current
+meson subprojects update gi-docgen
 
 # make the release tarball
+meson setup -Dgtk_doc=true --force-fallback-for gi-docgen ${release_build_dir} || exit
+meson compile -C${release_build_dir} || exit
 meson dist -C${release_build_dir} --include-subprojects || exit
 
-# now build the docs
-meson configure -Dgtk_doc=true ${release_build_dir} || exit
-ninja -C${release_build_dir} pango-doc || exit
-
-tar cf ${release_build_dir}/meson-dist/pango-docs-${version}.tar.xz ${release_build_dir}/docs/
 
 echo -e "\n\nPango ${version} release on branch ${branch} in ./${release_build_dir}/:\n"
 

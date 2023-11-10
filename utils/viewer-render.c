@@ -35,6 +35,7 @@
 gboolean opt_display = TRUE;
 int opt_dpi = 96;
 gboolean opt_pixels = FALSE;
+gboolean opt_pango_units = FALSE;
 const char *opt_font = "";
 gboolean opt_header = FALSE;
 const char *opt_output = NULL;
@@ -54,6 +55,7 @@ int opt_indent = 0;
 int opt_spacing = 0;
 double opt_line_spacing = -1.0;
 gboolean opt_justify = 0;
+gboolean opt_justify_last_line = 0;
 int opt_runs = 1;
 PangoAlignment opt_align = PANGO_ALIGN_LEFT;
 PangoEllipsizeMode opt_ellipsize = PANGO_ELLIPSIZE_NONE;
@@ -75,6 +77,9 @@ guint16 opt_fg_alpha = 65535;
 gboolean opt_bg_set = FALSE;
 PangoColor opt_bg_color = {65535, 65535, 65535};
 guint16 opt_bg_alpha = 65535;
+gboolean opt_serialized = FALSE;
+const char *opt_serialized_output;
+const char *file_arg;
 
 /* Text (or markup) to render */
 static char *text;
@@ -101,6 +106,23 @@ make_layout(PangoContext *context,
   PangoAlignment align;
   PangoLayout *layout;
 
+  if (opt_serialized)
+    {
+      char *data;
+      gsize len;
+      GBytes *bytes;
+      GError *error = NULL;
+
+      if (!g_file_get_contents (file_arg, &data, &len, &error))
+        fail ("%s\n", error->message);
+      bytes = g_bytes_new_take (data, len);
+      layout = pango_layout_deserialize (context, bytes, PANGO_LAYOUT_DESERIALIZE_CONTEXT, &error);
+      if (!layout)
+        fail ("%s\n", error->message);
+      g_bytes_unref (bytes);
+      goto out;
+    }
+
   layout = pango_layout_new (context);
   if (opt_markup)
     pango_layout_set_markup (layout, text, -1);
@@ -110,6 +132,7 @@ make_layout(PangoContext *context,
   pango_layout_set_auto_dir (layout, opt_auto_dir);
   pango_layout_set_ellipsize (layout, opt_ellipsize);
   pango_layout_set_justify (layout, opt_justify);
+  pango_layout_set_justify_last_line (layout, opt_justify_last_line);
   pango_layout_set_single_paragraph_mode (layout, opt_single_par);
   pango_layout_set_wrap (layout, opt_wrap);
 
@@ -117,20 +140,38 @@ make_layout(PangoContext *context,
   if (size > 0)
     pango_font_description_set_size (font_description, size * PANGO_SCALE);
 
-  if (opt_width > 0)
-    pango_layout_set_width (layout, (opt_width * opt_dpi * PANGO_SCALE + 36) / 72);
+  if (opt_width >= 0)
+    {
+      if (opt_pango_units)
+        pango_layout_set_width (layout, opt_width);
+      else
+        pango_layout_set_width (layout, (opt_width * opt_dpi * PANGO_SCALE + 36) / 72);
+    }
 
-  if (opt_height > 0)
-    pango_layout_set_height (layout, (opt_height * opt_dpi * PANGO_SCALE + 36) / 72);
+  if (opt_height >= 0)
+    {
+      if (opt_pango_units)
+        pango_layout_set_width (layout, opt_height);
+      else
+        pango_layout_set_height (layout, (opt_height * opt_dpi * PANGO_SCALE + 36) / 72);
+    }
   else
     pango_layout_set_height (layout, opt_height);
 
   if (opt_indent != 0)
-    pango_layout_set_indent (layout, (opt_indent * opt_dpi * PANGO_SCALE + 36) / 72);
+    {
+      if (opt_pango_units)
+        pango_layout_set_indent (layout, opt_indent);
+      else
+        pango_layout_set_indent (layout, (opt_indent * opt_dpi * PANGO_SCALE + 36) / 72);
+    }
 
   if (opt_spacing != 0)
     {
-      pango_layout_set_spacing (layout, (opt_spacing * opt_dpi * PANGO_SCALE + 36) / 72);
+      if (opt_pango_units)
+        pango_layout_set_spacing (layout, opt_spacing);
+      else
+        pango_layout_set_spacing (layout, (opt_spacing * opt_dpi * PANGO_SCALE + 36) / 72);
       pango_layout_set_line_spacing (layout, 0.0);
     }
   if (opt_line_spacing >= 0.0)
@@ -150,6 +191,18 @@ make_layout(PangoContext *context,
   pango_layout_set_font_description (layout, font_description);
 
   pango_font_description_free (font_description);
+
+out:
+  if (opt_serialized_output)
+    {
+      GError *error = NULL;
+
+      if (!pango_layout_write_to_file (layout,
+                                       PANGO_LAYOUT_SERIALIZE_CONTEXT|PANGO_LAYOUT_SERIALIZE_OUTPUT,
+                                       opt_serialized_output,
+                                       &error))
+        fail ("%s\n", error->message);
+    }
 
   return layout;
 }
@@ -320,6 +373,11 @@ do_output (PangoContext     *context,
   pango_context_set_gravity_hint (context, opt_gravity_hint);
 
   layout = make_layout (context, text, -1);
+  if (opt_serialized && supports_matrix)
+    {
+      const PangoMatrix *context_matrix = pango_context_get_matrix (pango_layout_get_context (layout));
+      matrix = context_matrix ? *context_matrix : (PangoMatrix) PANGO_MATRIX_INIT;
+    }
 
   set_transform (context, transform_cb, cb_context, cb_data, &matrix);
 
@@ -651,6 +709,7 @@ parse_margin (const char *name G_GNUC_UNUSED,
 {
   switch (sscanf (arg, "%d%*[ ,]%d%*[ ,]%d%*[ ,]%d", &opt_margin_t, &opt_margin_r, &opt_margin_b, &opt_margin_l))
   {
+    default:
     case 0:
     {
       g_set_error(error,
@@ -660,7 +719,9 @@ parse_margin (const char *name G_GNUC_UNUSED,
       return FALSE;
     }
     case 1: opt_margin_r = opt_margin_t;
+      G_GNUC_FALLTHROUGH;
     case 2: opt_margin_b = opt_margin_t;
+      G_GNUC_FALLTHROUGH;
     case 3: opt_margin_l = opt_margin_r;
   }
   return TRUE;
@@ -811,8 +872,10 @@ parse_options (int argc, char *argv[])
      "Spacing in points between lines",			            "points"},
     {"line-spacing",	0, 0, G_OPTION_ARG_DOUBLE,		        &opt_line_spacing,
      "Spread factor for line height",			            "factor"},
-    {"justify",		0, 0, G_OPTION_ARG_NONE,			&opt_justify,
-     "Align paragraph lines to be justified",			    	NULL},
+    {"justify",         0, 0, G_OPTION_ARG_NONE,                        &opt_justify,
+     "Stretch paragraph lines to be justified",                         NULL},
+    {"justify-last-line", 0, 0, G_OPTION_ARG_NONE,                      &opt_justify_last_line,
+     "Justify the last line of the paragraph",                          NULL},
     {"language",	0, 0, G_OPTION_ARG_STRING,			&opt_language,
      "Language to use for font selection",			    "en_US/etc"},
     {"margin",		0, 0, G_OPTION_ARG_CALLBACK,			&parse_margin,
@@ -825,6 +888,8 @@ parse_options (int argc, char *argv[])
      "Deprecated",		      "file"},
     {"pixels",		0, 0, G_OPTION_ARG_NONE,			&opt_pixels,
      "Use pixel units instead of points (sets dpi to 72)",		NULL},
+    {"pango-units",	0, 0, G_OPTION_ARG_NONE,			&opt_pango_units,
+     "Use Pango units instead of points",		                NULL},
     {"rtl",		0, 0, G_OPTION_ARG_NONE,			&opt_rtl,
      "Set base direction to right-to-left",				NULL},
     {"rotate",		0, 0, G_OPTION_ARG_DOUBLE,			&opt_rotate,
@@ -843,6 +908,10 @@ parse_options (int argc, char *argv[])
      "Width in points to which to wrap lines or ellipsize",	    "points"},
     {"wrap",		0, 0, G_OPTION_ARG_CALLBACK,			&parse_wrap,
      "Text wrapping mode (needs a width to be set)",   "word/char/word-char"},
+    {"serialized",       0, 0, G_OPTION_ARG_NONE,                        &opt_serialized,
+     "Create layout from a serialized file",                            "FILE"},
+    {"serialize-to",     0, 0, G_OPTION_ARG_FILENAME,                  &opt_serialized_output,
+     "Serialize result to a file",                                      "FILE"},
     {NULL}
   };
   GError *error = NULL;
@@ -886,6 +955,12 @@ parse_options (int argc, char *argv[])
       exit (1);
     }
 
+  if (opt_serialized && argc != 2)
+    {
+      g_printerr ("Usage: %s [OPTION...] FILE\n", g_get_prgname ());
+      exit (1);
+    }
+
   /* set up the backend */
   if (!opt_viewer)
     {
@@ -896,7 +971,13 @@ parse_options (int argc, char *argv[])
 
   /* Get the text
    */
-  if (opt_text)
+  if (opt_serialized)
+    {
+      file_arg = argv[1];
+      text = g_strdup ("");
+      len = 0;
+    }
+  else if (opt_text)
     {
       text = g_strdup (opt_text);
       len = strlen (text);

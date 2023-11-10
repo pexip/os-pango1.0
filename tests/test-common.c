@@ -20,6 +20,7 @@
  */
 
 #include <glib.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <locale.h>
@@ -81,77 +82,100 @@ done:
   return diff;
 }
 
+char *
+diff_bytes (GBytes  *b1,
+            GBytes  *b2,
+            GError **error)
+{
+  const char *command[] = { "diff", "-u", "-i", NULL, NULL, NULL };
+  char *diff, *tmpfile, *tmpfile2;
+  int fd;
+  const char *text;
+  gsize len;
+
+  /* write the text buffer to a temporary file */
+  fd = g_file_open_tmp (NULL, &tmpfile, error);
+  if (fd < 0)
+    return NULL;
+
+  text = (const char *) g_bytes_get_data (b1, &len);
+  if (write (fd, text, len) != (int) len)
+    {
+      close (fd);
+      g_set_error (error,
+                   G_FILE_ERROR, G_FILE_ERROR_FAILED,
+                   "Could not write data to temporary file '%s'", tmpfile);
+      goto done;
+    }
+  close (fd);
+
+  fd = g_file_open_tmp (NULL, &tmpfile2, error);
+  if (fd < 0)
+    return NULL;
+
+  text = (const char *) g_bytes_get_data (b2, &len);
+  if (write (fd, text, len) != (int) len)
+    {
+      close (fd);
+      g_set_error (error,
+                   G_FILE_ERROR, G_FILE_ERROR_FAILED,
+                   "Could not write data to temporary file '%s'", tmpfile2);
+      goto done;
+    }
+  close (fd);
+
+  command[3] = tmpfile;
+  command[4] = tmpfile2;
+
+  /* run diff command */
+  g_spawn_sync (NULL,
+                (char **) command,
+                NULL,
+                G_SPAWN_SEARCH_PATH,
+                NULL, NULL,
+                &diff,
+                NULL, NULL,
+                error);
+
+done:
+  unlink (tmpfile);
+  g_free (tmpfile);
+  unlink (tmpfile2);
+  g_free (tmpfile2);
+
+  return diff;
+}
+
+gboolean
+file_has_prefix (const char  *filename,
+                 const char  *str,
+                 GError     **error)
+{
+  char *contents;
+  gsize len;
+  gboolean ret;
+
+  if (!g_file_get_contents (filename, &contents, &len, error))
+    return FALSE;
+
+  ret = g_str_has_prefix (contents, str);
+
+  g_free (contents);
+
+  return ret;
+}
+
 void
 print_attribute (PangoAttribute *attr, GString *string)
 {
-  GEnumClass *class;
-  GEnumValue *value;
+  PangoAttrList *l = pango_attr_list_new ();
+  char *s;
 
-  g_string_append_printf (string, "[%d,%d]", attr->start_index, attr->end_index);
-
-  class = g_type_class_ref (pango_attr_type_get_type ());
-  value = g_enum_get_value (class, attr->klass->type);
-  g_string_append_printf (string, "%s=", value->value_nick);
-  g_type_class_unref (class);
-
-  switch (attr->klass->type)
-    {
-    case PANGO_ATTR_LANGUAGE:
-      g_string_append_printf (string, "%s", pango_language_to_string (((PangoAttrLanguage *)attr)->value));
-      break;
-    case PANGO_ATTR_FAMILY:
-    case PANGO_ATTR_FONT_FEATURES:
-      g_string_append_printf (string, "%s", ((PangoAttrString *)attr)->value);
-      break;
-    case PANGO_ATTR_STYLE:
-    case PANGO_ATTR_WEIGHT:
-    case PANGO_ATTR_VARIANT:
-    case PANGO_ATTR_STRETCH:
-    case PANGO_ATTR_SIZE:
-    case PANGO_ATTR_ABSOLUTE_SIZE:
-    case PANGO_ATTR_UNDERLINE:
-    case PANGO_ATTR_OVERLINE:
-    case PANGO_ATTR_STRIKETHROUGH:
-    case PANGO_ATTR_RISE:
-    case PANGO_ATTR_FALLBACK:
-    case PANGO_ATTR_LETTER_SPACING:
-    case PANGO_ATTR_GRAVITY:
-    case PANGO_ATTR_GRAVITY_HINT:
-    case PANGO_ATTR_FOREGROUND_ALPHA:
-    case PANGO_ATTR_BACKGROUND_ALPHA:
-    case PANGO_ATTR_ALLOW_BREAKS:
-    case PANGO_ATTR_INSERT_HYPHENS:
-    case PANGO_ATTR_SHOW:
-      g_string_append_printf (string, "%d", ((PangoAttrInt *)attr)->value);
-      break;
-    case PANGO_ATTR_FONT_DESC:
-      {
-        char *text = pango_font_description_to_string (((PangoAttrFontDesc *)attr)->desc);
-        g_string_append_printf (string, "%s", text);
-        g_free (text);
-      }
-      break;
-    case PANGO_ATTR_FOREGROUND:
-    case PANGO_ATTR_BACKGROUND:
-    case PANGO_ATTR_UNDERLINE_COLOR:
-    case PANGO_ATTR_OVERLINE_COLOR:
-    case PANGO_ATTR_STRIKETHROUGH_COLOR:
-      {
-        char *text = pango_color_to_string (&((PangoAttrColor *)attr)->color);
-        g_string_append_printf (string, "%s", text);
-        g_free (text);
-      }
-      break;
-    case PANGO_ATTR_SHAPE:
-      g_string_append_printf (string, "shape");
-      break;
-    case PANGO_ATTR_SCALE:
-      g_string_append_printf (string,"%f", ((PangoAttrFloat *)attr)->value);
-      break;
-    default:
-      g_assert_not_reached ();
-      break;
-    }
+  pango_attr_list_insert (l, pango_attribute_copy (attr));
+  s = pango_attr_list_to_string (l);
+  g_string_append (string, s);
+  g_free (s);
+  pango_attr_list_unref (l);
 }
 
 void
