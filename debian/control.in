@@ -36,7 +36,7 @@ Standards-Version: 4.5.0
 Vcs-Browser: https://salsa.debian.org/gnome-team/pango
 Vcs-Git: https://salsa.debian.org/gnome-team/pango.git
 Homepage: https://www.pango.org/
-XS-Pexip-Upstream: http://ftp.debian.org/debian/ buster
+XS-Pexip-Upstream: http://ftp.debian.org/debian/ bookworm
 
 Package: libpango1.0-0
 Section: oldlibs
