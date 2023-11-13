@@ -25,8 +25,8 @@
 #include <pango/pangofc-fontmap.h>
 #include <pango/pangofc-decoder.h>
 #include <pango/pangofc-font-private.h>
-#include <pango/pango-fontmap-private.h>
-#include <pango/pango-fontset-private.h>
+#include <pango/pango-fontmap.h>
+#include <pango/pango-fontset.h>
 
 #include <fontconfig/fontconfig.h>
 
@@ -83,29 +83,38 @@ const char        *pango_fc_font_key_get_variations  (const PangoFcFontKey *key)
 /**
  * PangoFcFontMap:
  *
- * #PangoFcFontMap is a base class for font map implementations
+ * `PangoFcFontMap` is a base class for font map implementations
  * using the Fontconfig and FreeType libraries. To create a new
  * backend using Fontconfig and FreeType, you derive from this class
  * and implement a new_font() virtual function that creates an
- * instance deriving from #PangoFcFont.
+ * instance deriving from `PangoFcFont`.
  **/
 struct _PangoFcFontMap
 {
   PangoFontMap parent_instance;
 
   PangoFcFontMapPrivate *priv;
+
+  /* Function to call on prepared patterns to do final
+   * config tweaking.
+   */
+  PangoFcSubstituteFunc substitute_func;
+  gpointer substitute_data;
+  GDestroyNotify substitute_destroy;
 };
 
 /**
  * PangoFcFontMapClass:
  * @default_substitute: (nullable): Substitutes in default
  *  values for unspecified fields in a #FcPattern. This will
- *  be called prior to creating a font for the pattern. May be
- *  %NULL.  Deprecated in favor of @font_key_substitute().
- * @new_font: Creates a new #PangoFcFont for the specified
+ *  be called prior to creating a font for the pattern.
+ *  Implementations must call substitute_func if it is
+ *  defined. May be  %NULL. Deprecated in favor of
+ *  @font_key_substitute().
+ * @new_font: Creates a new `PangoFcFont` for the specified
  *  pattern of the appropriate type for this font map. The
  *  @pattern argument must be passed to the "pattern" property
- *  of #PangoFcFont when you call g_object_new(). Deprecated
+ *  of `PangoFcFont` when you call g_object_new(). Deprecated
  *  in favor of @create_font().
  * @get_resolution: Gets the resolution (the scale factor
  *  between logical and absolute font sizes) that the backend
@@ -127,17 +136,18 @@ struct _PangoFcFontMap
  * @fontset_key_substitute: (nullable): Substitutes in
  *  default values for unspecified fields in a
  *  #FcPattern. This will be called prior to creating a font
- *  for the pattern. May be %NULL.  (Since: 1.24)
- * @create_font: (nullable): Creates a new #PangoFcFont for
+ *  for the pattern. Implementations must call substitute_func
+ *  if it is defined. May be %NULL.  (Since: 1.24)
+ * @create_font: (nullable): Creates a new `PangoFcFont` for
  *  the specified pattern of the appropriate type for this
  *  font map using information from the font key that is
  *  passed in. The @pattern member of @font_key can be
  *  retrieved using pango_fc_font_key_get_pattern() and must
- *  be passed to the "pattern" property of #PangoFcFont when
+ *  be passed to the "pattern" property of `PangoFcFont` when
  *  you call g_object_new().  If %NULL, new_font() is used.
  *  (Since: 1.24)
  *
- * Class structure for #PangoFcFontMap.
+ * Class structure for `PangoFcFontMap`.
  **/
 struct _PangoFcFontMapClass
 {
@@ -181,6 +191,9 @@ struct _PangoFcFontMapClass
   void (*_pango_reserved4) (void);
 };
 
+PangoFontDescription *font_description_from_pattern (FcPattern *pattern,
+                                                     gboolean   include_size,
+                                                     gboolean   shallow);
 
 G_END_DECLS
 

@@ -20,14 +20,6 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/**
- * SECTION:coretext-fonts
- * @short_description:Font handling and rendering on OS X
- * @title:CoreText Fonts and Rendering
- *
- * The macros and functions in this section are used to access fonts natively on
- * OS X using the CoreText text rendering subsystem.
- */
 #include "config.h"
 
 #include "pangocoretext.h"
@@ -36,7 +28,6 @@
 
 struct _PangoCoreTextFontPrivate
 {
-  PangoCoreTextFace *face;
   gpointer context_key;
 
   CTFontRef font_ref;
@@ -62,7 +53,7 @@ pango_core_text_font_finalize (GObject *object)
     }
 
   if (priv->coverage)
-    pango_coverage_unref (priv->coverage);
+    g_object_unref (priv->coverage);
 
   G_OBJECT_CLASS (pango_core_text_font_parent_class)->finalize (object);
 }
@@ -73,10 +64,13 @@ pango_core_text_font_describe (PangoFont *font)
   PangoCoreTextFont *ctfont = (PangoCoreTextFont *)font;
   PangoCoreTextFontPrivate *priv = ctfont->priv;
   CTFontDescriptorRef ctfontdesc;
+  PangoFontDescription *desc;
 
-  ctfontdesc = pango_core_text_font_key_get_ctfontdescriptor (priv->key);
+  ctfontdesc = CTFontCopyFontDescriptor (priv->font_ref);
+  desc = _pango_core_text_font_description_from_ct_font_descriptor (ctfontdesc);
+  CFRelease (ctfontdesc);
 
-  return _pango_core_text_font_description_from_ct_font_descriptor (ctfontdesc);
+  return desc;
 }
 
 static PangoCoverage *
@@ -158,7 +152,7 @@ pango_core_text_font_get_coverage (PangoFont     *font,
       priv->coverage = ct_font_descriptor_get_coverage (ctfontdesc);
     }
 
-  return pango_coverage_ref (priv->coverage);
+  return g_object_ref (priv->coverage);
 }
 
 static PangoFontMap *
@@ -224,21 +218,12 @@ _pango_core_text_font_set_font_map (PangoCoreTextFont    *font,
   g_weak_ref_set((GWeakRef *) &priv->fontmap, fontmap);
 }
 
-void
-_pango_core_text_font_set_face (PangoCoreTextFont *ctfont,
-                                PangoCoreTextFace *ctface)
-{
-  PangoCoreTextFontPrivate *priv = ctfont->priv;
-
-  priv->face = ctface;
-}
-
 PangoCoreTextFace *
 _pango_core_text_font_get_face (PangoCoreTextFont *font)
 {
   PangoCoreTextFontPrivate *priv = font->priv;
 
-  return priv->face;
+  return pango_core_text_font_map_find_face (PANGO_CORE_TEXT_FONT_MAP (priv->fontmap), priv->key);
 }
 
 gpointer
@@ -268,7 +253,7 @@ _pango_core_text_font_set_font_key (PangoCoreTextFont    *font,
 
   if (priv->coverage)
     {
-      pango_coverage_unref (priv->coverage);
+      g_object_unref (priv->coverage);
       priv->coverage = NULL;
     }
 }
@@ -284,7 +269,7 @@ _pango_core_text_font_set_ctfont (PangoCoreTextFont *font,
 
 /**
  * pango_core_text_font_get_ctfont:
- * @font: A #PangoCoreTextFont
+ * @font: A `PangoCoreTextFont`
  *
  * Returns the CTFontRef of a font.
  *

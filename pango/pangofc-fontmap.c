@@ -20,25 +20,15 @@
  */
 
 /**
- * SECTION:pangofc-fontmap
- * @short_description:Base fontmap class for Fontconfig-based backends
- * @title:PangoFcFontMap
- * @see_also:
- * <variablelist><varlistentry>
- * <term>#PangoFcFont</term>
- * <listitem>The base class for fonts; creating a new
- * Fontconfig-based backend involves deriving from both
- * #PangoFcFontMap and #PangoFcFont.</listitem>
- * </varlistentry></variablelist>
+ * PangoFcFontMap:
  *
- * PangoFcFontMap is a base class for font map implementations using the
- * Fontconfig and FreeType libraries. It is used in the
- * <link linkend="pango-Xft-Fonts-and-Rendering">Xft</link> and
- * <link linkend="pango-FreeType-Fonts-and-Rendering">FreeType</link>
- * backends shipped with Pango, but can also be used when creating
- * new backends. Any backend deriving from this base class will
- * take advantage of the wide range of shapers implemented using
- * FreeType that come with Pango.
+ * `PangoFcFontMap` is a base class for font map implementations using the
+ * Fontconfig and FreeType libraries.
+ *
+ * It is used in the Xft and FreeType backends shipped with Pango,
+ * but can also be used when creating new backends. Any backend
+ * deriving from this base class will take advantage of the wide
+ * range of shapers implemented using FreeType that come with Pango.
  */
 #define FONTSET_CACHE_SIZE 256
 
@@ -54,6 +44,7 @@
 #include "pango-impl-utils.h"
 #include "pango-enum-types.h"
 #include "pango-coverage-private.h"
+#include "pango-trace-private.h"
 #include <hb-ft.h>
 
 
@@ -109,6 +100,25 @@
  *   FcCharSetMerge().
  */
 
+typedef enum {
+  /* Initial state; Fontconfig is not initialized yet */
+  DEFAULT_CONFIG_NOT_INITIALIZED,
+
+  /* We have a thread doing Fontconfig initialization in the background */
+  DEFAULT_CONFIG_INITIALIZING,
+
+  /* FcInit() finished and its default configuration is loaded */
+  DEFAULT_CONFIG_INITIALIZED
+} DefaultConfig;
+
+/* We call FcInit in a thread and set fc_initialized
+ * when done, and are protected by a mutex. The thread
+ * signals the cond when FcInit is done.
+ */
+static GMutex fc_init_mutex;
+static GCond fc_init_cond;
+static DefaultConfig fc_initialized = DEFAULT_CONFIG_NOT_INITIALIZED;
+
 
 typedef struct _PangoFcFontFaceData PangoFcFontFaceData;
 typedef struct _PangoFcFace         PangoFcFace;
@@ -145,7 +155,7 @@ struct _PangoFcFontMapPrivate
 
   GHashTable *font_face_data_hash; /* Maps font file name/id -> data */
 
-  /* List of all families availible */
+  /* List of all families available */
   PangoFcFamily **families;
   int n_families;		/* -1 == uninitialized */
 
@@ -157,6 +167,7 @@ struct _PangoFcFontMapPrivate
   guint closed : 1;
 
   FcConfig *config;
+  FcFontSet *fonts;
 };
 
 struct _PangoFcFontFaceData
@@ -166,8 +177,9 @@ struct _PangoFcFontFaceData
   int id;            /* needed to handle TTC files with multiple faces */
 
   /* Data */
-  FcPattern *pattern;	/* Referenced pattern that owns filename */
+  FcPattern *pattern;  /* Referenced pattern that owns filename */
   PangoCoverage *coverage;
+  PangoLanguage **languages;
 
   hb_face_t *hb_face;
 };
@@ -181,6 +193,7 @@ struct _PangoFcFace
   FcPattern *pattern;
 
   guint fake : 1;
+  guint regular : 1;
 };
 
 struct _PangoFcFamily
@@ -305,7 +318,9 @@ pango_fc_font_face_data_free (PangoFcFontFaceData *data)
   FcPatternDestroy (data->pattern);
 
   if (data->coverage)
-    pango_coverage_unref (data->coverage);
+    g_object_unref (data->coverage);
+
+  g_free (data->languages);
 
   hb_face_destroy (data->hb_face);
 
@@ -500,7 +515,7 @@ pango_fc_fontset_key_copy (const PangoFcFontsetKey *old)
  * Returns: the language
  *
  * Since: 1.24
- **/
+ */
 PangoLanguage *
 pango_fc_fontset_key_get_language (const PangoFcFontsetKey *key)
 {
@@ -516,7 +531,7 @@ pango_fc_fontset_key_get_language (const PangoFcFontsetKey *key)
  * Returns: the font description, which is owned by @key and should not be modified.
  *
  * Since: 1.24
- **/
+ */
 const PangoFontDescription *
 pango_fc_fontset_key_get_description (const PangoFcFontsetKey *key)
 {
@@ -532,9 +547,9 @@ pango_fc_fontset_key_get_description (const PangoFcFontsetKey *key)
  * Returns: the matrix, which is owned by @key and should not be modified.
  *
  * Since: 1.24
- **/
+ */
 const PangoMatrix *
-pango_fc_fontset_key_get_matrix      (const PangoFcFontsetKey *key)
+pango_fc_fontset_key_get_matrix (const PangoFcFontsetKey *key)
 {
   return &key->matrix;
 }
@@ -543,15 +558,16 @@ pango_fc_fontset_key_get_matrix      (const PangoFcFontsetKey *key)
  * pango_fc_fontset_key_get_absolute_size:
  * @key: the fontset key
  *
- * Gets the absolute font size of @key in Pango units.  This is adjusted
- * for both resolution and transformation matrix.
+ * Gets the absolute font size of @key in Pango units.
+ *
+ * This is adjusted for both resolution and transformation matrix.
  *
  * Returns: the pixel size of @key.
  *
  * Since: 1.24
- **/
+ */
 double
-pango_fc_fontset_key_get_absolute_size   (const PangoFcFontsetKey *key)
+pango_fc_fontset_key_get_absolute_size (const PangoFcFontsetKey *key)
 {
   return key->pixelsize;
 }
@@ -565,9 +581,9 @@ pango_fc_fontset_key_get_absolute_size   (const PangoFcFontsetKey *key)
  * Returns: the resolution of @key
  *
  * Since: 1.24
- **/
+ */
 double
-pango_fc_fontset_key_get_resolution  (const PangoFcFontsetKey *key)
+pango_fc_fontset_key_get_resolution (const PangoFcFontsetKey *key)
 {
   return key->resolution;
 }
@@ -581,7 +597,7 @@ pango_fc_fontset_key_get_resolution  (const PangoFcFontsetKey *key)
  * Returns: the context key, which is owned by @key and should not be modified.
  *
  * Since: 1.24
- **/
+ */
 gpointer
 pango_fc_fontset_key_get_context_key (const PangoFcFontsetKey *key)
 {
@@ -688,7 +704,7 @@ pango_fc_font_key_init (PangoFcFontKey    *key,
  * Returns: the pattern, which is owned by @key and should not be modified.
  *
  * Since: 1.24
- **/
+ */
 const FcPattern *
 pango_fc_font_key_get_pattern (const PangoFcFontKey *key)
 {
@@ -704,7 +720,7 @@ pango_fc_font_key_get_pattern (const PangoFcFontKey *key)
  * Returns: the matrix, which is owned by @key and should not be modified.
  *
  * Since: 1.24
- **/
+ */
 const PangoMatrix *
 pango_fc_font_key_get_matrix (const PangoFcFontKey *key)
 {
@@ -720,7 +736,7 @@ pango_fc_font_key_get_matrix (const PangoFcFontKey *key)
  * Returns: the context key, which is owned by @key and should not be modified.
  *
  * Since: 1.24
- **/
+ */
 gpointer
 pango_fc_font_key_get_context_key (const PangoFcFontKey *key)
 {
@@ -738,35 +754,166 @@ pango_fc_font_key_get_variations (const PangoFcFontKey *key)
  */
 
 struct _PangoFcPatterns {
-  guint ref_count;
-
   PangoFcFontMap *fontmap;
+
+  /* match and fontset are initialized in a thread,
+   * and are protected by a mutex. The thread signals
+   * the cond when match or fontset become available.
+   */
+  GMutex mutex;
+  GCond cond;
 
   FcPattern *pattern;
   FcPattern *match;
   FcFontSet *fontset;
 };
 
+static FcFontSet *
+font_set_copy (FcFontSet *fontset)
+{
+  FcFontSet *copy;
+  int i;
+
+  if (!fontset)
+    return NULL;
+
+  copy = malloc (sizeof (FcFontSet));
+  copy->sfont = copy->nfont = fontset->nfont;
+  copy->fonts = malloc (sizeof (FcPattern *) * copy->nfont);
+  memcpy (copy->fonts, fontset->fonts, sizeof (FcPattern *) * copy->nfont);
+  for (i = 0; i < copy->nfont; i++)
+    FcPatternReference (copy->fonts[i]);
+
+  return copy;
+}
+
+typedef struct {
+  FcConfig *config;
+  FcFontSet *fonts;
+  FcPattern *pattern;
+  PangoFcPatterns *patterns;
+} ThreadData;
+
+static FcFontSet *pango_fc_font_map_get_config_fonts (PangoFcFontMap *fcfontmap);
+
+static ThreadData *
+thread_data_new (PangoFcPatterns *patterns)
+{
+  ThreadData *td;
+  PangoFcFontMap *fontmap = patterns->fontmap;
+
+  /* We don't want the fontmap dying on us */
+  g_object_ref (fontmap);
+
+  td = g_new (ThreadData, 1);
+  td->patterns = pango_fc_patterns_ref (patterns);
+  td->pattern = FcPatternDuplicate (patterns->pattern);
+  td->config = FcConfigReference (pango_fc_font_map_get_config (patterns->fontmap));
+  td->fonts = font_set_copy (pango_fc_font_map_get_config_fonts (patterns->fontmap));
+
+  return td;
+}
+
+static void
+thread_data_free (gpointer data)
+{
+  ThreadData *td = data;
+  PangoFcFontMap *fontmap = td->patterns->fontmap;
+
+  g_clear_pointer (&td->fonts, FcFontSetDestroy);
+  FcPatternDestroy (td->pattern);
+  FcConfigDestroy (td->config);
+  pango_fc_patterns_unref (td->patterns);
+  g_free (td);
+
+  g_object_unref (fontmap);
+}
+
+static gpointer
+match_in_thread (gpointer task_data)
+{
+  ThreadData *td = task_data;
+  FcResult result;
+  FcPattern *match;
+  gint64 before G_GNUC_UNUSED;
+
+  before = PANGO_TRACE_CURRENT_TIME;
+
+  match = FcFontSetMatch (td->config,
+                          &td->fonts, 1,
+                          td->pattern,
+                          &result);
+
+  pango_trace_mark (before, "FcFontSetMatch", NULL);
+
+  g_mutex_lock (&td->patterns->mutex);
+  td->patterns->match = match;
+  g_cond_signal (&td->patterns->cond);
+  g_mutex_unlock (&td->patterns->mutex);
+
+  thread_data_free (td);
+
+  return NULL;
+}
+
+static gpointer
+sort_in_thread (gpointer task_data)
+{
+  ThreadData *td = task_data;
+  FcResult result;
+  FcFontSet *fontset;
+  gint64 before G_GNUC_UNUSED;
+
+  before = PANGO_TRACE_CURRENT_TIME;
+
+  fontset = FcFontSetSort (td->config,
+                           &td->fonts, 1,
+                           td->pattern,
+                           FcTrue,
+                           NULL,
+                           &result);
+
+  pango_trace_mark (before, "FcFontSetSort", NULL);
+
+  g_mutex_lock (&td->patterns->mutex);
+  td->patterns->fontset = fontset;
+  g_cond_signal (&td->patterns->cond);
+  g_mutex_unlock (&td->patterns->mutex);
+
+  thread_data_free (td);
+
+  return NULL;
+}
+
 static PangoFcPatterns *
 pango_fc_patterns_new (FcPattern *pat, PangoFcFontMap *fontmap)
 {
   PangoFcPatterns *pats;
+  GThread *thread;
 
   pat = uniquify_pattern (fontmap, pat);
   pats = g_hash_table_lookup (fontmap->priv->patterns_hash, pat);
   if (pats)
     return pango_fc_patterns_ref (pats);
 
-  pats = g_slice_new0 (PangoFcPatterns);
+  pats = g_atomic_rc_box_new0 (PangoFcPatterns);
 
   pats->fontmap = fontmap;
 
-  pats->ref_count = 1;
   FcPatternReference (pat);
   pats->pattern = pat;
 
+  g_mutex_init (&pats->mutex);
+  g_cond_init (&pats->cond);
+
+  thread = g_thread_new ("[pango] FcFontSetMatch", match_in_thread, thread_data_new (pats));
+  g_thread_unref (thread);
+
+  thread = g_thread_new ("[pango] FcFontSetSort", sort_in_thread, thread_data_new (pats));
+  g_thread_unref (thread);
+
   g_hash_table_insert (fontmap->priv->patterns_hash,
-		       pats->pattern, pats);
+                       pats->pattern, pats);
 
   return pats;
 }
@@ -774,22 +921,13 @@ pango_fc_patterns_new (FcPattern *pat, PangoFcFontMap *fontmap)
 static PangoFcPatterns *
 pango_fc_patterns_ref (PangoFcPatterns *pats)
 {
-  g_return_val_if_fail (pats->ref_count > 0, NULL);
-
-  pats->ref_count++;
-
-  return pats;
+  return g_atomic_rc_box_acquire (pats);
 }
 
 static void
-pango_fc_patterns_unref (PangoFcPatterns *pats)
+free_patterns (gpointer data)
 {
-  g_return_if_fail (pats->ref_count > 0);
-
-  pats->ref_count--;
-
-  if (pats->ref_count)
-    return;
+  PangoFcPatterns *pats = data;
 
   /* Only remove from fontmap hash if we are in it.  This is not necessarily
    * the case after a cache_clear() call. */
@@ -807,7 +945,14 @@ pango_fc_patterns_unref (PangoFcPatterns *pats)
   if (pats->fontset)
     FcFontSetDestroy (pats->fontset);
 
-  g_slice_free (PangoFcPatterns, pats);
+  g_cond_clear (&pats->cond);
+  g_mutex_clear (&pats->mutex);
+}
+
+static void
+pango_fc_patterns_unref (PangoFcPatterns *pats)
+{
+  g_atomic_rc_box_release_full (pats, free_patterns);
 }
 
 static FcPattern *
@@ -821,12 +966,20 @@ pango_fc_is_supported_font_format (FcPattern* pattern)
 {
   FcResult res;
   const char *fontformat;
+  const char *file;
+
+  /* Harfbuzz loads woff fonts, but we don't get any glyphs */
+  res = FcPatternGetString (pattern, FC_FILE, 0, (FcChar8 **)(void*)&file);
+  if (res == FcResultMatch &&
+      (g_str_has_suffix (file, ".woff") ||
+       g_str_has_suffix (file, ".woff2")))
+    return FALSE;
 
   res = FcPatternGetString (pattern, FC_FONTFORMAT, 0, (FcChar8 **)(void*)&fontformat);
   if (res != FcResultMatch)
     return FALSE;
 
-  /* harfbuzz supports only SFNT fonts. */
+  /* Harfbuzz supports only SFNT fonts. */
   /* FIXME: "CFF" is used for both CFF in OpenType and bare CFF files, but
    * HarfBuzz does not support the later and FontConfig does not seem
    * to have a way to tell them apart.
@@ -838,17 +991,26 @@ pango_fc_is_supported_font_format (FcPattern* pattern)
 }
 
 static FcFontSet *
-filter_fontset_by_format (FcFontSet *fontset)
+filter_by_format (FcFontSet **sets, int nsets)
 {
   FcFontSet *result;
-  int i;
+  int set;
 
   result = FcFontSetCreate ();
 
-  for (i = 0; i < fontset->nfont; i++)
+  for (set = 0; set < nsets; set++)
     {
-      if (pango_fc_is_supported_font_format (fontset->fonts[i]))
+      FcFontSet *fontset = sets[set];
+      int i;
+
+      if (!fontset)
+        continue;
+
+      for (i = 0; i < fontset->nfont; i++)
         {
+          if (!pango_fc_is_supported_font_format (fontset->fonts[i]))
+            continue;
+
           FcPatternReference (fontset->fonts[i]);
           FcFontSetAdd (result, fontset->fonts[i]);
         }
@@ -860,50 +1022,71 @@ filter_fontset_by_format (FcFontSet *fontset)
 static FcPattern *
 pango_fc_patterns_get_font_pattern (PangoFcPatterns *pats, int i, gboolean *prepare)
 {
+  FcPattern *match = NULL;
+  FcFontSet *fontset = NULL;
+
   if (i == 0)
     {
-      FcResult result;
-      if (!pats->match && !pats->fontset)
-	pats->match = FcFontMatch (pats->fontmap->priv->config, pats->pattern, &result);
+      gint64 before G_GNUC_UNUSED;
+      gboolean waited = FALSE;
 
-      if (pats->match && pango_fc_is_supported_font_format (pats->match))
-	{
-	  *prepare = FALSE;
-	  return pats->match;
-	}
-    }
+      before = PANGO_TRACE_CURRENT_TIME;
 
-  if (!pats->fontset)
-    {
-      FcResult result;
-      FcFontSet *filtered[2] = { NULL, };
-      int i, n = 0;
+      g_mutex_lock (&pats->mutex);
 
-      for (i = 0; i < 2; i++)
+      while (!pats->match && !pats->fontset)
         {
-          FcFontSet *fonts = FcConfigGetFonts (pats->fontmap->priv->config, i);
-          if (fonts)
-            filtered[n++] = filter_fontset_by_format (fonts);
+          waited = TRUE;
+          g_cond_wait (&pats->cond, &pats->mutex);
         }
 
-      pats->fontset = FcFontSetSort (pats->fontmap->priv->config, filtered, n, pats->pattern, FcTrue, NULL, &result);
+      match = pats->match;
+      fontset = pats->fontset;
 
-      for (i = 0; i < n; i++)
-        FcFontSetDestroy (filtered[i]);
+      g_mutex_unlock (&pats->mutex);
 
+      if (waited)
+        pango_trace_mark (before, "wait for FcFontMatch", NULL);
 
-      if (pats->match)
+      if (match)
         {
-          FcPatternDestroy (pats->match);
-          pats->match = NULL;
+          *prepare = FALSE;
+          return match;
         }
     }
-
-  *prepare = TRUE;
-  if (pats->fontset && i < pats->fontset->nfont)
-    return pats->fontset->fonts[i];
   else
-    return NULL;
+    {
+      gint64 before G_GNUC_UNUSED;
+      gboolean waited = FALSE;
+
+      before = PANGO_TRACE_CURRENT_TIME;
+
+      g_mutex_lock (&pats->mutex);
+
+      while (!pats->fontset)
+        {
+          waited = TRUE;
+          g_cond_wait (&pats->cond, &pats->mutex);
+        }
+
+      fontset = pats->fontset;
+
+      g_mutex_unlock (&pats->mutex);
+
+      if (waited)
+        pango_trace_mark (before, "wait for FcFontSort", NULL);
+    }
+
+  if (fontset)
+    {
+      if (i < fontset->nfont)
+        {
+          *prepare = TRUE;
+          return fontset->fonts[i];
+        }
+    }
+
+  return NULL;
 }
 
 
@@ -974,7 +1157,7 @@ pango_fc_fontset_load_next_font (PangoFcFontset *fontset)
 
   if (prepare)
     {
-      font_pattern = FcFontRenderPrepare (NULL, pattern, font_pattern);
+      font_pattern = FcFontRenderPrepare (fontset->key->fontmap->priv->config, pattern, font_pattern);
 
       if (G_UNLIKELY (!font_pattern))
 	return NULL;
@@ -1044,7 +1227,7 @@ pango_fc_fontset_finalize (GObject *object)
     {
       PangoCoverage *coverage = g_ptr_array_index (fontset->coverages, i);
       if (coverage)
-	pango_coverage_unref (coverage);
+	g_object_unref (coverage);
     }
   g_ptr_array_free (fontset->coverages, TRUE);
 
@@ -1176,6 +1359,62 @@ G_DEFINE_ABSTRACT_TYPE_WITH_CODE (PangoFcFontMap, pango_fc_font_map, PANGO_TYPE_
                                   G_ADD_PRIVATE (PangoFcFontMap)
                                   G_IMPLEMENT_INTERFACE (G_TYPE_LIST_MODEL, pango_fc_font_map_list_model_init))
 
+static gpointer
+init_in_thread (gpointer task_data)
+{
+  gint64 before G_GNUC_UNUSED;
+
+  before = PANGO_TRACE_CURRENT_TIME;
+
+  FcInit ();
+
+  pango_trace_mark (before, "FcInit", NULL);
+
+  g_mutex_lock (&fc_init_mutex);
+  fc_initialized = DEFAULT_CONFIG_INITIALIZED;
+  g_cond_broadcast (&fc_init_cond);
+  g_mutex_unlock (&fc_init_mutex);
+
+  return NULL;
+}
+
+static void
+start_init_in_thread (PangoFcFontMap *fcfontmap)
+{
+  g_mutex_lock (&fc_init_mutex);
+
+  if (fc_initialized == DEFAULT_CONFIG_NOT_INITIALIZED)
+    {
+      GThread *thread;
+
+      fc_initialized = DEFAULT_CONFIG_INITIALIZING;
+      thread = g_thread_new ("[pango] FcInit", init_in_thread, NULL);
+      g_thread_unref (thread);
+    }
+
+  g_mutex_unlock (&fc_init_mutex);
+}
+
+static void
+wait_for_fc_init (void)
+{
+  gint64 before G_GNUC_UNUSED;
+  gboolean waited = FALSE;
+
+  before = PANGO_TRACE_CURRENT_TIME;
+
+  g_mutex_lock (&fc_init_mutex);
+  while (fc_initialized < DEFAULT_CONFIG_INITIALIZED)
+    {
+      waited = TRUE;
+      g_cond_wait (&fc_init_cond, &fc_init_mutex);
+    }
+  g_mutex_unlock (&fc_init_mutex);
+
+  if (waited)
+    pango_trace_mark (before, "wait for FcInit", NULL);
+}
+
 static void
 pango_fc_font_map_init (PangoFcFontMap *fcfontmap)
 {
@@ -1206,6 +1445,8 @@ pango_fc_font_map_init (PangoFcFontMap *fcfontmap)
 						     (GDestroyNotify)pango_fc_font_face_data_free,
 						     NULL);
   priv->dpi = -1;
+
+  start_init_in_thread (fcfontmap);
 }
 
 static void
@@ -1213,6 +1454,8 @@ pango_fc_font_map_fini (PangoFcFontMap *fcfontmap)
 {
   PangoFcFontMapPrivate *priv = fcfontmap->priv;
   int i;
+
+  g_clear_pointer (&priv->fonts, FcFontSetDestroy);
 
   g_queue_free (priv->fontset_cache);
   priv->fontset_cache = NULL;
@@ -1258,21 +1501,22 @@ pango_fc_font_map_class_init (PangoFcFontMapClass *class)
 
 /**
  * pango_fc_font_map_add_decoder_find_func:
- * @fcfontmap: The #PangoFcFontMap to add this method to.
- * @findfunc: The #PangoFcDecoderFindFunc callback function
+ * @fcfontmap: The `PangoFcFontMap` to add this method to.
+ * @findfunc: The `PangoFcDecoderFindFunc` callback function
  * @user_data: User data.
- * @dnotify: A #GDestroyNotify callback that will be called when the
- *  fontmap is finalized and the decoder is released.
+ * @dnotify: A `GDestroyNotify` callback that will be called when the
+ *   fontmap is finalized and the decoder is released.
  *
- * This function saves a callback method in the #PangoFcFontMap that
- * will be called whenever new fonts are created.  If the
- * function returns a #PangoFcDecoder, that decoder will be used to
- * determine both coverage via a #FcCharSet and a one-to-one mapping of
- * characters to glyphs.  This will allow applications to have
+ * This function saves a callback method in the `PangoFcFontMap` that
+ * will be called whenever new fonts are created.
+ *
+ * If the function returns a `PangoFcDecoder`, that decoder will be used
+ * to determine both coverage via a `FcCharSet` and a one-to-one mapping
+ * of characters to glyphs. This will allow applications to have
  * application-specific encodings for various fonts.
  *
  * Since: 1.6
- **/
+ */
 void
 pango_fc_font_map_add_decoder_find_func (PangoFcFontMap        *fcfontmap,
 					 PangoFcDecoderFindFunc findfunc,
@@ -1297,20 +1541,22 @@ pango_fc_font_map_add_decoder_find_func (PangoFcFontMap        *fcfontmap,
 
 /**
  * pango_fc_font_map_find_decoder:
- * @fcfontmap: The #PangoFcFontMap to use.
- * @pattern: The #FcPattern to find the decoder for.
+ * @fcfontmap: The `PangoFcFontMap` to use.
+ * @pattern: The `FcPattern` to find the decoder for.
  *
- * Finds the decoder to use for @pattern.  Decoders can be added to
- * a font map using pango_fc_font_map_add_decoder_find_func().
+ * Finds the decoder to use for @pattern.
  *
- * Returns: (transfer full) (nullable): a newly created #PangoFcDecoder
+ * Decoders can be added to a font map using
+ * [method@PangoFc.FontMap.add_decoder_find_func].
+ *
+ * Returns: (transfer full) (nullable): a newly created `PangoFcDecoder`
  *   object or %NULL if no decoder is set for @pattern.
  *
  * Since: 1.26
- **/
+ */
 PangoFcDecoder *
-pango_fc_font_map_find_decoder  (PangoFcFontMap *fcfontmap,
-				 FcPattern      *pattern)
+pango_fc_font_map_find_decoder (PangoFcFontMap *fcfontmap,
+                                FcPattern      *pattern)
 {
   GSList *l;
 
@@ -1336,6 +1582,9 @@ pango_fc_font_map_finalize (GObject *object)
   PangoFcFontMap *fcfontmap = PANGO_FC_FONT_MAP (object);
 
   pango_fc_font_map_shutdown (fcfontmap);
+
+  if (fcfontmap->substitute_destroy)
+    fcfontmap->substitute_destroy (fcfontmap->substitute_data);
 
   G_OBJECT_CLASS (pango_fc_font_map_parent_class)->finalize (object);
 }
@@ -1412,6 +1661,8 @@ is_alias_family (const char *family_name)
       return (g_ascii_strcasecmp (family_name, "sans") == 0 ||
 	      g_ascii_strcasecmp (family_name, "serif") == 0 ||
 	      g_ascii_strcasecmp (family_name, "system-ui") == 0);
+    default:
+      return FALSE;
     }
 
   return FALSE;
@@ -1425,18 +1676,20 @@ ensure_families (PangoFcFontMap *fcfontmap)
   int i;
   int count;
 
+  wait_for_fc_init ();
+
   if (priv->n_families < 0)
     {
       FcObjectSet *os = FcObjectSetBuild (FC_FAMILY, FC_SPACING, FC_STYLE, FC_WEIGHT, FC_WIDTH, FC_SLANT,
-#ifdef FC_VARIABLE
                                           FC_VARIABLE,
-#endif
                                           FC_FONTFORMAT,
                                           NULL);
       FcPattern *pat = FcPatternCreate ();
       GHashTable *temp_family_hash;
+      FcFontSet *fonts;
 
-      fontset = FcFontList (priv->config, pat, os);
+      fonts = pango_fc_font_map_get_config_fonts (fcfontmap);
+      fontset = FcFontSetList (priv->config, &fonts, 1, pat, os);
 
       FcPatternDestroy (pat);
       FcObjectSetDestroy (os);
@@ -1452,9 +1705,6 @@ ensure_families (PangoFcFontMap *fcfontmap)
 	  int spacing;
           int variable;
 	  PangoFcFamily *temp_family;
-
-          if (!pango_fc_is_supported_font_format (fontset->fonts[i]))
-            continue;
 
 	  res = FcPatternGetString (fontset->fonts[i], FC_FAMILY, 0, (FcChar8 **)(void*)&s);
 	  g_assert (res == FcResultMatch);
@@ -1475,9 +1725,7 @@ ensure_families (PangoFcFontMap *fcfontmap)
 	  if (temp_family)
 	    {
               variable = FALSE;
-#ifdef FC_VARIABLE
               variable = FcPatternGetBool (fontset->fonts[i], FC_VARIABLE, 0, &variable);
-#endif
               if (variable)
                 temp_family->variable = TRUE;
 
@@ -1522,7 +1770,7 @@ pango_fc_font_map_list_families (PangoFontMap      *fontmap,
     *n_families = priv->n_families;
 
   if (families)
-    *families = g_memdup (priv->families, priv->n_families * sizeof (PangoFontFamily *));
+    *families = g_memdup2 (priv->families, priv->n_families * sizeof (PangoFontFamily *));
 }
 
 static PangoFontFamily *
@@ -1551,11 +1799,7 @@ pango_fc_font_map_get_family (PangoFontMap *fontmap,
 static double
 pango_fc_convert_weight_to_fc (PangoWeight pango_weight)
 {
-#ifdef HAVE_FCWEIGHTFROMOPENTYPEDOUBLE
   return FcWeightFromOpenTypeDouble (pango_weight);
-#else
-  return FcWeightFromOpenType (pango_weight);
-#endif
 }
 
 static int
@@ -1614,7 +1858,7 @@ pango_fc_make_pattern (const  PangoFontDescription *description,
   int slant;
   double weight;
   PangoGravity gravity;
-  FcBool vertical;
+  PangoVariant variant;
   char **families;
   int i;
   int width;
@@ -1625,7 +1869,7 @@ pango_fc_make_pattern (const  PangoFontDescription *description,
   width = pango_fc_convert_width_to_fc (pango_font_description_get_stretch (description));
 
   gravity = pango_font_description_get_gravity (description);
-  vertical = PANGO_GRAVITY_IS_VERTICAL (gravity) ? FcTrue : FcFalse;
+  variant = pango_font_description_get_variant (description);
 
   /* The reason for passing in FC_SIZE as well as FC_PIXEL_SIZE is
    * to work around a bug in libgnomeprint where it doesn't look
@@ -1634,23 +1878,22 @@ pango_fc_make_pattern (const  PangoFontDescription *description,
    * Putting FC_SIZE in here slightly reduces the efficiency
    * of caching of patterns and fonts when working with multiple different
    * dpi values.
+   *
+   * Do not pass FC_VERTICAL_LAYOUT true as HarfBuzz shaping assumes false.
    */
   pattern = FcPatternBuild (NULL,
 			    PANGO_FC_VERSION, FcTypeInteger, pango_version(),
 			    FC_WEIGHT, FcTypeDouble, weight,
 			    FC_SLANT,  FcTypeInteger, slant,
 			    FC_WIDTH,  FcTypeInteger, width,
-			    FC_VERTICAL_LAYOUT,  FcTypeBool, vertical,
-#ifdef FC_VARIABLE
 			    FC_VARIABLE,  FcTypeBool, FcDontCare,
-#endif
 			    FC_DPI, FcTypeDouble, dpi,
 			    FC_SIZE,  FcTypeDouble,  pixel_size * (72. / 1024. / dpi),
 			    FC_PIXEL_SIZE,  FcTypeDouble,  pixel_size / 1024.,
 			    NULL);
 
   if (variations)
-    FcPatternAddString (pattern, PANGO_FC_FONT_VARIATIONS, (FcChar8*) variations);
+    FcPatternAddString (pattern, FC_FONT_VARIATIONS, (FcChar8*) variations);
 
   if (pango_font_description_get_family (description))
     {
@@ -1673,6 +1916,34 @@ pango_fc_make_pattern (const  PangoFontDescription *description,
 
   if (prgname)
     FcPatternAddString (pattern, PANGO_FC_PRGNAME, (FcChar8*) prgname);
+
+  switch (variant)
+    {
+    case PANGO_VARIANT_SMALL_CAPS:
+      FcPatternAddString (pattern, FC_FONT_FEATURES, (FcChar8*) "smcp=1");
+      break;
+    case PANGO_VARIANT_ALL_SMALL_CAPS:
+      FcPatternAddString (pattern, FC_FONT_FEATURES, (FcChar8*) "smcp=1");
+      FcPatternAddString (pattern, FC_FONT_FEATURES, (FcChar8*) "c2sc=1");
+      break;
+    case PANGO_VARIANT_PETITE_CAPS:
+      FcPatternAddString (pattern, FC_FONT_FEATURES, (FcChar8*) "pcap=1");
+      break;
+    case PANGO_VARIANT_ALL_PETITE_CAPS:
+      FcPatternAddString (pattern, FC_FONT_FEATURES, (FcChar8*) "pcap=1");
+      FcPatternAddString (pattern, FC_FONT_FEATURES, (FcChar8*) "c2pc=1");
+      break;
+    case PANGO_VARIANT_UNICASE:
+      FcPatternAddString (pattern, FC_FONT_FEATURES, (FcChar8*) "unic=1");
+      break;
+    case PANGO_VARIANT_TITLE_CAPS:
+      FcPatternAddString (pattern, FC_FONT_FEATURES, (FcChar8*) "titl=1");
+      break;
+    case PANGO_VARIANT_NORMAL:
+      break;
+    default:
+      g_assert_not_reached ();
+    }
 
   return pattern;
 }
@@ -1754,7 +2025,6 @@ pango_fc_font_map_new_font (PangoFcFontMap    *fcfontmap,
   if (!fcfont)
     return NULL;
 
-  fcfont->matrix = key.matrix;
   /* In case the backend didn't set the fontmap */
   if (!fcfont->fontmap)
     g_object_set (fcfont,
@@ -1796,6 +2066,28 @@ pango_fc_default_substitute (PangoFcFontMap    *fontmap,
     PANGO_FC_FONT_MAP_GET_CLASS (fontmap)->fontset_key_substitute (fontmap, fontsetkey, pattern);
   else if (PANGO_FC_FONT_MAP_GET_CLASS (fontmap)->default_substitute)
     PANGO_FC_FONT_MAP_GET_CLASS (fontmap)->default_substitute (fontmap, pattern);
+}
+
+void
+pango_fc_font_map_set_default_substitute (PangoFcFontMap        *fontmap,
+					  PangoFcSubstituteFunc func,
+					  gpointer              data,
+					  GDestroyNotify        notify)
+{
+  if (fontmap->substitute_destroy)
+    fontmap->substitute_destroy (fontmap->substitute_data);
+
+  fontmap->substitute_func = func;
+  fontmap->substitute_data = data;
+  fontmap->substitute_destroy = notify;
+
+  pango_fc_font_map_substitute_changed (fontmap);
+}
+
+void
+pango_fc_font_map_substitute_changed (PangoFcFontMap *fontmap) {
+  pango_fc_font_map_cache_clear(fontmap);
+  pango_font_map_changed(PANGO_FONT_MAP (fontmap));
 }
 
 static double
@@ -1971,16 +2263,17 @@ pango_fc_font_map_load_fontset (PangoFontMap                 *fontmap,
 
 /**
  * pango_fc_font_map_cache_clear:
- * @fcfontmap: a #PangoFcFontMap
+ * @fcfontmap: a `PangoFcFontMap`
  *
- * Clear all cached information and fontsets for this font map;
- * this should be called whenever there is a change in the
+ * Clear all cached information and fontsets for this font map.
+ *
+ * This should be called whenever there is a change in the
  * output of the default_substitute() virtual function of the
  * font map, or if fontconfig has been reinitialized to new
  * configuration.
  *
  * Since: 1.4
- **/
+ */
 void
 pango_fc_font_map_cache_clear (PangoFcFontMap *fcfontmap)
 {
@@ -1993,12 +2286,14 @@ pango_fc_font_map_cache_clear (PangoFcFontMap *fcfontmap)
 
   pango_fc_font_map_fini (fcfontmap);
   pango_fc_font_map_init (fcfontmap);
-   
+
   ensure_families (fcfontmap);
 
   added = fcfontmap->priv->n_families;
 
   g_list_model_items_changed (G_LIST_MODEL (fcfontmap), 0, removed, added);
+  if (removed != added)
+    g_object_notify (G_OBJECT (fcfontmap), "n-items");
 
   pango_font_map_changed (PANGO_FONT_MAP (fcfontmap));
 }
@@ -2011,15 +2306,17 @@ pango_fc_font_map_changed (PangoFontMap *fontmap)
 
 /**
  * pango_fc_font_map_config_changed:
- * @fcfontmap: a #PangoFcFontMap
+ * @fcfontmap: a `PangoFcFontMap`
  *
- * Informs font map that the fontconfig configuration (ie, FcConfig object)
- * used by this font map has changed.  This currently calls
- * pango_fc_font_map_cache_clear() which ensures that list of fonts, etc
- * will be regenerated using the updated configuration.
+ * Informs font map that the fontconfig configuration (i.e., FcConfig
+ * object) used by this font map has changed.
+ *
+ * This currently calls [method@PangoFc.FontMap.cache_clear] which
+ * ensures that list of fonts, etc will be regenerated using the
+ * updated configuration.
  *
  * Since: 1.38
- **/
+ */
 void
 pango_fc_font_map_config_changed (PangoFcFontMap *fcfontmap)
 {
@@ -2028,29 +2325,31 @@ pango_fc_font_map_config_changed (PangoFcFontMap *fcfontmap)
 
 /**
  * pango_fc_font_map_set_config: (skip)
- * @fcfontmap: a #PangoFcFontMap
- * @fcconfig: (nullable): a `FcConfig`, or %NULL
+ * @fcfontmap: a `PangoFcFontMap`
+ * @fcconfig: (nullable): a `FcConfig`
  *
- * Set the FcConfig for this font map to use.  The default value
+ * Set the `FcConfig` for this font map to use.
+ *
+ * The default value
  * is %NULL, which causes Fontconfig to use its global "current config".
- * You can create a new FcConfig object and use this API to attach it
+ * You can create a new `FcConfig` object and use this API to attach it
  * to a font map.
  *
  * This is particularly useful for example, if you want to use application
- * fonts with Pango.  For that, you would create a fresh FcConfig, add your
+ * fonts with Pango. For that, you would create a fresh `FcConfig`, add your
  * app fonts to it, and attach it to a new Pango font map.
  *
  * If @fcconfig is different from the previous config attached to the font map,
- * pango_fc_font_map_config_changed() is called.
+ * [method@PangoFc.FontMap.config_changed] is called.
  *
- * This function acquires a reference to the FcConfig object; the caller
- * does NOT need to retain a reference.
+ * This function acquires a reference to the `FcConfig` object; the caller
+ * does **not** need to retain a reference.
  *
  * Since: 1.38
- **/
+ */
 void
 pango_fc_font_map_set_config (PangoFcFontMap *fcfontmap,
-			      FcConfig       *fcconfig)
+                              FcConfig       *fcconfig)
 {
   FcConfig *oldconfig;
 
@@ -2063,6 +2362,8 @@ pango_fc_font_map_set_config (PangoFcFontMap *fcfontmap,
 
   fcfontmap->priv->config = fcconfig;
 
+  g_clear_pointer (&fcfontmap->priv->fonts, FcFontSetDestroy);
+
   if (oldconfig != fcconfig)
     pango_fc_font_map_config_changed (fcfontmap);
 
@@ -2072,23 +2373,43 @@ pango_fc_font_map_set_config (PangoFcFontMap *fcfontmap,
 
 /**
  * pango_fc_font_map_get_config: (skip)
- * @fcfontmap: a #PangoFcFontMap
+ * @fcfontmap: a `PangoFcFontMap`
  *
  * Fetches the `FcConfig` attached to a font map.
  *
- * See also: pango_fc_font_map_set_config()
+ * See also: [method@PangoFc.FontMap.set_config].
  *
- * Returns: (nullable): the `FcConfig` object attached to @fcfontmap, which
- *          might be %NULL.
+ * Returns: (nullable): the `FcConfig` object attached to
+ *   @fcfontmap, which might be %NULL. The return value is
+ *   owned by Pango and should not be freed.
  *
  * Since: 1.38
- **/
+ */
 FcConfig *
 pango_fc_font_map_get_config (PangoFcFontMap *fcfontmap)
 {
   g_return_val_if_fail (PANGO_IS_FC_FONT_MAP (fcfontmap), NULL);
 
+  wait_for_fc_init ();
+
   return fcfontmap->priv->config;
+}
+
+static FcFontSet *
+pango_fc_font_map_get_config_fonts (PangoFcFontMap *fcfontmap)
+{
+  if (fcfontmap->priv->fonts == NULL)
+    {
+      FcFontSet *sets[2];
+
+      wait_for_fc_init ();
+
+      sets[0] = FcConfigGetFonts (fcfontmap->priv->config, 0);
+      sets[1] = FcConfigGetFonts (fcfontmap->priv->config, 1);
+      fcfontmap->priv->fonts = filter_by_format (sets, 2);
+    }
+
+  return fcfontmap->priv->fonts;
 }
 
 static PangoFcFontFaceData *
@@ -2222,18 +2543,19 @@ _pango_fc_font_map_get_coverage (PangoFcFontMap *fcfontmap,
       data->coverage = _pango_fc_font_map_fc_to_coverage (charset);
     }
 
-  return pango_coverage_ref (data->coverage);
+  return g_object_ref (data->coverage);
 }
 
 /**
  * _pango_fc_font_map_fc_to_coverage:
- * @charset: #FcCharSet to convert to a #PangoCoverage object.
+ * @charset: `FcCharSet` to convert to a `PangoCoverage` object.
  *
- * Convert the given #FcCharSet into a new #PangoCoverage object.  The
- * caller is responsible for freeing the newly created object.
+ * Convert the given `FcCharSet` into a new `PangoCoverage` object.
+ *
+ * The caller is responsible for freeing the newly created object.
  *
  * Since: 1.6
- **/
+ */
 PangoCoverage  *
 _pango_fc_font_map_fc_to_coverage (FcCharSet *charset)
 {
@@ -2245,22 +2567,77 @@ _pango_fc_font_map_fc_to_coverage (FcCharSet *charset)
   return (PangoCoverage *)coverage;
 }
 
+static PangoLanguage **
+_pango_fc_font_map_fc_to_languages (FcLangSet *langset)
+{
+  FcStrSet *strset;
+  FcStrList *list;
+  FcChar8 *s;
+  GPtrArray *langs;
+
+  langs = g_ptr_array_new ();
+
+  strset = FcLangSetGetLangs (langset);
+  list = FcStrListCreate (strset);
+
+  FcStrListFirst (list);
+  while ((s = FcStrListNext (list)))
+    {
+      PangoLanguage *l = pango_language_from_string ((const char *)s);
+      g_ptr_array_add (langs, l);
+    }
+
+  FcStrListDone (list);
+  FcStrSetDestroy (strset);
+
+  g_ptr_array_add (langs, NULL);
+
+  return (PangoLanguage **) g_ptr_array_free (langs, FALSE);
+}
+
+PangoLanguage **
+_pango_fc_font_map_get_languages (PangoFcFontMap *fcfontmap,
+                                  PangoFcFont    *fcfont)
+{
+  PangoFcFontFaceData *data;
+  FcLangSet *langset;
+
+  data = pango_fc_font_map_get_font_face_data (fcfontmap, fcfont->font_pattern);
+  if (G_UNLIKELY (!data))
+    return NULL;
+
+  if (G_UNLIKELY (data->languages == NULL))
+    {
+      /*
+       * Pull the languages out of the pattern, this
+       * doesn't require loading the font
+       */
+      if (FcPatternGetLangSet (fcfont->font_pattern, FC_LANG, 0, &langset) != FcResultMatch)
+        return NULL;
+
+      data->languages = _pango_fc_font_map_fc_to_languages (langset);
+    }
+
+  return data->languages;
+}
+
 /**
  * pango_fc_font_map_create_context:
- * @fcfontmap: a #PangoFcFontMap
+ * @fcfontmap: a `PangoFcFontMap`
  *
- * Creates a new context for this fontmap. This function is intended
- * only for backend implementations deriving from #PangoFcFontMap;
- * it is possible that a backend will store additional information
- * needed for correct operation on the #PangoContext after calling
- * this function.
+ * Creates a new context for this fontmap.
  *
- * Return value: (transfer full): a new #PangoContext
+ * This function is intended only for backend implementations deriving
+ * from `PangoFcFontMap`; it is possible that a backend will store
+ * additional information needed for correct operation on the `PangoContext`
+ * after calling this function.
+ *
+ * Return value: (transfer full): a new `PangoContext`
  *
  * Since: 1.4
  *
  * Deprecated: 1.22: Use pango_font_map_create_context() instead.
- **/
+ */
 PangoContext *
 pango_fc_font_map_create_context (PangoFcFontMap *fcfontmap)
 {
@@ -2282,17 +2659,20 @@ shutdown_font (gpointer        key,
 
 /**
  * pango_fc_font_map_shutdown:
- * @fcfontmap: a #PangoFcFontMap
+ * @fcfontmap: a `PangoFcFontMap`
  *
  * Clears all cached information for the fontmap and marks
- * all fonts open for the fontmap as dead. (See the shutdown()
- * virtual function of #PangoFcFont.) This function might be used
- * by a backend when the underlying windowing system for the font
- * map exits. This function is only intended to be called
- * only for backend implementations deriving from #PangoFcFontMap.
+ * all fonts open for the fontmap as dead.
+ *
+ * See the shutdown() virtual function of `PangoFcFont`.
+ *
+ * This function might be used by a backend when the underlying
+ * windowing system for the font map exits. This function is only
+ * intended to be called only for backend implementations deriving
+ * from `PangoFcFontMap`.
  *
  * Since: 1.4
- **/
+ */
 void
 pango_fc_font_map_shutdown (PangoFcFontMap *fcfontmap)
 {
@@ -2325,11 +2705,7 @@ pango_fc_font_map_shutdown (PangoFcFontMap *fcfontmap)
 static PangoWeight
 pango_fc_convert_weight_to_pango (double fc_weight)
 {
-#ifdef HAVE_FCWEIGHTFROMOPENTYPEDOUBLE
   return FcWeightToOpenTypeDouble (fc_weight);
-#else
-  return FcWeightToOpenType (fc_weight);
-#endif
 }
 
 static PangoStyle
@@ -2378,23 +2754,33 @@ pango_fc_convert_width_to_pango (int fc_stretch)
 
 /**
  * pango_fc_font_description_from_pattern:
- * @pattern: a #FcPattern
+ * @pattern: a `FcPattern`
  * @include_size: if %TRUE, the pattern will include the size from
  *   the @pattern; otherwise the resulting pattern will be unsized.
  *   (only %FC_SIZE is examined, not %FC_PIXEL_SIZE)
  *
- * Creates a #PangoFontDescription that matches the specified
- * Fontconfig pattern as closely as possible. Many possible Fontconfig
- * pattern values, such as %FC_RASTERIZER or %FC_DPI, don't make sense in
- * the context of #PangoFontDescription, so will be ignored.
+ * Creates a `PangoFontDescription` that matches the specified
+ * Fontconfig pattern as closely as possible.
  *
- * Return value: a new #PangoFontDescription. Free with
- *  pango_font_description_free().
+ * Many possible Fontconfig pattern values, such as %FC_RASTERIZER
+ * or %FC_DPI, don't make sense in the context of `PangoFontDescription`,
+ * so will be ignored.
+ *
+ * Return value: a new `PangoFontDescription`. Free with
+ *   pango_font_description_free().
  *
  * Since: 1.4
- **/
+ */
 PangoFontDescription *
 pango_fc_font_description_from_pattern (FcPattern *pattern, gboolean include_size)
+{
+  return font_description_from_pattern (pattern, include_size, FALSE);
+}
+
+PangoFontDescription *
+font_description_from_pattern (FcPattern *pattern,
+                               gboolean   include_size,
+                               gboolean   shallow)
 {
   PangoFontDescription *desc;
   PangoStyle style;
@@ -2402,8 +2788,9 @@ pango_fc_font_description_from_pattern (FcPattern *pattern, gboolean include_siz
   PangoStretch stretch;
   double size;
   PangoGravity gravity;
-
-  FcChar8 *s;
+  PangoVariant variant;
+  gboolean all_caps;
+  const char *s;
   int i;
   double d;
   FcResult res;
@@ -2413,7 +2800,10 @@ pango_fc_font_description_from_pattern (FcPattern *pattern, gboolean include_siz
   res = FcPatternGetString (pattern, FC_FAMILY, 0, (FcChar8 **) &s);
   g_assert (res == FcResultMatch);
 
-  pango_font_description_set_family (desc, (gchar *)s);
+  if (shallow)
+    pango_font_description_set_family_static (desc, s);
+  else
+    pango_font_description_set_family (desc, s);
 
   if (FcPatternGetInteger (pattern, FC_SLANT, 0, &i) == FcResultMatch)
     style = pango_fc_convert_slant_to_pango (i);
@@ -2436,10 +2826,81 @@ pango_fc_font_description_from_pattern (FcPattern *pattern, gboolean include_siz
 
   pango_font_description_set_stretch (desc, stretch);
 
-  pango_font_description_set_variant (desc, PANGO_VARIANT_NORMAL);
+  variant = PANGO_VARIANT_NORMAL;
+  all_caps = FALSE;
+
+  for (int i = 0; i < 32; i++)
+    {
+      if (FcPatternGetString (pattern, FC_FONT_FEATURES, i, (FcChar8 **)&s) == FcResultMatch)
+        {
+          if (strcmp (s, "smcp=1") == 0)
+            {
+              if (all_caps)
+                variant = PANGO_VARIANT_ALL_SMALL_CAPS;
+              else
+                variant = PANGO_VARIANT_SMALL_CAPS;
+            }
+          else if (strcmp (s, "c2sc=1") == 0)
+            {
+              if (variant == PANGO_VARIANT_SMALL_CAPS)
+                variant = PANGO_VARIANT_ALL_SMALL_CAPS;
+              else
+                all_caps = TRUE;
+            }
+          else if (strcmp (s, "pcap=1") == 0)
+            {
+              if (all_caps)
+                variant = PANGO_VARIANT_ALL_PETITE_CAPS;
+              else
+                variant = PANGO_VARIANT_PETITE_CAPS;
+            }
+          else if (strcmp (s, "c2pc=1") == 0)
+            {
+              if (variant == PANGO_VARIANT_PETITE_CAPS)
+                variant = PANGO_VARIANT_ALL_PETITE_CAPS;
+              else
+                all_caps = TRUE;
+            }
+          else if (strcmp (s, "unic=1") == 0)
+            {
+              variant = PANGO_VARIANT_UNICASE;
+            }
+          else if (strcmp (s, "titl=1") == 0)
+            {
+              variant = PANGO_VARIANT_TITLE_CAPS;
+            }
+        }
+      else
+        break;
+    }
+
+  pango_font_description_set_variant (desc, variant);
 
   if (include_size && FcPatternGetDouble (pattern, FC_SIZE, 0, &size) == FcResultMatch)
-    pango_font_description_set_size (desc, size * PANGO_SCALE);
+    {
+      FcMatrix *fc_matrix;
+      double scale_factor = 1;
+      volatile double scaled_size;
+
+      if (FcPatternGetMatrix (pattern, FC_MATRIX, 0, &fc_matrix) == FcResultMatch)
+        {
+          PangoMatrix mat = PANGO_MATRIX_INIT;
+
+          mat.xx = fc_matrix->xx;
+          mat.xy = fc_matrix->xy;
+          mat.yx = fc_matrix->yx;
+          mat.yy = fc_matrix->yy;
+
+          scale_factor = pango_matrix_get_font_scale_factor (&mat);
+        }
+
+      /* We need to use a local variable to ensure that the compiler won't
+       * implicitly cast it to integer while the result is kept in registers,
+       * leading to a wrong approximation in i386 (with 387 FPU)
+       */
+      scaled_size = scale_factor * size * PANGO_SCALE;
+      pango_font_description_set_size (desc, scaled_size);
+    }
 
   /* gravity is a bit different.  we don't want to set it if it was not set on
    * the pattern */
@@ -2451,10 +2912,15 @@ pango_fc_font_description_from_pattern (FcPattern *pattern, gboolean include_siz
       pango_font_description_set_gravity (desc, gravity);
     }
 
-  if (include_size && FcPatternGetString (pattern, PANGO_FC_FONT_VARIATIONS, 0, (FcChar8 **)&s) == FcResultMatch)
+  if (include_size && FcPatternGetString (pattern, FC_FONT_VARIATIONS, 0, (FcChar8 **)&s) == FcResultMatch)
     {
       if (s && *s)
-        pango_font_description_set_variations (desc, (char *)s);
+        {
+          if (shallow)
+            pango_font_description_set_variations_static (desc, s);
+          else
+            pango_font_description_set_variations (desc, s);
+        }
     }
 
   return desc;
@@ -2542,8 +3008,10 @@ pango_fc_face_list_sizes (PangoFontFace  *face,
   FcPattern *pattern;
   FcFontSet *fontset;
   FcObjectSet *objectset;
+  FcFontSet *fonts;
 
-  *sizes = NULL;
+  if (sizes)
+    *sizes = NULL;
   *n_sizes = 0;
   if (G_UNLIKELY (!fcface->family || !fcface->family->fontmap))
     return;
@@ -2555,7 +3023,8 @@ pango_fc_face_list_sizes (PangoFontFace  *face,
   objectset = FcObjectSetCreate ();
   FcObjectSetAdd (objectset, FC_PIXEL_SIZE);
 
-  fontset = FcFontList (NULL, pattern, objectset);
+  fonts = pango_fc_font_map_get_config_fonts (fcface->family->fontmap);
+  fontset = FcFontSetList (fcface->family->fontmap->priv->config, &fonts, 1, pattern, objectset);
 
   if (fontset)
     {
@@ -2726,6 +3195,32 @@ create_face (PangoFcFamily *fcfamily,
   return face;
 }
 
+static int
+compare_face (const void *p1, const void *p2)
+{
+  const PangoFcFace *f1 = *(const void **)p1;
+  const PangoFcFace *f2 = *(const void **)p2;
+  int w1, w2;
+  int s1, s2;
+
+  if (FcPatternGetInteger (f1->pattern, FC_WEIGHT, 0, &w1) != FcResultMatch)
+    w1 = FC_WEIGHT_MEDIUM;
+
+  if (FcPatternGetInteger (f1->pattern, FC_SLANT, 0, &s1) != FcResultMatch)
+    s1 = FC_SLANT_ROMAN;
+
+  if (FcPatternGetInteger (f2->pattern, FC_WEIGHT, 0, &w2) != FcResultMatch)
+    w2 = FC_WEIGHT_MEDIUM;
+
+  if (FcPatternGetInteger (f2->pattern, FC_SLANT, 0, &s2) != FcResultMatch)
+    s2 = FC_SLANT_ROMAN;
+
+  if (s1 != s2)
+    return s1 - s2; /* roman < italic < oblique */
+
+  return w1 - w2; /* from light to heavy */
+}
+
 static void
 ensure_faces (PangoFcFamily *fcfamily)
 {
@@ -2747,6 +3242,7 @@ ensure_faces (PangoFcFamily *fcfamily)
 	  fcfamily->faces[i++] = create_face (fcfamily, "Bold", NULL, TRUE);
 	  fcfamily->faces[i++] = create_face (fcfamily, "Italic", NULL, TRUE);
 	  fcfamily->faces[i++] = create_face (fcfamily, "Bold Italic", NULL, TRUE);
+          fcfamily->faces[0]->regular = 1;
 	}
       else
 	{
@@ -2760,11 +3256,16 @@ ensure_faces (PangoFcFamily *fcfamily)
 	  gboolean has_face [4] = { FALSE, FALSE, FALSE, FALSE };
 	  PangoFcFace **faces;
 	  gint num = 0;
+          int regular_weight;
+          int regular_idx;
 
 	  fontset = fcfamily->patterns;
 
-	  /* at most we have 3 additional artifical faces */
+	  /* at most we have 3 additional artificial faces */
 	  faces = g_new (PangoFcFace *, fontset->nfont + 3);
+
+          regular_weight = 0;
+          regular_idx = -1;
 
 	  for (i = 0; i < fontset->nfont; i++)
 	    {
@@ -2777,7 +3278,6 @@ ensure_faces (PangoFcFamily *fcfamily)
 	      if (FcPatternGetInteger(fontset->fonts[i], FC_SLANT, 0, &slant) != FcResultMatch)
 		slant = FC_SLANT_ROMAN;
 
-#ifdef FC_VARIABLE
               {
                 gboolean variable;
                 if (FcPatternGetBool(fontset->fonts[i], FC_VARIABLE, 0, &variable) != FcResultMatch)
@@ -2785,10 +3285,15 @@ ensure_faces (PangoFcFamily *fcfamily)
                 if (variable) /* skip the variable face */
                   continue;
               }
-#endif
 
 	      if (FcPatternGetString (fontset->fonts[i], FC_STYLE, 0, (FcChar8 **)(void*)&font_style) != FcResultMatch)
 		font_style = NULL;
+
+              if (font_style && strcmp (font_style, "Regular") == 0)
+                {
+                  regular_weight = FC_WEIGHT_MEDIUM;
+                  regular_idx = num;
+                }
 
 	      if (weight <= FC_WEIGHT_MEDIUM)
 		{
@@ -2796,6 +3301,11 @@ ensure_faces (PangoFcFamily *fcfamily)
 		    {
 		      has_face[REGULAR] = TRUE;
 		      style = "Regular";
+                      if (weight > regular_weight)
+                        {
+                          regular_weight = weight;
+                          regular_idx = num;
+                        }
 		    }
 		  else
 		    {
@@ -2833,7 +3343,12 @@ ensure_faces (PangoFcFamily *fcfamily)
 	  if ((has_face[REGULAR] || has_face[ITALIC] || has_face[BOLD]) && !has_face[BOLD_ITALIC])
 	    faces[num++] = create_face (fcfamily, "Bold Italic", NULL, TRUE);
 
+          if (regular_idx != -1)
+            faces[regular_idx]->regular = 1;
+
 	  faces = g_renew (PangoFcFace *, faces, num);
+
+          qsort (faces, num, sizeof (PangoFcFace *), compare_face);
 
 	  fcfamily->n_faces = num;
 	  fcfamily->faces = faces;
@@ -2863,7 +3378,7 @@ pango_fc_family_list_faces (PangoFontFamily  *family,
     *n_faces = fcfamily->n_faces;
 
   if (faces)
-    *faces = g_memdup (fcfamily->faces, fcfamily->n_faces * sizeof (PangoFontFace *));
+    *faces = g_memdup2 (fcfamily->faces, fcfamily->n_faces * sizeof (PangoFontFace *));
 }
 
 static PangoFontFace *
@@ -2875,14 +3390,12 @@ pango_fc_family_get_face (PangoFontFamily *family,
 
   ensure_faces (fcfamily);
 
-  if (name == NULL)
-    name = "Regular"; /* This name always exists in fontconfig */
-
   for (i = 0; i < fcfamily->n_faces; i++)
     {
       PangoFontFace *face = PANGO_FONT_FACE (fcfamily->faces[i]);
 
-      if (strcmp (name, pango_font_face_get_face_name (face)) == 0)
+      if ((name != NULL && strcmp (name, pango_font_face_get_face_name (face)) == 0) ||
+          (name == NULL && PANGO_FC_FACE (face)->regular))
         return face;
     }
 
@@ -2956,12 +3469,13 @@ pango_fc_family_init (PangoFcFamily *fcfamily)
 
 /**
  * pango_fc_font_map_get_hb_face: (skip)
- * @fcfontmap: a #PangoFcFontMap
- * @fcfont: a #PangoFcFont
+ * @fcfontmap: a `PangoFcFontMap`
+ * @fcfont: a `PangoFcFont`
  *
- * Retrieves the `hb_face_t` for the given #PangoFcFont.
+ * Retrieves the `hb_face_t` for the given `PangoFcFont`.
  *
- * Returns: (transfer none) (nullable): the `hb_face_t` for the given Pango font
+ * Returns: (transfer none) (nullable): the `hb_face_t`
+ *   for the given font
  *
  * Since: 1.44
  */
@@ -2976,9 +3490,6 @@ pango_fc_font_map_get_hb_face (PangoFcFontMap *fcfontmap,
   if (!data->hb_face)
     {
       hb_blob_t *blob;
-
-      if (!hb_version_atleast (2, 0, 0))
-        g_error ("Harfbuzz version too old (%s)\n", hb_version_string ());
 
       blob = hb_blob_create_from_file (data->filename);
       data->hb_face = hb_face_create (blob, data->id);

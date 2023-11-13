@@ -46,10 +46,12 @@ main (int    argc,
   gboolean opt_verbose = FALSE;
   gboolean opt_metrics = FALSE;
   gboolean opt_variations = FALSE;
+  gboolean opt_version = FALSE;
   GOptionEntry entries[] = {
-    {"verbose", 0, 0, G_OPTION_ARG_NONE,    &opt_verbose, "Print verbose information", NULL },
-    {"metrics", 0, 0, G_OPTION_ARG_NONE,    &opt_metrics, "Print font metrics", NULL },
-    {"variations", 0, 0, G_OPTION_ARG_NONE,    &opt_variations, "Print font variations", NULL },
+    { "verbose", 0, 0, G_OPTION_ARG_NONE, &opt_verbose, "Print verbose information", NULL },
+    { "metrics", 0, 0, G_OPTION_ARG_NONE, &opt_metrics, "Print font metrics", NULL },
+    { "variations", 0, 0, G_OPTION_ARG_NONE, &opt_variations, "Print font variations", NULL },
+    { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Show version" },
     { NULL, }
   };
   GOptionContext *context;
@@ -76,6 +78,12 @@ main (int    argc,
     }
 
   g_option_context_free (context);
+
+  if (opt_version)
+    {
+      g_print ("%s (%s) %s\n", g_get_prgname (), PACKAGE_NAME, PACKAGE_VERSION);
+      exit (0);
+    }
 
   /* Use PangoCairo to get default fontmap so it works on every platform. */
   fontmap = pango_cairo_font_map_get_default ();
@@ -200,6 +208,7 @@ main (int    argc,
       g_free (faces);
     }
   g_free (families);
+  g_object_unref (ctx);
   g_object_unref (fontmap);
 
   return 0;

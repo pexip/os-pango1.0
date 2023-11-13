@@ -24,202 +24,13 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "pango-markup.h"
+
 #include "pango-attributes.h"
 #include "pango-font.h"
 #include "pango-enum-types.h"
 #include "pango-impl-utils.h"
 #include "pango-utils-internal.h"
-
-/**
- * SECTION:markup
- * @title:Markup
- * @short_description:Simple markup language for text with attributes
- *
- * Frequently, you want to display some text to the user with attributes
- * applied to part of the text (for example, you might want bold or
- * italicized words). With the base Pango interfaces, you could create a
- * #PangoAttrList and apply it to the text; the problem is that you'd
- * need to apply attributes to some numeric range of characters, for
- * example "characters 12-17." This is broken from an internationalization
- * standpoint; once the text is translated, the word you wanted to
- * italicize could be in a different position.
- *
- * The solution is to include the text attributes in the string to be
- * translated. Pango provides this feature with a small markup language.
- * You can parse a marked-up string into the string text plus a
- * #PangoAttrList using either of pango_parse_markup() or
- * pango_markup_parser_new().
- *
- * A simple example of a marked-up string might be:
- * |[
- * <span foreground="blue" size="x-large">Blue text</span> is <i>cool</i>!
- * ]|
- *
- * Pango uses #GMarkup to parse this language, which means that XML
- * features such as numeric character entities such as `&#169;` for
- * © can be used too.
- *
- * The root tag of a marked-up document is `<markup>`, but
- * pango_parse_markup() allows you to omit this tag, so you will most
- * likely never need to use it. The most general markup tag is `<span>`,
- * then there are some convenience tags.
- *
- * ## Span attributes
- *
- * `<span>` has the following attributes:
- *
- * * `font_desc`:
- *   A font description string, such as "Sans Italic 12".
- *   See pango_font_description_from_string() for a description of the
- *   format of the string representation . Note that any other span
- *   attributes will override this description. So if you have "Sans Italic"
- *   and also a `style="normal"` attribute, you will get Sans normal,
- *   not italic.
- *
- * * `font_family`:
- *   A font family name
- *
- * * `font_size`, `size`:
- *   Font size in 1024ths of a point, or one of the absolute
- *   sizes `xx-small`, `x-small`, `small`, `medium`, `large`,
- *   `x-large`, `xx-large`, or one of the relative sizes `smaller`
- *   or `larger`. If you want to specify a absolute size, it's usually
- *   easier to take advantage of the ability to specify a partial
- *   font description using `font`; you can use `font='12.5'`
- *   rather than `size='12800'`.
- *
- * * `font_style`:
- *   One of `normal`, `oblique`, `italic`
- *
- * * `font_weight`:
- *   One of `ultralight`, `light`, `normal`, `bold`,
- *   `ultrabold`, `heavy`, or a numeric weight
- *
- * * `font_variant`:
- *   One of `normal` or `smallcaps`
- *
- * * `font_stretch`, `stretch`:
- *   One of `ultracondensed`, `extracondensed`, `condensed`,
- *   `semicondensed`, `normal`, `semiexpanded`, `expanded`,
- *   `extraexpanded`, `ultraexpanded`
- *
- * * `font_features`:
- *   A comma-separated list of OpenType font feature
- *   settings, in the same syntax as accepted by CSS. E.g:
- *   `font_features='dlig=1, -kern, afrc on'`
- *
- * * `foreground`, `fgcolor`:
- *   An RGB color specification such as `#00FF00` or a color
- *   name such as `red`. Since 1.38, an RGBA color specification such
- *   as `#00FF007F` will be interpreted as specifying both a foreground
- *   color and foreground alpha.
- *
- * * `background`, `bgcolor`:
- *   An RGB color specification such as `#00FF00` or a color
- *   name such as `red`.
- *   Since 1.38, an RGBA color specification such as `#00FF007F` will
- *   be interpreted as specifying both a background color and
- *   background alpha.
- *
- * * `alpha`, `fgalpha`:
- *   An alpha value for the foreground color, either a plain
- *   integer between 1 and 65536 or a percentage value like `50%`.
- *
- * * `background_alpha`, `bgalpha`:
- *   An alpha value for the background color, either a plain
- *   integer between 1 and 65536 or a percentage value like `50%`.
- *
- * * `underline`:
- *   One of `none`, `single`, `double`, `low`, `error`,
- *   `single-line`, `double-line` or `error-line`.
- *
- * * `underline_color`:
- *   The color of underlines; an RGB color
- *   specification such as `#00FF00` or a color name such as `red`
- *
- * * `overline`:
- *   One of `none` or `single`
- *
- * * `overline_color`:
- *   The color of overlines; an RGB color
- *   specification such as `#00FF00` or a color name such as `red`
- *
- * * `rise`:
- *   Vertical displacement, in Pango units. Can be negative for
- *   subscript, positive for superscript.
- *
- * * `strikethrough`
- *   `true` or `false` whether to strike through the text
- *
- * * `strikethrough_color`:
- *   The color of strikethrough lines; an RGB
- *   color specification such as `#00FF00` or a color name such as `red`
- *
- * * `fallback`:
- *   `true` or `false` whether to enable fallback. If
- *   disabled, then characters will only be used from the closest
- *   matching font on the system. No fallback will be done to other
- *   fonts on the system that might contain the characters in the text.
- *   Fallback is enabled by default. Most applications should not
- *   disable fallback.
- *
- * * `allow_breaks`:
- *   `true` or `false` whether to allow line breaks or not. If
- *   not allowed, the range will be kept in a single run as far
- *   as possible. Breaks are allowed by default.
- *
- * * `insert_hyphens`:`
- *   `true` or `false` whether to insert hyphens when breaking
- *   lines in the middle of a word. Hyphens are inserted by default.
- *
- * * `show`:
- *   A value determining how invisible characters are treated.
- *   Possible values are `spaces`, `line-breaks`, `ignorables`
- *   or combinations, such as `spaces|line-breaks`.
- *
- * * `lang`:
- *   A language code, indicating the text language
- *
- * * `letter_spacing`:
- *   Inter-letter spacing in 1024ths of a point.
- *
- * * `gravity`:
- *   One of `south`, `east`, `north`, `west`, `auto`.
- *
- * * `gravity_hint`:
- *   One of `natural`, `strong`, `line`.
- *
- * ## Convenience tags
- *
- * The following convenience tags are provided:
- *
- * * `<b>`:
- *   Bold
- *
- * * `<big>`:
- *   Makes font relatively larger, equivalent to `<span size="larger">`
- *
- * * `<i>`:
- *   Italic
- *
- * * `<s>`:
- *   Strikethrough
- *
- * * `<sub>`:
- *   Subscript
- *
- * * `<sup>`:
- *   Superscript
- *
- * * `<small>`:
- *   Makes font relatively smaller, equivalent to `<span size="smaller">`
- *
- * * `<tt>`:
- *   Monospace
- *
- * * `<u>`:
- *   Underline
- */
 
 /* FIXME */
 #define _(x) x
@@ -485,12 +296,16 @@ markup_data_close_tag (MarkupData *md)
 
       if (ot->has_base_font_size)
 	{
-	  /* Create a font using the absolute point size
-	   * as the base size to be scaled from
-	   */
-	  a = pango_attr_size_new (scale_factor (ot->scale_level,
-						 1.0) *
-				   ot->base_font_size);
+          /* Create a font using the absolute point size as the base size
+           * to be scaled from.
+           * We need to use a local variable to ensure that the compiler won't
+           * implicitly cast it to integer while the result is kept in registers,
+           * leading to a wrong approximation in i386 (with 387 FPU)
+           */
+          volatile double size;
+
+          size = scale_factor (ot->scale_level, 1.0) * ot->base_font_size;
+          a = pango_attr_size_new (size);
 	}
       else
 	{
@@ -562,6 +377,9 @@ start_element_handler  (GMarkupParseContext *context,
     case 'u':
       if (strcmp ("u", element_name) == 0)
 	parse_func = u_parse_func;
+      break;
+
+    default:
       break;
     }
 
@@ -677,8 +495,21 @@ text_handler           (GMarkupParseContext *context G_GNUC_UNUSED,
 		  /* The underline should go underneath the char
 		   * we're setting as the next range_start
 		   */
-		  uline_index = md->index;
-		  uline_len = g_utf8_next_char (p) - p;
+                  if (md->attr_list != NULL)
+                    {
+                      /* Add the underline indicating the accelerator */
+                      PangoAttribute *attr;
+
+                      attr = pango_attr_underline_new (PANGO_UNDERLINE_LOW);
+
+                      uline_index = md->index;
+                      uline_len = g_utf8_next_char (p) - p;
+
+                      attr->start_index = uline_index;
+                      attr->end_index = uline_index + uline_len;
+
+                      pango_attr_list_change (md->attr_list, attr);
+                    }
 
 		  /* set next range_start to include this char */
 		  range_start = p;
@@ -693,35 +524,12 @@ text_handler           (GMarkupParseContext *context G_GNUC_UNUSED,
 	    }
 
 	  p = g_utf8_next_char (p);
-	}
+        }
 
-      if (range_end)
-	{
-	  g_string_append_len (md->text,
-			       range_start,
-			       range_end - range_start);
-	  md->index += range_end - range_start;
-	}
-      else
-	{
-	  g_string_append_len (md->text,
-			       range_start,
-			       end - range_start);
-	  md->index += end - range_start;
-	}
-
-      if (md->attr_list != NULL && uline_index >= 0)
-	{
-	  /* Add the underline indicating the accelerator */
-	  PangoAttribute *attr;
-
-	  attr = pango_attr_underline_new (PANGO_UNDERLINE_LOW);
-
-	  attr->start_index = uline_index;
-	  attr->end_index = uline_index + uline_len;
-
-	  pango_attr_list_change (md->attr_list, attr);
-	}
+      g_string_append_len (md->text,
+                           range_start,
+                           end - range_start);
+                           md->index += end - range_start;
     }
 }
 
@@ -785,32 +593,26 @@ pango_markup_parser_new_internal (char       accel_marker,
 					0, md,
                                         (GDestroyNotify)destroy_markup_data);
 
-  if (!g_markup_parse_context_parse (context,
-                                     "<markup>",
-                                     -1,
-                                     error))
-    goto error;
+  if (!g_markup_parse_context_parse (context, "<markup>", -1, error))
+    g_clear_pointer (&context, g_markup_parse_context_free);
 
   return context;
-
- error:
-  g_markup_parse_context_free (context);
-  return NULL;
 }
 
 /**
  * pango_parse_markup:
- * @markup_text: markup to parse (see <link linkend="PangoMarkupFormat">markup format</link>)
+ * @markup_text: markup to parse (see the [Pango Markup](pango_markup.html) docs)
  * @length: length of @markup_text, or -1 if nul-terminated
  * @accel_marker: character that precedes an accelerator, or 0 for none
- * @attr_list: (out) (allow-none): address of return location for a #PangoAttrList, or %NULL
- * @text: (out) (allow-none): address of return location for text with tags stripped, or %NULL
- * @accel_char: (out) (allow-none): address of return location for accelerator char, or %NULL
- * @error: address of return location for errors, or %NULL
+ * @attr_list: (out) (optional): address of return location for a `PangoAttrList`
+ * @text: (out) (optional): address of return location for text with tags stripped
+ * @accel_char: (out) (optional): address of return location for accelerator char
+ * @error: address of return location for errors
  *
- * Parses marked-up text (see
- * <link linkend="PangoMarkupFormat">markup format</link>) to create
- * a plain-text string and an attribute list.
+ * Parses marked-up text to create a plain-text string and an attribute list.
+ *
+ * See the [Pango Markup](pango_markup.html) docs for details about the
+ * supported markup.
  *
  * If @accel_marker is nonzero, the given character will mark the
  * character following it as an accelerator. For example, @accel_marker
@@ -820,7 +622,7 @@ pango_markup_parser_new_internal (char       accel_marker,
  * Two @accel_marker characters following each other produce a single
  * literal @accel_marker character.
  *
- * To parse a stream of pango markup incrementally, use pango_markup_parser_new().
+ * To parse a stream of pango markup incrementally, use [func@markup_parser_new].
  *
  * If any error happens, none of the output arguments are touched except
  * for @error.
@@ -854,8 +656,6 @@ pango_parse_markup (const char                 *markup_text,
   context = pango_markup_parser_new_internal (accel_marker,
                                               error,
                                               (attr_list != NULL));
-  if (context == NULL)
-    goto out;
 
   if (!g_markup_parse_context_parse (context,
                                      markup_text,
@@ -882,56 +682,53 @@ pango_parse_markup (const char                 *markup_text,
  * pango_markup_parser_new:
  * @accel_marker: character that precedes an accelerator, or 0 for none
  *
- * Parses marked-up text (see
- * <link linkend="PangoMarkupFormat">markup format</link>) to create
- * a plain-text string and an attribute list.
+ * Incrementally parses marked-up text to create a plain-text string
+ * and an attribute list.
+ *
+ * See the [Pango Markup](pango_markup.html) docs for details about the
+ * supported markup.
  *
  * If @accel_marker is nonzero, the given character will mark the
  * character following it as an accelerator. For example, @accel_marker
  * might be an ampersand or underscore. All characters marked
  * as an accelerator will receive a %PANGO_UNDERLINE_LOW attribute,
  * and the first character so marked will be returned in @accel_char,
- * when calling finish(). Two @accel_marker characters following each
- * other produce a single literal @accel_marker character.
+ * when calling [func@markup_parser_finish]. Two @accel_marker characters
+ * following each other produce a single literal @accel_marker character.
  *
- * To feed markup to the parser, use g_markup_parse_context_parse()
- * on the returned #GMarkupParseContext. When done with feeding markup
- * to the parser, use pango_markup_parser_finish() to get the data out
- * of it, and then use g_markup_parse_context_free() to free it.
+ * To feed markup to the parser, use [method@GLib.MarkupParseContext.parse]
+ * on the returned [struct@GLib.MarkupParseContext]. When done with feeding markup
+ * to the parser, use [func@markup_parser_finish] to get the data out
+ * of it, and then use [method@GLib.MarkupParseContext.free] to free it.
  *
- * This function is designed for applications that read pango markup
- * from streams. To simply parse a string containing pango markup,
- * the simpler pango_parse_markup() API is recommended instead.
+ * This function is designed for applications that read Pango markup
+ * from streams. To simply parse a string containing Pango markup,
+ * the [func@Pango.parse_markup] API is recommended instead.
  *
- * Return value: (transfer none): a #GMarkupParseContext that should be
- * destroyed with g_markup_parse_context_free().
+ * Return value: (transfer none): a `GMarkupParseContext` that should be
+ * destroyed with [method@GLib.MarkupParseContext.free].
  *
  * Since: 1.31.0
  **/
 GMarkupParseContext *
-pango_markup_parser_new (gunichar               accel_marker)
+pango_markup_parser_new (gunichar accel_marker)
 {
-  GError *error = NULL;
-  GMarkupParseContext *context;
-  context = pango_markup_parser_new_internal (accel_marker, &error, TRUE);
-
-  if (context == NULL)
-    g_critical ("Had error when making markup parser: %s\n", error->message);
-
-  return context;
+  return pango_markup_parser_new_internal (accel_marker, NULL, TRUE);
 }
 
 /**
  * pango_markup_parser_finish:
- * @context: A valid parse context that was returned from pango_markup_parser_new()
- * @attr_list: (out) (allow-none): address of return location for a #PangoAttrList, or %NULL
- * @text: (out) (allow-none): address of return location for text with tags stripped, or %NULL
- * @accel_char: (out) (allow-none): address of return location for accelerator char, or %NULL
- * @error: address of return location for errors, or %NULL
+ * @context: A valid parse context that was returned from [func@markup_parser_new]
+ * @attr_list: (out) (optional): address of return location for a `PangoAttrList`
+ * @text: (out) (optional): address of return location for text with tags stripped
+ * @accel_char: (out) (optional): address of return location for accelerator char
+ * @error: address of return location for errors
  *
- * After feeding a pango markup parser some data with g_markup_parse_context_parse(),
- * use this function to get the list of pango attributes and text out of the
- * markup. This function will not free @context, use g_markup_parse_context_free()
+ * Finishes parsing markup.
+ *
+ * After feeding a Pango markup parser some data with [method@GLib.MarkupParseContext.parse],
+ * use this function to get the list of attributes and text out of the
+ * markup. This function will not free @context, use [method@GLib.MarkupParseContext.free]
  * to do so.
  *
  * Return value: %FALSE if @error is set, otherwise %TRUE
@@ -1069,10 +866,28 @@ big_parse_func      (MarkupData            *md G_GNUC_UNUSED,
 }
 
 static gboolean
+parse_percentage (const char *input,
+                  double     *val)
+{
+  double v;
+  char *end;
+
+  v = g_ascii_strtod (input, &end);
+  if (errno == 0 && strcmp (end, "%") == 0 && v > 0)
+    {
+      *val = v;
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
+static gboolean
 parse_absolute_size (OpenTag               *tag,
-		     const char            *size)
+                     const char            *size)
 {
   SizeLevel level = Medium;
+  double val;
   double factor;
 
   if (strcmp (size, "xx-small") == 0)
@@ -1089,6 +904,11 @@ parse_absolute_size (OpenTag               *tag,
     level = XLarge;
   else if (strcmp (size, "xx-large") == 0)
     level = XXLarge;
+  else if (parse_percentage (size, &val))
+    {
+      factor = val / 100.0;
+      goto done;
+    }
   else
     return FALSE;
 
@@ -1096,6 +916,8 @@ parse_absolute_size (OpenTag               *tag,
    * but not to sizes created by any other tags
    */
   factor = scale_factor (level, 1.0);
+
+done:
   add_attribute (tag, pango_attr_scale_new (factor));
   if (tag)
     open_tag_set_absolute_font_scale (tag, factor);
@@ -1153,6 +975,29 @@ span_parse_int (const char *attr_name,
 		     "on line %d could not be parsed; "
 		     "should be an integer, not '%s'"),
 		   attr_name, line_number, attr_val);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+span_parse_float (const char  *attr_name,
+                  const char  *attr_val,
+                  double      *val,
+                  int          line_number,
+                  GError     **error)
+{
+  *val = g_ascii_strtod (attr_val, NULL);
+  if (errno != 0)
+    {
+      g_set_error (error,
+                   G_MARKUP_ERROR,
+                   G_MARKUP_ERROR_INVALID_CONTENT,
+                   _("Value of '%s' attribute on <span> tag "
+                     "on line %d could not be parsed; "
+                     "should be a number, not '%s'"),
+                   attr_name, line_number, attr_val);
       return FALSE;
     }
 
@@ -1317,6 +1162,35 @@ span_parse_flags (const char  *attr_name,
 }
 
 static gboolean
+parse_length (const char *attr_val,
+              int        *result)
+{
+  const char *attr;
+  int n;
+
+  attr = attr_val;
+  if (_pango_scan_int (&attr, &n) && *attr == '\0')
+    {
+      *result = n;
+      return TRUE;
+    }
+  else
+    {
+      double val;
+      char *end;
+
+      val = g_ascii_strtod (attr_val, &end);
+      if (errno == 0 && strcmp (end, "pt") == 0)
+        {
+          *result = val * PANGO_SCALE;
+          return TRUE;
+        }
+    }
+
+  return FALSE;
+}
+
+static gboolean
 span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 		     OpenTag               *tag,
 		     const gchar          **names,
@@ -1343,6 +1217,7 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
   const char *strikethrough = NULL;
   const char *strikethrough_color = NULL;
   const char *rise = NULL;
+  const char *baseline_shift = NULL;
   const char *letter_spacing = NULL;
   const char *lang = NULL;
   const char *fallback = NULL;
@@ -1354,6 +1229,10 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
   const char *allow_breaks = NULL;
   const char *insert_hyphens = NULL;
   const char *show = NULL;
+  const char *line_height = NULL;
+  const char *text_transform = NULL;
+  const char *segment = NULL;
+  const char *font_scale = NULL;
 
   g_markup_parse_context_get_position (context,
 				       &line_number, &char_number);
@@ -1391,6 +1270,7 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 	CHECK_ATTRIBUTE2(background, "bgcolor");
         CHECK_ATTRIBUTE (background_alpha);
         CHECK_ATTRIBUTE2(background_alpha, "bgalpha");
+        CHECK_ATTRIBUTE(baseline_shift);
         break;
       case 'c':
 	CHECK_ATTRIBUTE2(foreground, "color");
@@ -1407,6 +1287,7 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 	CHECK_ATTRIBUTE2(style, "font_style");
 	CHECK_ATTRIBUTE2(variant, "font_variant");
 	CHECK_ATTRIBUTE2(weight, "font_weight");
+	CHECK_ATTRIBUTE(font_scale);
 
 	CHECK_ATTRIBUTE (foreground);
 	CHECK_ATTRIBUTE2(foreground, "fgcolor");
@@ -1421,7 +1302,11 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 	CHECK_ATTRIBUTE (strikethrough);
 	CHECK_ATTRIBUTE (strikethrough_color);
 	CHECK_ATTRIBUTE (style);
+	CHECK_ATTRIBUTE (segment);
 	break;
+      case 't':
+        CHECK_ATTRIBUTE (text_transform);
+        break;
       case 'g':
 	CHECK_ATTRIBUTE (gravity);
 	CHECK_ATTRIBUTE (gravity_hint);
@@ -1432,6 +1317,7 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
       case 'l':
 	CHECK_ATTRIBUTE (lang);
 	CHECK_ATTRIBUTE (letter_spacing);
+        CHECK_ATTRIBUTE (line_height);
 	break;
       case 'o':
 	CHECK_ATTRIBUTE (overline);
@@ -1441,11 +1327,16 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 	CHECK_ATTRIBUTE (underline);
 	CHECK_ATTRIBUTE (underline_color);
 	break;
-      default:
+      case 'r':
 	CHECK_ATTRIBUTE (rise);
+        break;
+      case 'v':
 	CHECK_ATTRIBUTE (variant);
+        break;
+      case 'w':
 	CHECK_ATTRIBUTE (weight);
 	break;
+      default:;
       }
 
       if (!found)
@@ -1483,27 +1374,14 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 
   if (G_UNLIKELY (size))
     {
-      if (g_ascii_isdigit (*size))
-	{
-	  const char *end;
-	  gint n;
+      int n;
 
-	  if ((end = size, !_pango_scan_int (&end, &n)) || *end != '\0' || n < 0)
-	    {
-	      g_set_error (error,
-			   G_MARKUP_ERROR,
-			   G_MARKUP_ERROR_INVALID_CONTENT,
-			   _("Value of 'size' attribute on <span> tag on line %d "
-			     "could not be parsed; should be an integer no more than %d,"
-			     " or a string such as 'small', not '%s'"),
-			   line_number, INT_MAX, size);
-	      goto error;
-	    }
-
-	  add_attribute (tag, pango_attr_size_new (n));
-	  if (tag)
-	    open_tag_set_absolute_font_size (tag, n);
-	}
+      if (parse_length (size, &n) && n > 0)
+        {
+          add_attribute (tag, pango_attr_size_new (n));
+          if (tag)
+            open_tag_set_absolute_font_size (tag, n);
+        }
       else if (strcmp (size, "smaller") == 0)
 	{
 	  if (tag)
@@ -1711,7 +1589,7 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 	  g_set_error (error,
 		       G_MARKUP_ERROR,
 		       G_MARKUP_ERROR_INVALID_CONTENT,
-		       _("'%s' is not a valid value for the 'stretch' "
+		       _("'%s' is not a valid value for the 'gravity' "
 			 "attribute on <span> tag, line %d; valid "
 			 "values are for example 'south', 'east', "
 			 "'north', 'west'"),
@@ -1772,14 +1650,65 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
       add_attribute (tag, pango_attr_show_new (flags));
     }
 
+  if (G_UNLIKELY (text_transform))
+    {
+      PangoTextTransform tf;
+
+      if (!span_parse_enum ("text_transform", text_transform, PANGO_TYPE_TEXT_TRANSFORM, (int*)(void*)&tf, line_number, error))
+	goto error;
+
+      add_attribute (tag, pango_attr_text_transform_new (tf));
+    }
+
   if (G_UNLIKELY (rise))
     {
       gint n = 0;
 
-      if (!span_parse_int ("rise", rise, &n, line_number, error))
-	goto error;
+      if (!parse_length (rise, &n))
+        {
+          g_set_error (error,
+                       G_MARKUP_ERROR,
+                       G_MARKUP_ERROR_INVALID_CONTENT,
+                       _("Value of 'rise' attribute on <span> tag on line %d "
+                         "could not be parsed; should be an integer, or a "
+                         "string such as '5.5pt', not '%s'"),
+                       line_number, rise);
+          goto error;
+        }
 
       add_attribute (tag, pango_attr_rise_new (n));
+    }
+
+  if (G_UNLIKELY (baseline_shift))
+    {
+      gint shift = 0;
+
+      if (span_parse_enum ("baseline_shift", baseline_shift, PANGO_TYPE_BASELINE_SHIFT, (int*)(void*)&shift, line_number, NULL))
+        add_attribute (tag, pango_attr_baseline_shift_new (shift));
+      else if (parse_length (baseline_shift, &shift) && (shift > 1024 || shift < -1024))
+        add_attribute (tag, pango_attr_baseline_shift_new (shift));
+      else
+        {
+          g_set_error (error,
+                       G_MARKUP_ERROR,
+                       G_MARKUP_ERROR_INVALID_CONTENT,
+                       _("Value of 'baseline_shift' attribute on <span> tag on line %d "
+                         "could not be parsed; should be 'superscript' or 'subscript' or "
+                         "an integer, or a string such as '5.5pt', not '%s'"),
+                       line_number, baseline_shift);
+          goto error;
+        }
+
+    }
+
+  if (G_UNLIKELY (font_scale))
+    {
+      PangoFontScale scale;
+
+      if (!span_parse_enum ("font_scale", font_scale, PANGO_TYPE_FONT_SCALE, (int*)(void*)&scale, line_number, error))
+	goto error;
+
+      add_attribute (tag, pango_attr_font_scale_new (scale));
     }
 
   if (G_UNLIKELY (letter_spacing))
@@ -1790,6 +1719,19 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 	goto error;
 
       add_attribute (tag, pango_attr_letter_spacing_new (n));
+    }
+
+  if (G_UNLIKELY (line_height))
+    {
+      double f = 0;
+
+      if (!span_parse_float ("line_height", line_height, &f, line_number, error))
+        goto error;
+
+      if (f > 1024.0 && strchr (line_height, '.') == 0)
+        add_attribute (tag, pango_attr_line_height_new_absolute ((int)f));
+      else
+        add_attribute (tag, pango_attr_line_height_new (f));
     }
 
   if (G_UNLIKELY (lang))
@@ -1808,7 +1750,7 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
       gboolean b = FALSE;
 
       if (!span_parse_boolean ("allow_breaks", allow_breaks, &b, line_number, error))
-	goto error;
+        goto error;
 
       add_attribute (tag, pango_attr_allow_breaks_new (b));
     }
@@ -1821,6 +1763,25 @@ span_parse_func     (MarkupData            *md G_GNUC_UNUSED,
 	goto error;
 
       add_attribute (tag, pango_attr_insert_hyphens_new (b));
+    }
+
+  if (G_UNLIKELY (segment))
+    {
+      if (strcmp (segment, "word") == 0)
+        add_attribute (tag, pango_attr_word_new ());
+      else if (strcmp (segment, "sentence") == 0)
+        add_attribute (tag, pango_attr_sentence_new ());
+      else
+        {
+          g_set_error (error,
+                       G_MARKUP_ERROR,
+                       G_MARKUP_ERROR_INVALID_CONTENT,
+                       _("Value of 'segment' attribute on <span> tag on line %d "
+                         "could not be parsed; should be one of 'word' or "
+                         "'sentence', not '%s'"),
+                       line_number, segment);
+          goto error;
+        }
     }
 
   return TRUE;
@@ -1853,6 +1814,7 @@ markup_parse_func (MarkupData            *md G_GNUC_UNUSED,
 		   GError               **error G_GNUC_UNUSED)
 {
   /* We don't do anything with this tag at the moment. */
+  CHECK_NO_ATTRS("markup");
 
   return TRUE;
 }
@@ -1871,8 +1833,6 @@ s_parse_func        (MarkupData            *md G_GNUC_UNUSED,
   return TRUE;
 }
 
-#define SUPERSUB_RISE 5000
-
 static gboolean
 sub_parse_func      (MarkupData            *md G_GNUC_UNUSED,
 		     OpenTag               *tag,
@@ -1883,14 +1843,8 @@ sub_parse_func      (MarkupData            *md G_GNUC_UNUSED,
 {
   CHECK_NO_ATTRS("sub");
 
-  /* Shrink font, and set a negative rise */
-  if (tag)
-    {
-      tag->scale_level_delta -= 1;
-      tag->scale_level -= 1;
-    }
-
-  add_attribute (tag, pango_attr_rise_new (-SUPERSUB_RISE));
+  add_attribute (tag, pango_attr_font_scale_new (PANGO_FONT_SCALE_SUBSCRIPT));
+  add_attribute (tag, pango_attr_baseline_shift_new (PANGO_BASELINE_SHIFT_SUBSCRIPT));
 
   return TRUE;
 }
@@ -1905,14 +1859,8 @@ sup_parse_func      (MarkupData            *md G_GNUC_UNUSED,
 {
   CHECK_NO_ATTRS("sup");
 
-  /* Shrink font, and set a positive rise */
-  if (tag)
-    {
-      tag->scale_level_delta -= 1;
-      tag->scale_level -= 1;
-    }
-
-  add_attribute (tag, pango_attr_rise_new (SUPERSUB_RISE));
+  add_attribute (tag, pango_attr_font_scale_new (PANGO_FONT_SCALE_SUPERSCRIPT));
+  add_attribute (tag, pango_attr_baseline_shift_new (PANGO_BASELINE_SHIFT_SUPERSCRIPT));
 
   return TRUE;
 }

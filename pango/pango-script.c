@@ -53,15 +53,6 @@
  * of the copyright holder.
  */
 
-/**
- * SECTION:scripts
- * @short_description:Identifying writing systems and languages
- * @title:Scripts and Languages
- *
- * The functions in this section are used to identify the writing
- * system, or <firstterm>script</firstterm> of individual characters
- * and of ranges within a larger text string.
- */
 #include "config.h"
 #include <stdlib.h>
 #include <string.h>
@@ -73,17 +64,20 @@
  * pango_script_for_unichar:
  * @ch: a Unicode character
  *
- * Looks up the script for a particular character (as defined by
- * Unicode Standard Annex \#24). No check is made for @ch being a
- * valid Unicode character; if you pass in invalid character, the
- * result is undefined.
+ * Looks up the script for a particular character.
+ *
+ * The script of a character is defined by
+ * [Unicode Standard Annex 24: Script names](http://www.unicode.org/reports/tr24/).
+ *
+ * No check is made for @ch being a valid Unicode character; if you pass
+ * in invalid character, the result is undefined.
  *
  * Note that while the return type of this function is declared
- * as PangoScript, as of Pango 1.18, this function simply returns
- * the return value of g_unichar_get_script(). Callers must be
+ * as `PangoScript`, as of Pango 1.18, this function simply returns
+ * the return value of [func@GLib.unichar_get_script]. Callers must be
  * prepared to handle unknown values.
  *
- * Return value: the #PangoScript for the character.
+ * Return value: the `PangoScript` for the character.
  *
  * Since: 1.4
  * Deprecated: 1.44. Use g_unichar_get_script()
@@ -128,16 +122,18 @@ _pango_script_iter_init (PangoScriptIter *iter,
 /**
  * pango_script_iter_new:
  * @text: a UTF-8 string
- * @length: length of @text, or -1 if @text is nul-terminated.
+ * @length: length of @text, or -1 if @text is nul-terminated
  *
- * Create a new #PangoScriptIter, used to break a string of
- * Unicode text into runs by Unicode script. No copy is made of
- * @text, so the caller needs to make sure it remains valid until
- * the iterator is freed with pango_script_iter_free().
+ * Create a new `PangoScriptIter`, used to break a string of
+ * Unicode text into runs by Unicode script.
+ *
+ * No copy is made of @text, so the caller needs to make
+ * sure it remains valid until the iterator is freed with
+ * [method@Pango.ScriptIter.free].
  *
  * Return value: the new script iterator, initialized
  *  to point at the first range in the text, which should be
- *  freed with pango_script_iter_free(). If the string is
+ *  freed with [method@Pango.ScriptIter.free]. If the string is
  *  empty, it will point at an empty range.
  *
  * Since: 1.4
@@ -162,12 +158,12 @@ _pango_script_iter_fini (PangoScriptIter *iter)
 
 /**
  * pango_script_iter_free:
- * @iter: a #PangoScriptIter
+ * @iter: a `PangoScriptIter`
  *
- * Frees a #PangoScriptIter created with pango_script_iter_new().
+ * Frees a `PangoScriptIter`.
  *
  * Since: 1.4
- **/
+ */
 void
 pango_script_iter_free (PangoScriptIter *iter)
 {
@@ -177,22 +173,23 @@ pango_script_iter_free (PangoScriptIter *iter)
 
 /**
  * pango_script_iter_get_range:
- * @iter: a #PangoScriptIter
- * @start: (out) (allow-none): location to store start position of the range, or %NULL
- * @end: (out) (allow-none): location to store end position of the range, or %NULL
- * @script: (out) (allow-none): location to store script for range, or %NULL
+ * @iter: a `PangoScriptIter`
+ * @start: (out) (optional): location to store start position of the range
+ * @end: (out) (optional): location to store end position of the range
+ * @script: (out) (optional): location to store script for range
  *
  * Gets information about the range to which @iter currently points.
+ *
  * The range is the set of locations p where *start <= p < *end.
  * (That is, it doesn't include the character stored at *end)
  *
  * Note that while the type of the @script argument is declared
- * as PangoScript, as of Pango 1.18, this function simply returns
- * GUnicodeScript values. Callers must be prepared to handle unknown
+ * as `PangoScript`, as of Pango 1.18, this function simply returns
+ * `GUnicodeScript` values. Callers must be prepared to handle unknown
  * values.
  *
  * Since: 1.4
- **/
+ */
 void
 pango_script_iter_get_range (PangoScriptIter  *iter,
                              const char      **start,
@@ -300,16 +297,17 @@ get_pair_index (gunichar ch)
 
 /**
  * pango_script_iter_next:
- * @iter: a #PangoScriptIter
+ * @iter: a `PangoScriptIter`
  *
- * Advances a #PangoScriptIter to the next range. If @iter
- * is already at the end, it is left unchanged and %FALSE
- * is returned.
+ * Advances a `PangoScriptIter` to the next range.
  *
- * Return value: %TRUE if @iter was successfully advanced.
+ * If @iter is already at the end, it is left unchanged
+ * and %FALSE is returned.
+ *
+ * Return value: %TRUE if @iter was successfully advanced
  *
  * Since: 1.4
- **/
+ */
 gboolean
 pango_script_iter_next (PangoScriptIter *iter)
 {

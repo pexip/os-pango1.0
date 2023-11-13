@@ -29,8 +29,9 @@
 #include "pango-impl-utils.h"
 #include <string.h>
 
+/* {{{ Unicode line breaking and segmentation */
+
 #define PARAGRAPH_SEPARATOR 0x2029
-#define PARAGRAPH_SEPARATOR_STRING "\xE2\x80\xA9"
 
 /* See http://www.unicode.org/unicode/reports/tr14/ if you hope
  * to understand the line breaking code.
@@ -138,27 +139,12 @@ typedef enum
   WordNumbers
 } WordType;
 
-
-/**
- * pango_default_break:
- * @text: text to break. Must be valid UTF-8
- * @length: length of text in bytes (may be -1 if @text is nul-terminated)
- * @analysis: (nullable): a #PangoAnalysis for the @text
- * @attrs: logical attributes to fill in
- * @attrs_len: size of the array passed as @attrs
- *
- * This is the default break algorithm. It applies Unicode
- * rules without language-specific tailoring, therefore
- * the @analyis argument is unused and can be %NULL.
- *
- * See pango_tailor_break() for language-specific breaks.
- **/
-void
-pango_default_break (const gchar   *text,
-		     gint           length,
-		     PangoAnalysis *analysis G_GNUC_UNUSED,
-		     PangoLogAttr  *attrs,
-		     int            attrs_len G_GNUC_UNUSED)
+static void
+default_break (const char    *text,
+               int            length,
+               PangoAnalysis *analysis G_GNUC_UNUSED,
+               PangoLogAttr  *attrs,
+               int            attrs_len G_GNUC_UNUSED)
 {
   /* The rationale for all this is in section 5.15 of the Unicode 3.0 book,
    * the line breaking stuff is also in TR14 on unicode.org
@@ -183,6 +169,8 @@ pango_default_break (const gchar   *text,
   GUnicodeBreakType next_break_type;
   GUnicodeBreakType prev_break_type;
   GUnicodeBreakType prev_prev_break_type;
+
+  PangoScript prev_script;
 
   /* See Grapheme_Cluster_Break Property Values table of UAX#29 */
   typedef enum
@@ -263,6 +251,8 @@ pango_default_break (const gchar   *text,
   gint last_sentence_start = -1;
   gint last_non_space = -1;
 
+  gboolean prev_space_or_hyphen;
+
   gboolean almost_done = FALSE;
   gboolean done = FALSE;
 
@@ -274,7 +264,9 @@ pango_default_break (const gchar   *text,
   prev_break_type = G_UNICODE_BREAK_UNKNOWN;
   prev_prev_break_type = G_UNICODE_BREAK_UNKNOWN;
   prev_wc = 0;
+  prev_script = PANGO_SCRIPT_COMMON;
   prev_jamo = NO_JAMO;
+  prev_space_or_hyphen = FALSE;
 
   if (length == 0 || *text == '\0')
     {
@@ -305,6 +297,7 @@ pango_default_break (const gchar   *text,
       /* Emoji extended pictographics */
       gboolean is_Extended_Pictographic;
 
+      PangoScript script;
 
       wc = next_wc;
       break_type = next_break_type;
@@ -354,18 +347,21 @@ pango_default_break (const gchar   *text,
 	  makes_hangul_syllable = (prev_end == this_start) || (prev_end + 1 == this_start);
 	}
 
-      switch (type)
+      switch ((int)type)
         {
         case G_UNICODE_SPACE_SEPARATOR:
         case G_UNICODE_LINE_SEPARATOR:
         case G_UNICODE_PARAGRAPH_SEPARATOR:
           attrs[i].is_white = TRUE;
           break;
-        default:
+        case G_UNICODE_CONTROL:
           if (wc == '\t' || wc == '\n' || wc == '\r' || wc == '\f')
             attrs[i].is_white = TRUE;
           else
             attrs[i].is_white = FALSE;
+          break;
+        default:
+          attrs[i].is_white = FALSE;
           break;
         }
 
@@ -382,7 +378,7 @@ pango_default_break (const gchar   *text,
 
         /* Find the GraphemeBreakType of wc */
 	GB_type = GB_Other;
-	switch ((int) type)
+	switch ((int)type)
 	  {
 	  case G_UNICODE_FORMAT:
 	    if (G_UNLIKELY (wc == 0x200C))
@@ -403,6 +399,12 @@ pango_default_break (const gchar   *text,
                             wc == 0x110CD))
               {
                 GB_type = GB_Prepend;
+                break;
+              }
+            /* Tag chars */
+            if (wc >= 0xE0020 && wc <= 0xE00FF)
+              {
+                GB_type = GB_Extend;
                 break;
               }
             G_GNUC_FALLTHROUGH;
@@ -460,8 +462,6 @@ pango_default_break (const gchar   *text,
               {
                 if (prev_GB_type == GB_RI_Odd)
                   GB_type = GB_RI_Even;
-                else if (prev_GB_type == GB_RI_Even)
-                  GB_type = GB_RI_Odd;
                 else
                   GB_type = GB_RI_Odd;
                 break;
@@ -469,8 +469,12 @@ pango_default_break (const gchar   *text,
             break;
 
           case G_UNICODE_MODIFIER_SYMBOL:
+            /* Fitzpatrick modifiers */
             if (wc >= 0x1F3FB && wc <= 0x1F3FF)
               GB_type = GB_Extend;
+            break;
+
+          default:
             break;
 	  }
 
@@ -501,9 +505,7 @@ pango_default_break (const gchar   *text,
 	else if (GB_type == GB_InHangulSyllable)
 	  is_grapheme_boundary = FALSE; /* Rules GB6, GB7, GB8 */
 	else if (GB_type == GB_Extend)
-          {
-	    is_grapheme_boundary = FALSE; /* Rule GB9 */
-          }
+	  is_grapheme_boundary = FALSE; /* Rule GB9 */
         else if (GB_type == GB_ZWJ)
 	  is_grapheme_boundary = FALSE; /* Rule GB9 */
 	else if (GB_type == GB_SpacingMark)
@@ -539,16 +541,14 @@ pango_default_break (const gchar   *text,
 	prev_GB_type = GB_type;
       }
 
+      script = (PangoScript)g_unichar_get_script (wc);
       /* ---- UAX#29 Word Boundaries ---- */
       {
 	is_word_boundary = FALSE;
 	if (is_grapheme_boundary ||
 	    G_UNLIKELY(wc >=0x1F1E6 && wc <=0x1F1FF)) /* Rules WB3 and WB4 */
 	  {
-	    PangoScript script;
 	    WordBreakType WB_type;
-
-	    script = (PangoScript)g_unichar_get_script (wc);
 
 	    /* Find the WordBreakType of wc */
 	    WB_type = WB_Other;
@@ -577,6 +577,8 @@ pango_default_break (const gchar   *text,
 		  if (wc == 0x058A)
 		    WB_type = WB_ALetter; /* ALetter exceptions */
 		  break;
+                default:
+                  break;
 		}
 
 	    if (WB_type == WB_Other)
@@ -590,6 +592,8 @@ pango_default_break (const gchar   *text,
 		  if (wc != 0x003A && wc != 0xFE13 && wc != 0x002E)
 		    WB_type = WB_MidNum; /* MidNum */
 		  break;
+                default:
+                  break;
 		}
 
 	    if (WB_type == WB_Other)
@@ -640,14 +644,12 @@ pango_default_break (const gchar   *text,
 		  if (wc >= 0x24B6 && wc <= 0x24E9) /* Other_Alphabetic */
 		    goto Alphabetic;
 
-		  if (G_UNLIKELY(wc >=0x1F1E6 && wc <=0x1F1FF))
+		  if (G_UNLIKELY(wc >= 0x1F1E6 && wc <= 0x1F1FF))
 		    {
-			  if (prev_WB_type == WB_RI_Odd)
-			   WB_type = WB_RI_Even;
-			  else if (prev_WB_type == WB_RI_Even)
-			   WB_type = WB_RI_Odd;
-			  else
-			   WB_type = WB_RI_Odd;
+                      if (prev_WB_type == WB_RI_Odd)
+                        WB_type = WB_RI_Even;
+                      else
+                        WB_type = WB_RI_Odd;
 		    }
 
 		  break;
@@ -675,6 +677,8 @@ pango_default_break (const gchar   *text,
 		  if (break_type != G_UNICODE_BREAK_COMPLEX_CONTEXT && script != PANGO_SCRIPT_HIRAGANA)
 		    WB_type = WB_ALetter; /* ALetter */
 		  break;
+                default:
+                  break;
 		}
 
 	    if (WB_type == WB_Other)
@@ -862,6 +866,9 @@ pango_default_break (const gchar   *text,
 		    SB_type = SB_STerm;
 
 		  break;
+
+                default:
+                  break;
 		}
 
 	    if (SB_type == SB_Other)
@@ -932,7 +939,20 @@ pango_default_break (const gchar   *text,
 		      prev_prev_SB_type == SB_ATerm_Close_Sp) &&
 		     IS_OTHER_TERM(prev_SB_type) &&
 		     SB_type == SB_Lower)
-	      attrs[prev_SB_i].is_sentence_boundary = FALSE;
+              {
+	        attrs[prev_SB_i].is_sentence_boundary = FALSE;
+	        attrs[prev_SB_i].is_sentence_end = FALSE;
+                last_sentence_start = -1;
+                for (int j = prev_SB_i - 1; j >= 0; j--)
+                  {
+                    attrs[j].is_sentence_end = FALSE;
+                    if (attrs[j].is_sentence_boundary)
+                      {
+                        last_sentence_start = j;
+                        break;
+                      }
+                  }
+              }
 	    else if ((prev_SB_type == SB_ATerm ||
 		      prev_SB_type == SB_ATerm_Close_Sp ||
 		      prev_SB_type == SB_STerm ||
@@ -995,7 +1015,7 @@ pango_default_break (const gchar   *text,
 
       /* Rule LB1:
 	 assign a line breaking class to each code point of the input. */
-      switch (break_type)
+      switch ((int)break_type)
 	{
 	case G_UNICODE_BREAK_AMBIGUOUS:
 	case G_UNICODE_BREAK_SURROGATE:
@@ -1016,7 +1036,7 @@ pango_default_break (const gchar   *text,
 	  break;
 
 	default:
-	  ;
+          break;
 	}
 
       /* If it's not a grapheme boundary, it's not a line break either */
@@ -1059,8 +1079,6 @@ pango_default_break (const gchar   *text,
 	    {
 	      if (prev_LB_type == LB_RI_Odd)
 		LB_type = LB_RI_Even;
-	      else if (prev_LB_type == LB_RI_Even)
-		LB_type = LB_RI_Odd;
 	      else
 		LB_type = LB_RI_Odd;
 	    }
@@ -1102,6 +1120,11 @@ pango_default_break (const gchar   *text,
 	      break_type == G_UNICODE_BREAK_EMOJI_MODIFIER)
 	    break_op = BREAK_PROHIBITED;
 
+	  if ((_pango_Is_Emoji_Extended_Pictographic (prev_wc) &&
+	       g_unichar_type (prev_wc) == G_UNICODE_UNASSIGNED) &&
+	      break_type == G_UNICODE_BREAK_EMOJI_MODIFIER)
+	    break_op = BREAK_PROHIBITED;
+
 	  /* Rule LB29 */
 	  if (prev_break_type == G_UNICODE_BREAK_INFIX_SEPARATOR &&
 	      (break_type == G_UNICODE_BREAK_ALPHABETIC ||
@@ -1121,8 +1144,7 @@ pango_default_break (const gchar   *text,
 	       prev_break_type == G_UNICODE_BREAK_HANGUL_T_JAMO ||
 	       prev_break_type == G_UNICODE_BREAK_HANGUL_LV_SYLLABLE ||
 	       prev_break_type == G_UNICODE_BREAK_HANGUL_LVT_SYLLABLE) &&
-	      (break_type == G_UNICODE_BREAK_INSEPARABLE ||
-	       break_type == G_UNICODE_BREAK_POSTFIX))
+	      break_type == G_UNICODE_BREAK_POSTFIX)
 	    break_op = BREAK_PROHIBITED;
 
 	  if (prev_break_type == G_UNICODE_BREAK_PREFIX &&
@@ -1525,7 +1547,7 @@ pango_default_break (const gchar   *text,
 
 	/* meets sentence end, mark both sentence start and end */
 	if (last_sentence_start != -1 && is_sentence_boundary) {
-	  if (last_non_space != -1) {
+	  if (last_non_space >= last_sentence_start) {
 	    attrs[last_sentence_start].is_sentence_start = TRUE;
 	    attrs[last_non_space].is_sentence_end = TRUE;
 	  }
@@ -1537,12 +1559,86 @@ pango_default_break (const gchar   *text,
 	/* meets space character, move sentence start */
 	if (last_sentence_start != -1 &&
 	    last_sentence_start == i - 1 &&
-	    attrs[i - 1].is_white)
+	    attrs[i - 1].is_white) {
 	    last_sentence_start++;
+          }
+      }
 
+      /* --- Hyphens --- */
+
+      {
+        gboolean insert_hyphens;
+        gboolean space_or_hyphen = FALSE;
+
+        attrs[i].break_inserts_hyphen = FALSE;
+        attrs[i].break_removes_preceding = FALSE;
+
+        switch ((int)prev_script)
+          {
+          case PANGO_SCRIPT_COMMON:
+            insert_hyphens = prev_wc == 0x00ad;
+            break;
+          case PANGO_SCRIPT_HAN:
+          case PANGO_SCRIPT_HANGUL:
+          case PANGO_SCRIPT_HIRAGANA:
+          case PANGO_SCRIPT_KATAKANA:
+            insert_hyphens = FALSE;
+            break;
+          default:
+            insert_hyphens = TRUE;
+            break;
+          }
+
+        switch ((int)type)
+          {
+          case G_UNICODE_SPACE_SEPARATOR:
+          case G_UNICODE_LINE_SEPARATOR:
+          case G_UNICODE_PARAGRAPH_SEPARATOR:
+            space_or_hyphen = TRUE;
+            break;
+          case G_UNICODE_CONTROL:
+            if (wc == '\t' || wc == '\n' || wc == '\r' || wc == '\f')
+              space_or_hyphen = TRUE;
+            break;
+          default:
+            break;
+          }
+
+        if (!space_or_hyphen)
+          {
+            if (wc == '-'    || /* Hyphen-minus */
+                wc == 0x058a || /* Armenian hyphen */
+                wc == 0x1400 || /* Canadian syllabics hyphen */
+                wc == 0x1806 || /* Mongolian todo hyphen */
+                wc == 0x2010 || /* Hyphen */
+                wc == 0x2e17 || /* Double oblique hyphen */
+                wc == 0x2e40 || /* Double hyphen */
+                wc == 0x30a0 || /* Katakana-Hiragana double hyphen */
+                wc == 0xfe63 || /* Small hyphen-minus */
+                wc == 0xff0d)   /* Fullwidth hyphen-minus */
+              space_or_hyphen = TRUE;
+          }
+
+        if (attrs[i].is_word_boundary)
+          attrs[i].break_inserts_hyphen = FALSE;
+        else if (prev_space_or_hyphen)
+          attrs[i].break_inserts_hyphen = FALSE;
+        else if (space_or_hyphen)
+          attrs[i].break_inserts_hyphen = FALSE;
+        else
+          attrs[i].break_inserts_hyphen = insert_hyphens;
+
+        if (prev_wc == 0x2027)     /* Hyphenation point */
+          {
+            attrs[i].break_inserts_hyphen = TRUE;
+            attrs[i].break_removes_preceding = TRUE;
+          }
+
+        prev_space_or_hyphen = space_or_hyphen;
       }
 
       prev_wc = wc;
+      prev_script = script;
 
       /* wc might not be a valid Unicode base character, but really all we
        * need to know is the last non-combining character */
@@ -1554,313 +1650,25 @@ pango_default_break (const gchar   *text,
 
   i--;
 
-  attrs[i].is_cursor_position = TRUE;  /* Rule GB2 */
   attrs[0].is_cursor_position = TRUE;  /* Rule GB1 */
+  attrs[i].is_cursor_position = TRUE;  /* Rule GB2 */
 
-  attrs[i].is_word_boundary = TRUE;  /* Rule WB2 */
   attrs[0].is_word_boundary = TRUE;  /* Rule WB1 */
+  attrs[i].is_word_boundary = TRUE;  /* Rule WB2 */
 
-  attrs[i].is_line_break = TRUE;  /* Rule LB3 */
   attrs[0].is_line_break = FALSE; /* Rule LB2 */
-
+  attrs[i].is_line_break = TRUE;  /* Rule LB3 */
+  attrs[i].is_mandatory_break = TRUE;  /* Rule LB3 */
 }
 
-static gboolean
-break_script (const char          *item_text,
-	      unsigned int         item_length,
-	      const PangoAnalysis *analysis,
-	      PangoLogAttr        *attrs,
-	      int                  attrs_len);
-
-static gboolean
-break_attrs (const char   *text,
-	     int           length,
-             GSList       *attributes,
-             int           item_offset,
-             PangoLogAttr *attrs,
-             int           attrs_len);
-
-static gboolean
-tailor_break (const char    *text,
-	      int            length,
-	      PangoAnalysis *analysis,
-              int            item_offset,
-	      PangoLogAttr  *attrs,
-	      int            attrs_len)
-{
-  gboolean res;
-
-  if (length < 0)
-    length = strlen (text);
-  else if (text == NULL)
-    text = "";
-
-  res = break_script (text, length, analysis, attrs, attrs_len);
-
-  if (item_offset >= 0 && analysis->extra_attrs)
-    res |= break_attrs (text, length, analysis->extra_attrs, item_offset, attrs, attrs_len);
-
-  return res;
-}
-
-/**
- * pango_break:
- * @text:      the text to process. Must be valid UTF-8
- * @length:    length of @text in bytes (may be -1 if @text is nul-terminated)
- * @analysis:  #PangoAnalysis structure from pango_itemize()
- * @attrs:     (array length=attrs_len): an array to store character
- *             information in
- * @attrs_len: size of the array passed as @attrs
- *
- * Determines possible line, word, and character breaks
- * for a string of Unicode text with a single analysis.
- * For most purposes you may want to use pango_get_log_attrs().
- *
- * Deprecated: 1.44: Use pango_default_break() and pango_tailor_break()
- */
-void
-pango_break (const gchar   *text,
-	     gint           length,
-	     PangoAnalysis *analysis,
-	     PangoLogAttr  *attrs,
-	     int            attrs_len)
-{
-  g_return_if_fail (analysis != NULL);
-  g_return_if_fail (attrs != NULL);
-
-  pango_default_break (text, length, analysis, attrs, attrs_len);
-  tailor_break        (text, length, analysis, -1, attrs, attrs_len);
-}
-
-/**
- * pango_find_paragraph_boundary:
- * @text: UTF-8 text
- * @length: length of @text in bytes, or -1 if nul-terminated
- * @paragraph_delimiter_index: (out): return location for index of
- *   delimiter
- * @next_paragraph_start: (out): return location for start of next
- *   paragraph
- *
- * Locates a paragraph boundary in @text. A boundary is caused by
- * delimiter characters, such as a newline, carriage return, carriage
- * return-newline pair, or Unicode paragraph separator character.  The
- * index of the run of delimiters is returned in
- * @paragraph_delimiter_index. The index of the start of the paragraph
- * (index after all delimiters) is stored in @next_paragraph_start.
- *
- * If no delimiters are found, both @paragraph_delimiter_index and
- * @next_paragraph_start are filled with the length of @text (an index one
- * off the end).
- **/
-void
-pango_find_paragraph_boundary (const gchar *text,
-			       gint         length,
-			       gint        *paragraph_delimiter_index,
-			       gint        *next_paragraph_start)
-{
-  const gchar *p = text;
-  const gchar *end;
-  const gchar *start = NULL;
-  const gchar *delimiter = NULL;
-
-  /* Only one character has type G_UNICODE_PARAGRAPH_SEPARATOR in
-   * Unicode 5.0; update the following code if that changes.
-   */
-
-  /* prev_sep is the first byte of the previous separator.  Since
-   * the valid separators are \r, \n, and PARAGRAPH_SEPARATOR, the
-   * first byte is enough to identify it.
-   */
-  gchar prev_sep;
-
-
-  if (length < 0)
-    length = strlen (text);
-
-  end = text + length;
-
-  if (paragraph_delimiter_index)
-    *paragraph_delimiter_index = length;
-
-  if (next_paragraph_start)
-    *next_paragraph_start = length;
-
-  if (length == 0)
-    return;
-
-  prev_sep = 0;
-
-  while (p < end)
-    {
-      if (prev_sep == '\n' ||
-	  prev_sep == PARAGRAPH_SEPARATOR_STRING[0])
-	{
-	  g_assert (delimiter);
-	  start = p;
-	  break;
-	}
-      else if (prev_sep == '\r')
-	{
-	  /* don't break between \r and \n */
-	  if (*p != '\n')
-	    {
-	      g_assert (delimiter);
-	      start = p;
-	      break;
-	    }
-	}
-
-      if (*p == '\n' ||
-	   *p == '\r' ||
-	   !strncmp(p, PARAGRAPH_SEPARATOR_STRING,
-		    strlen(PARAGRAPH_SEPARATOR_STRING)))
-	{
-	  if (delimiter == NULL)
-	    delimiter = p;
-	  prev_sep = *p;
-	}
-      else
-	prev_sep = 0;
-
-      p = g_utf8_next_char (p);
-    }
-
-  if (delimiter && paragraph_delimiter_index)
-    *paragraph_delimiter_index = delimiter - text;
-
-  if (start && next_paragraph_start)
-    *next_paragraph_start = start - text;
-}
-
-/**
- * pango_tailor_break:
- * @text: text to process. Must be valid UTF-8
- * @length: length in bytes of @text
- * @analysis:  #PangoAnalysis structure from pango_itemize() for @text
- * @offset: Byte offset of @text from the beginning of the
- *     paragraph, or -1 to ignore attributes from @analysis
- * @log_attrs: (array length=log_attrs_len): array with one #PangoLogAttr
- *   per character in @text, plus one extra, to be filled in
- * @log_attrs_len: length of @log_attrs array
- *
- * Apply language-specific tailoring to the breaks in
- * @log_attrs, which are assumed to have been produced
- * by pango_default_break().
- *
- * If @offset is not -1, it is used to apply attributes
- * from @analysis that are relevant to line breaking.
- *
- * Since: 1.44
- */
-void
-pango_tailor_break (const char    *text,
-                    int            length,
-                    PangoAnalysis *analysis,
-                    int            offset,
-                    PangoLogAttr  *log_attrs,
-                    int            log_attrs_len)
-{
-  PangoLogAttr *start = log_attrs;
-  PangoLogAttr attr_before = *start;
-
-  if (tailor_break (text, length, analysis, offset, log_attrs, log_attrs_len))
-    {
-      /* if tailored, we enforce some of the attrs from before
-       * tailoring at the boundary
-       */
-
-     start->backspace_deletes_character  = attr_before.backspace_deletes_character;
-
-     start->is_line_break      |= attr_before.is_line_break;
-     start->is_mandatory_break |= attr_before.is_mandatory_break;
-     start->is_cursor_position |= attr_before.is_cursor_position;
-    }
-}
-
-static int
-tailor_segment (const char      *range_start,
-		const char      *range_end,
-		int              chars_broken,
-		PangoAnalysis   *analysis,
-		PangoLogAttr    *log_attrs)
-{
-  int chars_in_range;
-  PangoLogAttr *start = log_attrs + chars_broken;
-
-  chars_in_range = pango_utf8_strlen (range_start, range_end - range_start);
-
-  pango_tailor_break (range_start,
-                      range_end - range_start,
-                      analysis,
-                      -1,
-                      start,
-                      chars_in_range + 1);
-
-  return chars_in_range;
-}
-
-/**
- * pango_get_log_attrs:
- * @text: text to process. Must be valid UTF-8
- * @length: length in bytes of @text
- * @level: embedding level, or -1 if unknown
- * @language: language tag
- * @log_attrs: (array length=attrs_len): array with one #PangoLogAttr
- *   per character in @text, plus one extra, to be filled in
- * @attrs_len: length of @log_attrs array
- *
- * Computes a #PangoLogAttr for each character in @text. The @log_attrs
- * array must have one #PangoLogAttr for each position in @text; if
- * @text contains N characters, it has N+1 positions, including the
- * last position at the end of the text. @text should be an entire
- * paragraph; logical attributes can't be computed without context
- * (for example you need to see spaces on either side of a word to know
- * the word is a word).
- */
-void
-pango_get_log_attrs (const char    *text,
-		     int            length,
-		     int            level,
-		     PangoLanguage *language,
-		     PangoLogAttr  *log_attrs,
-		     int            attrs_len)
-{
-  int chars_broken;
-  PangoAnalysis analysis = { NULL };
-  PangoScriptIter iter;
-
-  g_return_if_fail (length == 0 || text != NULL);
-  g_return_if_fail (log_attrs != NULL);
-
-  analysis.level = level;
-
-  pango_default_break (text, length, &analysis, log_attrs, attrs_len);
-
-  chars_broken = 0;
-
-  _pango_script_iter_init (&iter, text, length);
-  do
-    {
-      const char *run_start, *run_end;
-      PangoScript script;
-
-      pango_script_iter_get_range (&iter, &run_start, &run_end, &script);
-      analysis.script = script;
-
-      chars_broken += tailor_segment (run_start, run_end, chars_broken, &analysis, log_attrs);
-    }
-  while (pango_script_iter_next (&iter));
-  _pango_script_iter_fini (&iter);
-
-  if (chars_broken + 1 > attrs_len)
-    g_warning ("pango_get_log_attrs: attrs_len should have been at least %d, but was %d.  Expect corrupted memory.",
-	       chars_broken + 1,
-	       attrs_len);
-}
+/* }}} */
+/* {{{ Tailoring */
+/* {{{ Script-specific tailoring */
 
 #include "break-arabic.c"
 #include "break-indic.c"
 #include "break-thai.c"
+#include "break-latin.c"
 
 static gboolean
 break_script (const char          *item_text,
@@ -1891,6 +1699,11 @@ break_script (const char          *item_text,
     case PANGO_SCRIPT_THAI:
       break_thai (item_text, item_length, analysis, attrs, attrs_len);
       break;
+
+    case PANGO_SCRIPT_LATIN:
+      break_latin (item_text, item_length, analysis, attrs, attrs_len);
+      break;
+
     default:
       return FALSE;
     }
@@ -1898,36 +1711,337 @@ break_script (const char          *item_text,
   return TRUE;
 }
 
-static gboolean
-break_attrs (const char   *text,
-             int           length,
-             GSList       *attributes,
-             int           offset,
-             PangoLogAttr *log_attrs,
-             int           log_attrs_len)
+/* }}} */
+/* {{{ Attribute-based customization */
+
+/* We allow customizing log attrs in two ways:
+ *
+ * - You can directly remove breaks from a range, using allow_breaks=false.
+ *   We preserve the non-tailorable rules from UAX #14, so mandatory breaks
+ *   and breaks after ZWS remain. We also preserve break opportunities after
+ *   hyphens and visible word dividers.
+ *
+ * - You can tweak the segmentation by marking ranges as word or sentence.
+ *   When doing so, we split adjacent segments to preserve alternating
+ *   starts and ends. We add a line break opportunity before each word that
+ *   is created in this way, and we remove line break opportunities inside
+ *   the word in the same way as for a range marked as allow_breaks=false,
+ *   except that we don't remove char break opportunities.
+ *
+ *   Note that UAX #14 does not guarantee that words fall neatly into
+ *   sentences, so we don't do extra work to enforce that.
+ */
+
+static void
+remove_breaks_from_range (const char   *text,
+                          int           start,
+                          PangoLogAttr *log_attrs,
+                          int           start_pos,
+                          int           end_pos)
 {
-  PangoAttrList list;
+  int pos;
+  const char *p;
+  gunichar ch;
+  int bt;
+  gboolean after_zws;
+  gboolean after_hyphen;
+
+  /* Assume our range doesn't start after a hyphen or in a zws sequence */
+  after_zws = FALSE;
+  after_hyphen = FALSE;
+  for (pos = start_pos + 1, p = g_utf8_next_char (text + start);
+       pos < end_pos;
+       pos++, p = g_utf8_next_char (p))
+    {
+      /* Mandatory breaks aren't tailorable */
+      if (!log_attrs[pos].is_mandatory_break)
+        log_attrs[pos].is_line_break = FALSE;
+
+      ch = g_utf8_get_char (p);
+      bt = g_unichar_break_type (ch);
+
+      /* Hyphens and visible word dividers */
+      if (after_hyphen)
+        log_attrs[pos].is_line_break = TRUE;
+
+      after_hyphen = ch == 0x00ad || /* Soft Hyphen */
+         ch == 0x05A0 || ch == 0x2010 || /* Breaking Hyphens */
+         ch == 0x2012 || ch == 0x2013 ||
+         ch == 0x05BE || ch == 0x0F0B || /* Visible word dividers */
+         ch == 0x1361 || ch == 0x17D8 ||
+         ch == 0x17DA || ch == 0x2027 ||
+         ch == 0x007C;
+
+      /* ZWS sequence */
+      if (after_zws && bt != G_UNICODE_BREAK_SPACE)
+        log_attrs[pos].is_line_break = TRUE;
+
+      after_zws = bt == G_UNICODE_BREAK_ZERO_WIDTH_SPACE ||
+                  (bt == G_UNICODE_BREAK_SPACE && after_zws);
+    }
+}
+
+static gboolean
+handle_allow_breaks (const char    *text,
+                     int            length,
+                     PangoAttrList *attrs,
+                     int            offset,
+                     PangoLogAttr  *log_attrs,
+                     int            log_attrs_len)
+{
   PangoAttrIterator iter;
-  GSList *l;
+  gboolean tailored = FALSE;
 
-  _pango_attr_list_init (&list);
-  for (l = attributes; l; l = l->next)
+  _pango_attr_list_get_iterator (attrs, &iter);
+
+  do
     {
-      PangoAttribute *attr = l->data;
+      const PangoAttribute *attr = pango_attr_iterator_get (&iter, PANGO_ATTR_ALLOW_BREAKS);
 
-      if (attr->klass->type == PANGO_ATTR_ALLOW_BREAKS)
-        pango_attr_list_insert (&list, pango_attribute_copy (attr));
+      if (!attr)
+        continue;
+
+      if (!((PangoAttrInt*)attr)->value)
+        {
+          int start, end;
+          int start_pos, end_pos;
+          int pos;
+
+          start = attr->start_index;
+          end = attr->end_index;
+          if (start < offset)
+            start_pos = 0;
+          else
+            start_pos = g_utf8_pointer_to_offset (text, text + start - offset);
+          if (end >= offset + length)
+            end_pos = log_attrs_len;
+          else
+            end_pos = g_utf8_pointer_to_offset (text, text + end - offset);
+
+          for (pos = start_pos + 1; pos < end_pos; pos++)
+            log_attrs[pos].is_char_break = FALSE;
+
+          remove_breaks_from_range (text, MAX (start - offset, 0), log_attrs, start_pos, end_pos);
+
+          tailored = TRUE;
+        }
     }
+  while (pango_attr_iterator_next (&iter));
 
-  if (!_pango_attr_list_has_attributes (&list))
+  _pango_attr_iterator_destroy (&iter);
+
+  return tailored;
+}
+
+
+static gboolean
+handle_words (const char    *text,
+              int            length,
+              PangoAttrList *attrs,
+              int            offset,
+              PangoLogAttr  *log_attrs,
+              int            log_attrs_len)
+{
+  PangoAttrIterator iter;
+  gboolean tailored = FALSE;
+
+  _pango_attr_list_get_iterator (attrs, &iter);
+
+  do
     {
-      _pango_attr_list_destroy (&list);
-      return FALSE;
-    }
+      const PangoAttribute *attr = pango_attr_iterator_get (&iter, PANGO_ATTR_WORD);
+      int start, end;
+      int start_pos, end_pos;
+      int pos;
 
-  _pango_attr_list_get_iterator (&list, &iter);
+      if (!attr)
+        continue;
+
+      start = attr->start_index;
+      end = attr->end_index;
+      if (start < offset)
+        start_pos = 0;
+      else
+        start_pos = g_utf8_pointer_to_offset (text, text + start - offset);
+      if (end >= offset + length)
+        end_pos = log_attrs_len;
+      else
+        end_pos = g_utf8_pointer_to_offset (text, text + end - offset);
+
+      for (pos = start_pos + 1; pos < end_pos; pos++)
+        {
+          log_attrs[pos].is_word_start = FALSE;
+          log_attrs[pos].is_word_end = FALSE;
+          log_attrs[pos].is_word_boundary = FALSE;
+        }
+
+      remove_breaks_from_range (text, MAX (start - offset, 0), log_attrs,
+                                start_pos, end_pos);
+
+      if (start >= offset)
+        {
+          gboolean in_word = FALSE;
+          for (pos = start_pos; pos >= 0; pos--)
+            {
+              if (log_attrs[pos].is_word_end)
+                {
+                  in_word = pos == start_pos;
+                  break;
+                }
+              if (pos < start_pos && log_attrs[pos].is_word_start)
+                {
+                  in_word = TRUE;
+                  break;
+                }
+            }
+          log_attrs[start_pos].is_word_start = TRUE;
+          log_attrs[start_pos].is_word_end = in_word;
+          log_attrs[start_pos].is_word_boundary = TRUE;
+
+          /* Allow line breaks before words */
+          if (start_pos > 0)
+            log_attrs[start_pos].is_line_break = TRUE;
+
+          tailored = TRUE;
+        }
+
+      if (end < offset + length)
+        {
+          gboolean in_word = FALSE;
+          for (pos = end_pos; pos < log_attrs_len; pos++)
+            {
+              if (log_attrs[pos].is_word_start)
+                {
+                  in_word = pos == end_pos;
+                  break;
+                }
+              if (pos > end_pos && log_attrs[pos].is_word_end)
+                {
+                  in_word = TRUE;
+                  break;
+                }
+            }
+          log_attrs[end_pos].is_word_start = in_word;
+          log_attrs[end_pos].is_word_end = TRUE;
+          log_attrs[end_pos].is_word_boundary = TRUE;
+
+          /* Allow line breaks before words */
+          if (in_word)
+            log_attrs[end_pos].is_line_break = TRUE;
+
+          tailored = TRUE;
+        }
+    }
+  while (pango_attr_iterator_next (&iter));
+
+  _pango_attr_iterator_destroy (&iter);
+
+  return tailored;
+}
+
+static gboolean
+handle_sentences (const char    *text,
+                  int            length,
+                  PangoAttrList *attrs,
+                  int            offset,
+                  PangoLogAttr  *log_attrs,
+                  int            log_attrs_len)
+{
+  PangoAttrIterator iter;
+  gboolean tailored = FALSE;
+
+  _pango_attr_list_get_iterator (attrs, &iter);
+
+  do
+    {
+      const PangoAttribute *attr = pango_attr_iterator_get (&iter, PANGO_ATTR_SENTENCE);
+      int start, end;
+      int start_pos, end_pos;
+      int pos;
+
+      if (!attr)
+        continue;
+
+      start = attr->start_index;
+      end = attr->end_index;
+      if (start < offset)
+        start_pos = 0;
+      else
+        start_pos = g_utf8_pointer_to_offset (text, text + start - offset);
+      if (end >= offset + length)
+        end_pos = log_attrs_len;
+      else
+        end_pos = g_utf8_pointer_to_offset (text, text + end - offset);
+
+      for (pos = start_pos + 1; pos < end_pos; pos++)
+        {
+          log_attrs[pos].is_sentence_start = FALSE;
+          log_attrs[pos].is_sentence_end = FALSE;
+          log_attrs[pos].is_sentence_boundary = FALSE;
+
+          tailored = TRUE;
+        }
+      if (start >= offset)
+        {
+          gboolean in_sentence = FALSE;
+          for (pos = start_pos - 1; pos >= 0; pos--)
+            {
+              if (log_attrs[pos].is_sentence_end)
+                break;
+              if (log_attrs[pos].is_sentence_start)
+                {
+                  in_sentence = TRUE;
+                  break;
+                }
+            }
+          log_attrs[start_pos].is_sentence_start = TRUE;
+          log_attrs[start_pos].is_sentence_end = in_sentence;
+          log_attrs[start_pos].is_sentence_boundary = TRUE;
+
+          tailored = TRUE;
+        }
+      if (end < offset + length)
+        {
+          gboolean in_sentence = FALSE;
+          for (pos = end_pos + 1; end_pos < log_attrs_len; pos++)
+            {
+              if (log_attrs[pos].is_sentence_start)
+                break;
+              if (log_attrs[pos].is_sentence_end)
+                {
+                  in_sentence = TRUE;
+                  break;
+                }
+            }
+          log_attrs[end_pos].is_sentence_start = in_sentence;
+          log_attrs[end_pos].is_sentence_end = TRUE;
+          log_attrs[end_pos].is_sentence_boundary = TRUE;
+
+          tailored = TRUE;
+        }
+    }
+  while (pango_attr_iterator_next (&iter));
+
+  _pango_attr_iterator_destroy (&iter);
+
+  return tailored;
+}
+
+static gboolean
+handle_hyphens (const char    *text,
+                int            length,
+                PangoAttrList *attrs,
+                int            offset,
+                PangoLogAttr  *log_attrs,
+                int            log_attrs_len)
+{
+  PangoAttrIterator iter;
+  gboolean tailored = FALSE;
+
+  _pango_attr_list_get_iterator (attrs, &iter);
+
   do {
-    const PangoAttribute *attr = pango_attr_iterator_get (&iter, PANGO_ATTR_ALLOW_BREAKS);
+    const PangoAttribute *attr = pango_attr_iterator_get (&iter, PANGO_ATTR_INSERT_HYPHENS);
 
     if (attr && ((PangoAttrInt*)attr)->value == 0)
       {
@@ -1947,15 +2061,333 @@ break_attrs (const char   *text,
 
         for (pos = start_pos + 1; pos < end_pos; pos++)
           {
-            log_attrs[pos].is_mandatory_break = FALSE;
-            log_attrs[pos].is_line_break = FALSE;
-            log_attrs[pos].is_char_break = FALSE;
+            if (!log_attrs[pos].break_removes_preceding)
+              {
+                log_attrs[pos].break_inserts_hyphen = FALSE;
+
+                tailored = TRUE;
+              }
           }
       }
   } while (pango_attr_iterator_next (&iter));
 
   _pango_attr_iterator_destroy (&iter);
-  _pango_attr_list_destroy (&list);
 
-  return TRUE;
+  return tailored;
 }
+
+static gboolean
+break_attrs (const char   *text,
+             int           length,
+             GSList       *attributes,
+             int           offset,
+             PangoLogAttr *log_attrs,
+             int           log_attrs_len)
+{
+  PangoAttrList allow_breaks;
+  PangoAttrList words;
+  PangoAttrList sentences;
+  PangoAttrList hyphens;
+  GSList *l;
+  gboolean tailored = FALSE;
+
+  _pango_attr_list_init (&allow_breaks);
+  _pango_attr_list_init (&words);
+  _pango_attr_list_init (&sentences);
+  _pango_attr_list_init (&hyphens);
+
+  for (l = attributes; l; l = l->next)
+    {
+      PangoAttribute *attr = l->data;
+
+      if (attr->klass->type == PANGO_ATTR_ALLOW_BREAKS)
+        pango_attr_list_insert (&allow_breaks, pango_attribute_copy (attr));
+      else if (attr->klass->type == PANGO_ATTR_WORD)
+        pango_attr_list_insert (&words, pango_attribute_copy (attr));
+      else if (attr->klass->type == PANGO_ATTR_SENTENCE)
+        pango_attr_list_insert (&sentences, pango_attribute_copy (attr));
+      else if (attr->klass->type == PANGO_ATTR_INSERT_HYPHENS)
+        pango_attr_list_insert (&hyphens, pango_attribute_copy (attr));
+    }
+
+  tailored |= handle_words (text, length, &words, offset,
+                            log_attrs, log_attrs_len);
+
+  tailored |= handle_sentences (text, length, &words, offset,
+                                log_attrs, log_attrs_len);
+
+  tailored |= handle_hyphens (text, length, &hyphens, offset,
+                              log_attrs, log_attrs_len);
+
+  tailored |= handle_allow_breaks (text, length, &allow_breaks, offset,
+                                   log_attrs, log_attrs_len);
+
+  _pango_attr_list_destroy (&allow_breaks);
+  _pango_attr_list_destroy (&words);
+  _pango_attr_list_destroy (&sentences);
+  _pango_attr_list_destroy (&hyphens);
+
+  return tailored;
+}
+
+/* }}} */
+
+static gboolean
+tailor_break (const char    *text,
+              int            length,
+              PangoAnalysis *analysis,
+              int            item_offset,
+              PangoLogAttr  *attrs,
+              int            attrs_len)
+{
+  gboolean res;
+
+  if (length < 0)
+    length = strlen (text);
+  else if (text == NULL)
+    text = "";
+
+  res = break_script (text, length, analysis, attrs, attrs_len);
+
+  if (item_offset >= 0 && analysis->extra_attrs)
+    res |= break_attrs (text, length, analysis->extra_attrs, item_offset, attrs, attrs_len);
+
+  return res;
+}
+
+/* }}} */
+/* {{{ Public API */
+
+/**
+ * pango_default_break:
+ * @text: text to break. Must be valid UTF-8
+ * @length: length of text in bytes (may be -1 if @text is nul-terminated)
+ * @analysis: (nullable): a `PangoAnalysis` structure for the @text
+ * @attrs: logical attributes to fill in
+ * @attrs_len: size of the array passed as @attrs
+ *
+ * This is the default break algorithm.
+ *
+ * It applies rules from the [Unicode Line Breaking Algorithm](http://www.unicode.org/unicode/reports/tr14/)
+ * without language-specific tailoring, therefore the @analyis argument is unused
+ * and can be %NULL.
+ *
+ * See [func@Pango.tailor_break] for language-specific breaks.
+ *
+ * See [func@Pango.attr_break] for attribute-based customization.
+ */
+void
+pango_default_break (const char    *text,
+                     int            length,
+                     PangoAnalysis *analysis G_GNUC_UNUSED,
+                     PangoLogAttr  *attrs,
+                     int            attrs_len G_GNUC_UNUSED)
+{
+  PangoLogAttr before = *attrs;
+
+  default_break (text, length, analysis, attrs, attrs_len);
+
+  attrs->is_line_break      |= before.is_line_break;
+  attrs->is_mandatory_break |= before.is_mandatory_break;
+  attrs->is_cursor_position |= before.is_cursor_position;
+}
+
+/**
+ * pango_break:
+ * @text: the text to process. Must be valid UTF-8
+ * @length: length of @text in bytes (may be -1 if @text is nul-terminated)
+ * @analysis: `PangoAnalysis` structure for @text
+ * @attrs: (array length=attrs_len): an array to store character information in
+ * @attrs_len: size of the array passed as @attrs
+ *
+ * Determines possible line, word, and character breaks
+ * for a string of Unicode text with a single analysis.
+ *
+ * For most purposes you may want to use [func@Pango.get_log_attrs].
+ *
+ * Deprecated: 1.44: Use [func@Pango.default_break],
+ *   [func@Pango.tailor_break] and [func@Pango.attr_break].
+ */
+void
+pango_break (const char    *text,
+             gint           length,
+             PangoAnalysis *analysis,
+             PangoLogAttr  *attrs,
+             int            attrs_len)
+{
+  g_return_if_fail (analysis != NULL);
+  g_return_if_fail (attrs != NULL);
+
+  default_break (text, length, analysis, attrs, attrs_len);
+  tailor_break (text, length, analysis, -1, attrs, attrs_len);
+}
+
+/**
+ * pango_tailor_break:
+ * @text: text to process. Must be valid UTF-8
+ * @length: length in bytes of @text
+ * @analysis: `PangoAnalysis` for @text
+ * @offset: Byte offset of @text from the beginning of the
+ *   paragraph, or -1 to ignore attributes from @analysis
+ * @attrs: (array length=attrs_len): array with one `PangoLogAttr`
+ *   per character in @text, plus one extra, to be filled in
+ * @attrs_len: length of @attrs array
+ *
+ * Apply language-specific tailoring to the breaks in @attrs.
+ *
+ * The line breaks are assumed to have been produced by [func@Pango.default_break].
+ *
+ * If @offset is not -1, it is used to apply attributes from @analysis that are
+ * relevant to line breaking.
+ *
+ * Note that it is better to pass -1 for @offset and use [func@Pango.attr_break]
+ * to apply attributes to the whole paragraph.
+ *
+ * Since: 1.44
+ */
+void
+pango_tailor_break (const char    *text,
+                    int            length,
+                    PangoAnalysis *analysis,
+                    int            offset,
+                    PangoLogAttr  *attrs,
+                    int            attrs_len)
+{
+  PangoLogAttr *start = attrs;
+  PangoLogAttr attr_before = *start;
+
+  if (tailor_break (text, length, analysis, offset, attrs, attrs_len))
+    {
+      /* if tailored, we enforce some of the attrs from before
+       * tailoring at the boundary
+       */
+
+     start->backspace_deletes_character  = attr_before.backspace_deletes_character;
+
+     start->is_line_break      |= attr_before.is_line_break;
+     start->is_mandatory_break |= attr_before.is_mandatory_break;
+     start->is_cursor_position |= attr_before.is_cursor_position;
+    }
+}
+
+/**
+ * pango_attr_break:
+ * @text: text to break. Must be valid UTF-8
+ * @length: length of text in bytes (may be -1 if @text is nul-terminated)
+ * @attr_list: `PangoAttrList` to apply
+ * @offset: Byte offset of @text from the beginning of the paragraph
+ * @attrs: (array length=attrs_len): array with one `PangoLogAttr`
+ *   per character in @text, plus one extra, to be filled in
+ * @attrs_len: length of @attrs array
+ *
+ * Apply customization from attributes to the breaks in @attrs.
+ *
+ * The line breaks are assumed to have been produced
+ * by [func@Pango.default_break] and [func@Pango.tailor_break].
+ *
+ * Since: 1.50
+ */
+void
+pango_attr_break (const char    *text,
+                  int            length,
+                  PangoAttrList *attr_list,
+                  int            offset,
+                  PangoLogAttr  *attrs,
+                  int            attrs_len)
+{
+  PangoLogAttr *start = attrs;
+  PangoLogAttr attr_before = *start;
+  GSList *attributes;
+
+  attributes = pango_attr_list_get_attributes (attr_list);
+  if (break_attrs (text, length, attributes, offset, attrs, attrs_len))
+    {
+      /* if tailored, we enforce some of the attrs from before
+       * tailoring at the boundary
+       */
+
+      start->backspace_deletes_character  = attr_before.backspace_deletes_character;
+
+      start->is_line_break      |= attr_before.is_line_break;
+      start->is_mandatory_break |= attr_before.is_mandatory_break;
+      start->is_cursor_position |= attr_before.is_cursor_position;
+    }
+
+  g_slist_free_full (attributes, (GDestroyNotify)pango_attribute_destroy);
+}
+
+/**
+ * pango_get_log_attrs:
+ * @text: text to process. Must be valid UTF-8
+ * @length: length in bytes of @text
+ * @level: embedding level, or -1 if unknown
+ * @language: language tag
+ * @attrs: (array length=attrs_len): array with one `PangoLogAttr`
+ *   per character in @text, plus one extra, to be filled in
+ * @attrs_len: length of @attrs array
+ *
+ * Computes a `PangoLogAttr` for each character in @text.
+ *
+ * The @attrs array must have one `PangoLogAttr` for
+ * each position in @text; if @text contains N characters,
+ * it has N+1 positions, including the last position at the
+ * end of the text. @text should be an entire paragraph;
+ * logical attributes can't be computed without context
+ * (for example you need to see spaces on either side of
+ * a word to know the word is a word).
+ */
+void
+pango_get_log_attrs (const char    *text,
+                     int            length,
+                     int            level,
+                     PangoLanguage *language,
+                     PangoLogAttr  *attrs,
+                     int            attrs_len)
+{
+  int chars_broken;
+  PangoAnalysis analysis = { NULL };
+  PangoScriptIter iter;
+
+  g_return_if_fail (length == 0 || text != NULL);
+  g_return_if_fail (attrs != NULL);
+
+  analysis.level = level;
+  analysis.language = language;
+
+  pango_default_break (text, length, &analysis, attrs, attrs_len);
+
+  chars_broken = 0;
+
+  _pango_script_iter_init (&iter, text, length);
+  do
+    {
+      const char *run_start, *run_end;
+      PangoScript script;
+      int chars_in_range;
+
+      pango_script_iter_get_range (&iter, &run_start, &run_end, &script);
+      analysis.script = script;
+
+      chars_in_range = pango_utf8_strlen (run_start, run_end - run_start);
+
+      pango_tailor_break (run_start,
+                          run_end - run_start,
+                          &analysis,
+                          -1,
+                          attrs + chars_broken,
+                          chars_in_range + 1);
+
+      chars_broken += chars_in_range;
+    }
+  while (pango_script_iter_next (&iter));
+  _pango_script_iter_fini (&iter);
+
+  if (chars_broken + 1 > attrs_len)
+    g_warning ("pango_get_log_attrs: attrs_len should have been at least %d, but was %d.  Expect corrupted memory.",
+               chars_broken + 1,
+               attrs_len);
+}
+
+/* }}} */
+
+/* vim:set foldmethod=marker expandtab: */

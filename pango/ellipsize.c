@@ -243,7 +243,7 @@ line_iter_prev_cluster (EllipsizeState *state,
  * - Starts a grapheme - checked here
  *
  * In the future we'd also like to add a check for cursive connectivity here.
- * This should be an addition to #PangoGlyphVisAttr
+ * This should be an addition to `PangoGlyphVisAttr`
  *
  */
 
@@ -316,9 +316,8 @@ shape_ellipsis (EllipsizeState *state)
    */
   if (!state->ellipsis_run)
     {
-      state->ellipsis_run = g_slice_new (PangoGlyphItem);
+      state->ellipsis_run = g_slice_new0 (PangoGlyphItem);
       state->ellipsis_run->glyphs = pango_glyph_string_new ();
-      state->ellipsis_run->item = NULL;
     }
 
   if (state->ellipsis_run->item)
@@ -634,7 +633,8 @@ remove_one_span (EllipsizeState *state)
  * of the gap
  */
 static void
-fixup_ellipsis_run (EllipsizeState *state)
+fixup_ellipsis_run (EllipsizeState *state,
+                    int             extra_width)
 {
   PangoGlyphString *glyphs = state->ellipsis_run->glyphs;
   PangoItem *item = state->ellipsis_run->item;
@@ -649,6 +649,8 @@ fixup_ellipsis_run (EllipsizeState *state)
     }
 
   glyphs->glyphs[0].attr.is_cluster_start = TRUE;
+
+  glyphs->glyphs[glyphs->num_glyphs - 1].geometry.width += extra_width;
 
   /* Fix up the item to point to the entire elided text */
   item->offset = state->gap_start_iter.run_iter.start_index;
@@ -732,11 +734,11 @@ current_width (EllipsizeState *state)
 
 /**
  * _pango_layout_line_ellipsize:
- * @line: a #PangoLayoutLine
+ * @line: a `PangoLayoutLine`
  * @attrs: Attributes being used for itemization/shaping
  * @shape_flags: Flags to use when shaping
  *
- * Given a #PangoLayoutLine with the runs still in logical order, ellipsize
+ * Given a `PangoLayoutLine` with the runs still in logical order, ellipsize
  * it according the layout's policy to fit within the set width of the layout.
  *
  * Return value: whether the line had to be ellipsized
@@ -765,7 +767,7 @@ _pango_layout_line_ellipsize (PangoLayoutLine *line,
 	break;
     }
 
-  fixup_ellipsis_run (&state);
+  fixup_ellipsis_run (&state, MAX (goal_width - current_width (&state), 0));
 
   g_slist_free (line->runs);
   line->runs = get_run_list (&state);

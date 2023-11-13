@@ -3,6 +3,7 @@ pango_sources = [
   'ellipsize.c',
   'fonts.c',
   'glyphstring.c',
+  'itemize.c',
   'modules.c',
   'pango-attributes.c',
   'pango-bidi-type.c',
@@ -13,6 +14,7 @@ pango_sources = [
   'pango-engine.c',
   'pango-fontmap.c',
   'pango-fontset.c',
+  'pango-fontset-simple.c',
   'pango-glyph-item.c',
   'pango-gravity.c',
   'pango-item.c',
@@ -26,7 +28,9 @@ pango_sources = [
   'pango-utils.c',
   'reorder-items.c',
   'shape.c',
-  'pangofc-shape.c',
+  'serializer.c',
+  'json/gtkjsonparser.c',
+  'json/gtkjsonprinter.c',
 ]
 
 pango_headers = [
@@ -34,6 +38,7 @@ pango_headers = [
   'pango-attributes.h',
   'pango-bidi-type.h',
   'pango-break.h',
+  'pango-color.h',
   'pango-context.h',
   'pango-coverage.h',
   'pango-direction.h',
@@ -41,6 +46,7 @@ pango_headers = [
   'pango-font.h',
   'pango-fontmap.h',
   'pango-fontset.h',
+  'pango-fontset-simple.h',
   'pango-glyph.h',
   'pango-glyph-item.h',
   'pango-gravity.h',
@@ -48,16 +54,18 @@ pango_headers = [
   'pango-language.h',
   'pango-layout.h',
   'pango-matrix.h',
+  'pango-markup.h',
   'pango-modules.h',
   'pango-renderer.h',
   'pango-script.h',
   'pango-tabs.h',
   'pango-types.h',
   'pango-utils.h',
-  'pango-version-macros.h',
 ]
 
-install_headers(pango_headers, subdir: pango_api_path)
+pango_installed_headers = pango_headers + [ 'pango-version-macros.h' ]
+
+install_headers(pango_installed_headers, subdir: pango_api_path)
 
 # Features header
 pango_features_conf = configuration_data()
@@ -67,7 +75,7 @@ pango_features_conf.set('PANGO_VERSION_MICRO', pango_micro_version)
 pango_features_conf.set('PANGO_API_VERSION', pango_api_version)
 pango_features_conf.set('PANGO_CURRENT_MINUS_AGE', '0')
 
-configure_file(
+pango_features_h = configure_file(
   input: 'pango-features.h.meson',
   output: 'pango-features.h',
   configuration: pango_features_conf,
@@ -121,22 +129,31 @@ libpango = library(
 
 pango_dep_sources = [pango_enum_h]
 
-build_gir = get_option('introspection')
+gir = find_program('g-ir-scanner', required : get_option('introspection'))
+build_gir = gir.found() and (not meson.is_cross_build() or get_option('introspection').enabled())
 
 if build_gir
   gir_args = [
     '--quiet',
   ]
+  harfbuzz_gobject_dep = dependency('harfbuzz-gobject',
+                                    version: harfbuzz_req_version,
+                                    required: false,
+                                    fallback: ['harfbuzz', 'libharfbuzz_gobject_dep'])
 
+  if harfbuzz_gobject_dep.found()
+    pango_deps += harfbuzz_gobject_dep
+  endif
   pango_gir = gnome.generate_gir(
     libpango,
-    sources: pango_sources + pango_headers + [ pango_enum_h ],
+    sources: pango_sources + pango_headers + [ pango_enum_h, pango_features_h ],
     namespace: 'Pango',
     nsversion: pango_api_version,
     identifier_prefix: 'Pango',
     symbol_prefix: 'pango',
     export_packages: 'pango',
-    includes: [ 'HarfBuzz-0.0', 'GObject-2.0', 'cairo-1.0', ],
+    dependencies: pango_deps,
+    includes: [ 'HarfBuzz-0.0', 'GObject-2.0', 'Gio-2.0', 'cairo-1.0' ],
     header: 'pango/pango.h',
     install: true,
     extra_args: gir_args,
@@ -151,6 +168,7 @@ libpango_dep = declare_dependency(
   dependencies: pango_deps,
   sources: pango_dep_sources,
 )
+meson.override_dependency('pango', libpango_dep)
 
 pango_pkg_requires = ['gobject-2.0']
 if harfbuzz_dep.type_name() == 'pkgconfig'
@@ -292,6 +310,7 @@ if build_pangoft2
     dependencies: pango_deps + [ libpango_dep ],
     sources: pangoft2_dep_sources,
   )
+  meson.override_dependency('pangoft2', libpangoft2_dep)
 
   pkgconfig.generate(libpangoft2,
     name: 'Pango FT2 and Pango Fc',
@@ -381,6 +400,7 @@ if xft_dep.found() and fontconfig_dep.found()
     dependencies: pango_deps + [ libpango_dep, libpangoft2_dep ],
     sources: pangoxft_dep_sources,
   )
+  meson.override_dependency('pangoxft', libpangoxft_dep)
 
   pkgconfig.generate(libpangoxft,
     name: 'Pango Xft',
@@ -404,11 +424,13 @@ if host_system == 'windows'
     'pangowin32.c',
     'pangowin32-fontcache.c',
     'pangowin32-fontmap.c',
+    'pangowin32-dwrite-fontmap.cpp',
   ]
 
   pangowin32_deps = pango_deps + [
     libpango_dep,
     cc.find_library('gdi32'),
+    cc.find_library('dwrite'),
   ]
 
   pangowin32_rc = configure_file(
@@ -440,6 +462,7 @@ if host_system == 'windows'
     include_directories: root_inc,
     dependencies: pango_deps + [ libpango_dep ],
   )
+  meson.override_dependency('pangowin32', libpangowin32_dep)
 
   pkgconfig.generate(libpangowin32,
     name: 'Pango Win32',
@@ -546,6 +569,7 @@ if cairo_dep.found()
     dependencies: pango_deps + [ libpango_dep ],
     sources: pangocairo_dep_sources,
   )
+  meson.override_dependency('pangocairo', libpangocairo_dep)
 
   # Create pangocairo.pc according to whether we found Cairo
   # manually

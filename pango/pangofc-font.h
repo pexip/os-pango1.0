@@ -60,13 +60,14 @@ typedef struct _PangoFcFontClass PangoFcFontClass;
 /**
  * PangoFcFont:
  *
- * #PangoFcFont is a base class for font implementations
- * using the Fontconfig and FreeType libraries and is used in
- * conjunction with #PangoFcFontMap. When deriving from this
- * class, you need to implement all of its virtual functions
- * other than shutdown() along with the get_glyph_extents()
- * virtual function from #PangoFont.
- **/
+ * `PangoFcFont` is a base class for font implementations
+ * using the Fontconfig and FreeType libraries.
+ *
+ * It is used in onjunction with [class@PangoFc.FontMap].
+ * When deriving from this class, you need to implement all
+ * of its virtual functions other than shutdown() along with
+ * the get_glyph_extents() virtual function from `PangoFont`.
+ */
 struct _PangoFcFont
 {
   PangoFont parent_instance;
@@ -74,7 +75,7 @@ struct _PangoFcFont
   FcPattern *font_pattern;          /* fully resolved pattern */
   PangoFontMap *fontmap;            /* associated map */
   gpointer priv;                    /* used internally */
-  PangoMatrix matrix;               /* used internally */
+  PangoMatrix matrix;               /* unused */
   PangoFontDescription *description;
 
   GSList *metrics_by_lang;
@@ -94,6 +95,14 @@ gboolean   pango_fc_font_has_char          (PangoFcFont      *font,
 PANGO_AVAILABLE_IN_1_4
 guint      pango_fc_font_get_glyph         (PangoFcFont      *font,
                                             gunichar          wc);
+
+PANGO_DEPRECATED_IN_1_50_FOR(pango_font_get_language)
+PangoLanguage **
+           pango_fc_font_get_languages     (PangoFcFont      *font);
+
+PANGO_AVAILABLE_IN_1_48
+FcPattern *pango_fc_font_get_pattern       (PangoFcFont      *font);
+
 PANGO_DEPRECATED_FOR(PANGO_GET_UNKNOWN_GLYPH)
 PangoGlyph pango_fc_font_get_unknown_glyph (PangoFcFont      *font,
                                             gunichar          wc);
@@ -105,6 +114,7 @@ PANGO_DEPRECATED_IN_1_44_FOR(pango_font_get_hb_font)
 FT_Face    pango_fc_font_lock_face         (PangoFcFont      *font);
 PANGO_DEPRECATED_IN_1_44_FOR(pango_font_get_hb_font)
 void       pango_fc_font_unlock_face       (PangoFcFont      *font);
+
 
 G_END_DECLS
 #endif /* __PANGO_FC_FONT_H__ */

@@ -128,8 +128,46 @@ pango_glyph_string_reverse_range (PangoGlyphString *glyphs,
     }
 }
 
-/* The cairo hexbox drawing code assumes
- * that these nicks are 1-6 ASCII chars
+static inline gboolean
+pango_is_default_ignorable (gunichar ch)
+{
+  int plane = ch >> 16;
+
+  if (G_LIKELY (plane == 0))
+    {
+      int page = ch >> 8;
+      switch (page)
+        {
+        case 0x00: return ch == 0x00ad;
+        case 0x03: return ch == 0x034f;
+        case 0x06: return ch == 0x061c;
+        case 0x17: return (0x17b4 <= ch && ch <= 0x17b5);
+        case 0x18: return (0x180b <= ch && ch <= 0x180e);
+        case 0x20: return (0x200b <= ch && ch <= 0x200f) ||
+                          (0x202a <= ch && ch <= 0x202e) ||
+                          (0x2060 <= ch && ch <= 0x206f);
+        case 0xfe: return (0xfe00 <= ch && ch <= 0xfe0f) || ch == 0xfeff;
+        case 0xff: return (0xfff0 <= ch && ch <= 0xfff8);
+        default: return FALSE;
+      }
+    }
+  else
+    {
+      /* Other planes */
+      switch (plane)
+        {
+        case 0x01: return (0x1d173 <= ch && ch <= 0x1d17a);
+        case 0x0e: return (0xe0000 <= ch && ch <= 0xe0fff);
+        default: return FALSE;
+        }
+    }
+}
+
+/* These are the default ignorables that we render as hexboxes
+ * with nicks if PANGO_SHOW_IGNORABLES is used.
+ *
+ * The cairo hexbox drawing code assumes that these nicks are
+ * 1-6 ASCII chars
  */
 static struct {
   gunichar ch;
@@ -137,6 +175,7 @@ static struct {
 } ignorables[] = {
   { 0x00ad, "SHY"   }, /* SOFT HYPHEN */
   { 0x034f, "CGJ"   }, /* COMBINING GRAPHEME JOINER */
+  { 0x061c, "ALM"   }, /* ARABIC LETTER MARK */
   { 0x200b, "ZWS"   }, /* ZERO WIDTH SPACE */
   { 0x200c, "ZWNJ"  }, /* ZERO WIDTH NON-JOINER */
   { 0x200d, "ZWJ"   }, /* ZERO WIDTH JOINER */
@@ -153,6 +192,10 @@ static struct {
   { 0x2061, "FA"    }, /* FUNCTION APPLICATION */
   { 0x2062, "IT"    }, /* INVISIBLE TIMES */
   { 0x2063, "IS"    }, /* INVISIBLE SEPARATOR */
+  { 0x2066, "LRI"   }, /* LEFT-TO-RIGHT ISOLATE */
+  { 0x2067, "RLI"   }, /* RIGHT-TO-LEFT ISOLATE */
+  { 0x2068, "FSI"   }, /* FIRST STRONG ISOLATE */
+  { 0x2069, "PDI"   }, /* POP DIRECTIONAL ISOLATE */
   { 0xfeff, "ZWNBS" }, /* ZERO WIDTH NO-BREAK SPACE */
 };
 
@@ -163,6 +206,9 @@ pango_get_ignorable (gunichar ch)
 
   for (i = 0; i < G_N_ELEMENTS (ignorables); i++)
     {
+      if (ch < ignorables[i].ch)
+        return NULL;
+
       if (ch == ignorables[i].ch)
         return ignorables[i].nick;
     }
@@ -200,6 +246,14 @@ pango_get_ignorable_size (gunichar  ch,
 
   return nick;
 }
+
+/* Backward compatibility shim, to avoid bumping up the minimum
+ * required version of GLib; most of our uses of g_memdup() are
+ * safe, and those that aren't have been fixed
+ */
+#if !GLIB_CHECK_VERSION (2, 67, 3)
+# define g_memdup2(mem,size)    g_memdup((mem),(size))
+#endif
 
 G_END_DECLS
 

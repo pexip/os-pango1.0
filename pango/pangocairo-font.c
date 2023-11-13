@@ -137,17 +137,17 @@ done:
 
 /**
  * pango_cairo_font_get_scaled_font:
- * @font: a #PangoFont from a #PangoCairoFontMap
+ * @font: (nullable): a `PangoFont` from a `PangoCairoFontMap`
  *
- * Gets the #cairo_scaled_font_t used by @font.
+ * Gets the `cairo_scaled_font_t` used by @font.
  * The scaled font can be referenced and kept using
  * cairo_scaled_font_reference().
  *
- * Return value: (transfer none) (nullable): the #cairo_scaled_font_t used by @font,
- *               or %NULL if @font is %NULL.
+ * Return value: (transfer none) (nullable): the `cairo_scaled_font_t`
+ *   used by @font
  *
  * Since: 1.18
- **/
+ */
 cairo_scaled_font_t *
 pango_cairo_font_get_scaled_font (PangoCairoFont *cfont)
 {
@@ -163,14 +163,14 @@ pango_cairo_font_get_scaled_font (PangoCairoFont *cfont)
 
 /**
  * _pango_cairo_font_install:
- * @font: a #PangoCairoFont
+ * @font: a `PangoCairoFont`
  * @cr: a #cairo_t
  *
  * Makes @font the current font for rendering in the specified
  * Cairo context.
  *
  * Return value: %TRUE if font was installed successfully, %FALSE otherwise.
- **/
+ */
 gboolean
 _pango_cairo_font_install (PangoFont *font,
 			   cairo_t   *cr)
@@ -671,32 +671,15 @@ _pango_cairo_font_private_is_metrics_hinted (PangoCairoFontPrivate *cf_priv)
   return cf_priv->is_hinted;
 }
 
+
 static void
 get_space_extents (PangoCairoFontPrivate *cf_priv,
                    PangoRectangle        *ink_rect,
                    PangoRectangle        *logical_rect)
 {
-  const char hexdigits[] = "0123456789ABCDEF";
-  char c[2] = {0, 0};
-  int i;
-  double hex_width;
-  int width;
+  /* See https://docs.microsoft.com/en-us/typography/develop/character-design-standards/whitespace */
 
-  /* we don't render missing spaces as hex boxes,
-   * so come up with some width to use. For lack
-   * of anything better, use average hex digit width.
-   */
-
-  hex_width = 0;
-  for (i = 0 ; i < 16 ; i++)
-    {
-      cairo_text_extents_t extents;
-
-      c[0] = hexdigits[i];
-      cairo_scaled_font_text_extents (cf_priv->scaled_font, c, &extents);
-      hex_width += extents.width;
-    }
-  width = pango_units_from_double (hex_width / 16);
+  int width = pango_font_get_absolute_size (PANGO_FONT (cf_priv->cfont)) / 4;
 
   if (ink_rect)
     {
@@ -784,40 +767,60 @@ struct _PangoCairoFontGlyphExtentsCacheEntry
 static gboolean
 _pango_cairo_font_private_glyph_extents_cache_init (PangoCairoFontPrivate *cf_priv)
 {
-  cairo_scaled_font_t *scaled_font = _pango_cairo_font_private_get_scaled_font (cf_priv);
-  cairo_font_extents_t font_extents;
+  hb_font_extents_t extents;
 
-  if (G_UNLIKELY (scaled_font == NULL || cairo_scaled_font_status (scaled_font) != CAIRO_STATUS_SUCCESS))
-    return FALSE;
-
-  cairo_scaled_font_extents (scaled_font, &font_extents);
+  hb_font_get_h_extents (pango_font_get_hb_font (PANGO_FONT (cf_priv->cfont)),
+                         &extents);
 
   cf_priv->font_extents.x = 0;
   cf_priv->font_extents.width = 0;
-  cf_priv->font_extents.height = pango_units_from_double (font_extents.ascent + font_extents.descent);
+  cf_priv->font_extents.height = extents.ascender - extents.descender;
+
   switch (cf_priv->gravity)
     {
       default:
       case PANGO_GRAVITY_AUTO:
       case PANGO_GRAVITY_SOUTH:
-	cf_priv->font_extents.y = - pango_units_from_double (font_extents.ascent);
-	break;
+        cf_priv->font_extents.y = - extents.ascender;
+        break;
       case PANGO_GRAVITY_NORTH:
-	cf_priv->font_extents.y = - pango_units_from_double (font_extents.descent);
-	break;
+        cf_priv->font_extents.y = extents.descender;
+        break;
       case PANGO_GRAVITY_EAST:
       case PANGO_GRAVITY_WEST:
-	{
-	  int ascent = pango_units_from_double (font_extents.ascent + font_extents.descent) / 2;
-	  if (cf_priv->is_hinted)
-	    ascent = PANGO_UNITS_ROUND (ascent);
-	  cf_priv->font_extents.y = - ascent;
-	}
+        {
+          int ascent = cf_priv->font_extents.height / 2;
+          if (cf_priv->is_hinted)
+            ascent = PANGO_UNITS_ROUND (ascent);
+          cf_priv->font_extents.y = - ascent;
+        }
+       break;
     }
 
-  cf_priv->glyph_extents_cache = g_new0 (PangoCairoFontGlyphExtentsCacheEntry, GLYPH_CACHE_NUM_ENTRIES);
-  /* Make sure all cache entries are invalid initially */
-  cf_priv->glyph_extents_cache[0].glyph = 1; /* glyph 1 cannot happen in bucket 0 */
+  if (cf_priv->is_hinted)
+    {
+      if (cf_priv->font_extents.y < 0)
+        cf_priv->font_extents.y = PANGO_UNITS_FLOOR (cf_priv->font_extents.y);
+      else
+        cf_priv->font_extents.y = PANGO_UNITS_CEIL (cf_priv->font_extents.y);
+      if (cf_priv->font_extents.height < 0)
+        cf_priv->font_extents.height = PANGO_UNITS_FLOOR (extents.ascender) - PANGO_UNITS_CEIL (extents.descender);
+      else
+        cf_priv->font_extents.height = PANGO_UNITS_CEIL (extents.ascender) - PANGO_UNITS_FLOOR (extents.descender);
+    }
+
+  if (PANGO_GRAVITY_IS_IMPROPER (cf_priv->gravity))
+    {
+      cf_priv->font_extents.y = - cf_priv->font_extents.y;
+      cf_priv->font_extents.height = - cf_priv->font_extents.height;
+    }
+
+  if (!cf_priv->glyph_extents_cache)
+    {
+      cf_priv->glyph_extents_cache = g_new0 (PangoCairoFontGlyphExtentsCacheEntry, GLYPH_CACHE_NUM_ENTRIES);
+      /* Make sure all cache entries are invalid initially */
+      cf_priv->glyph_extents_cache[0].glyph = 1; /* glyph 1 cannot happen in bucket 0 */
+    }
 
   return TRUE;
 }
@@ -841,7 +844,10 @@ compute_glyph_extents (PangoCairoFontPrivate  *cf_priv,
 				   &cairo_glyph, 1, &extents);
 
   entry->glyph = glyph;
-  entry->width = pango_units_from_double (extents.x_advance);
+  if (PANGO_GRAVITY_IS_VERTICAL (cf_priv->gravity))
+    entry->width = pango_units_from_double (extents.y_advance);
+  else
+    entry->width = pango_units_from_double (extents.x_advance);
   entry->ink_rect.x = pango_units_from_double (extents.x_bearing);
   entry->ink_rect.y = pango_units_from_double (extents.y_bearing);
   entry->ink_rect.width = pango_units_from_double (extents.width);
@@ -893,7 +899,7 @@ _pango_cairo_font_private_get_glyph_extents (PangoCairoFontPrivate *cf_priv,
     }
   else if (glyph & PANGO_GLYPH_UNKNOWN_FLAG)
     {
-      _pango_cairo_font_private_get_glyph_extents_missing(cf_priv, glyph, ink_rect, logical_rect);
+      _pango_cairo_font_private_get_glyph_extents_missing (cf_priv, glyph, ink_rect, logical_rect);
       return;
     }
 
@@ -904,6 +910,25 @@ _pango_cairo_font_private_get_glyph_extents (PangoCairoFontPrivate *cf_priv,
   if (logical_rect)
     {
       *logical_rect = cf_priv->font_extents;
-      logical_rect->width = entry->width;
+      switch (cf_priv->gravity)
+        {
+        case PANGO_GRAVITY_SOUTH:
+          logical_rect->width = entry->width;
+          break;
+        case PANGO_GRAVITY_EAST:
+          logical_rect->width = cf_priv->font_extents.height;
+          logical_rect->x = - logical_rect->width;
+          break;
+        case PANGO_GRAVITY_NORTH:
+          logical_rect->width = entry->width;
+          break;
+        case PANGO_GRAVITY_WEST:
+          logical_rect->width = - cf_priv->font_extents.height;
+          logical_rect->x = - logical_rect->width;
+          break;
+        case PANGO_GRAVITY_AUTO:
+        default:
+          g_assert_not_reached ();
+        }
     }
 }

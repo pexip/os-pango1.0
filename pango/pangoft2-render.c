@@ -20,22 +20,12 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/**
- * SECTION:pango-renderer
- * @short_description:Rendering driver base class
- * @title:PangoRenderer
- *
- * #PangoRenderer is a base class that contains the necessary logic for
- * rendering a #PangoLayout or #PangoLayoutLine. By subclassing
- * #PangoRenderer and overriding operations such as @draw_glyphs and
- * @draw_rectangle, renderers for particular font backends and
- * destinations can be created.
- */
 #include "config.h"
 #include <math.h>
 
 #include "pango-font-private.h"
 #include "pangoft2-private.h"
+#include "pango-impl-utils.h"
 
 /* for compatibility with older freetype versions */
 #ifndef FT_LOAD_TARGET_MONO
@@ -238,8 +228,8 @@ pango_ft2_font_render_glyph (PangoFont *font,
 			ft_render_mode_mono : ft_render_mode_normal));
 
       rendered->bitmap = face->glyph->bitmap;
-      rendered->bitmap.buffer = g_memdup (face->glyph->bitmap.buffer,
-					  face->glyph->bitmap.rows * face->glyph->bitmap.pitch);
+      rendered->bitmap.buffer = g_memdup2 (face->glyph->bitmap.buffer,
+                                           face->glyph->bitmap.rows * face->glyph->bitmap.pitch);
       rendered->bitmap_left = face->glyph->bitmap_left;
       rendered->bitmap_top = face->glyph->bitmap_top;
 
@@ -589,16 +579,18 @@ pango_ft2_renderer_draw_trapezoid (PangoRenderer   *renderer,
 
 /**
  * pango_ft2_render_layout_subpixel:
- * @bitmap:    a <type>FT_Bitmap</type> to render the layout onto
- * @layout:    a #PangoLayout
- * @x:         the X position of the left of the layout (in Pango units)
- * @y:         the Y position of the top of the layout (in Pango units)
+ * @bitmap: a FT_Bitmap to render the layout onto
+ * @layout: a `PangoLayout`
+ * @x: the X position of the left of the layout (in Pango units)
+ * @y: the Y position of the top of the layout (in Pango units)
  *
- * Render a #PangoLayout onto a FreeType2 bitmap, with he
+ * Render a `PangoLayout` onto a FreeType2 bitmap, with he
  * location specified in fixed-point Pango units rather than
- * pixels. (Using this will avoid extra inaccuracies from
- * rounding to integer pixels multiple times, even if the
- * final glyph positions are integers.)
+ * pixels.
+ *
+ * (Using this will avoid extra inaccuracies from rounding
+ * to integer pixels multiple times, even if the final glyph
+ * positions are integers.)
  *
  * Since: 1.6
  */
@@ -626,12 +618,12 @@ pango_ft2_render_layout_subpixel (FT_Bitmap   *bitmap,
 
 /**
  * pango_ft2_render_layout:
- * @bitmap:    a <type>FT_Bitmap</type> to render the layout onto
- * @layout:    a #PangoLayout
- * @x:         the X position of the left of the layout (in pixels)
- * @y:         the Y position of the top of the layout (in pixels)
+ * @bitmap: a FT_Bitmap to render the layout onto
+ * @layout: a `PangoLayout`
+ * @x: the X position of the left of the layout (in pixels)
+ * @y: the Y position of the top of the layout (in pixels)
  *
- * Render a #PangoLayout onto a FreeType2 bitmap
+ * Render a `PangoLayout` onto a FreeType2 bitmap
  */
 void
 pango_ft2_render_layout (FT_Bitmap   *bitmap,
@@ -644,16 +636,18 @@ pango_ft2_render_layout (FT_Bitmap   *bitmap,
 
 /**
  * pango_ft2_render_layout_line_subpixel:
- * @bitmap:    a <type>FT_Bitmap</type> to render the line onto
- * @line:      a #PangoLayoutLine
- * @x:         the x position of start of string (in Pango units)
- * @y:         the y position of baseline (in Pango units)
+ * @bitmap: a FT_Bitmap to render the line onto
+ * @line: a `PangoLayoutLine`
+ * @x: the x position of start of string (in Pango units)
+ * @y: the y position of baseline (in Pango units)
  *
- * Render a #PangoLayoutLine onto a FreeType2 bitmap, with he
+ * Render a `PangoLayoutLine` onto a FreeType2 bitmap, with he
  * location specified in fixed-point Pango units rather than
- * pixels. (Using this will avoid extra inaccuracies from
- * rounding to integer pixels multiple times, even if the
- * final glyph positions are integers.)
+ * pixels.
+ *
+ * (Using this will avoid extra inaccuracies from rounding
+ * to integer pixels multiple times, even if the final glyph
+ * positions are integers.)
  *
  * Since: 1.6
  */
@@ -681,12 +675,12 @@ pango_ft2_render_layout_line_subpixel (FT_Bitmap       *bitmap,
 
 /**
  * pango_ft2_render_layout_line:
- * @bitmap:    a <type>FT_Bitmap</type> to render the line onto
- * @line:      a #PangoLayoutLine
- * @x:         the x position of start of string (in pixels)
- * @y:         the y position of baseline (in pixels)
+ * @bitmap: a FT_Bitmap to render the line onto
+ * @line: a `PangoLayoutLine`
+ * @x: the x position of start of string (in pixels)
+ * @y: the y position of baseline (in pixels)
  *
- * Render a #PangoLayoutLine onto a FreeType2 bitmap
+ * Render a `PangoLayoutLine` onto a FreeType2 bitmap
  */
 void
 pango_ft2_render_layout_line (FT_Bitmap       *bitmap,
@@ -699,25 +693,26 @@ pango_ft2_render_layout_line (FT_Bitmap       *bitmap,
 
 /**
  * pango_ft2_render_transformed:
- * @bitmap:  the FreeType2 bitmap onto which to draw the string
- * @font:    the font in which to draw the string
- * @matrix:  (nullable): a #PangoMatrix, or %NULL to use an identity
- *           transformation
- * @glyphs:  the glyph string to draw
- * @x:       the x position of the start of the string (in Pango
- *           units in user space coordinates)
- * @y:       the y position of the baseline (in Pango units
- *           in user space coordinates)
+ * @bitmap: the FreeType2 bitmap onto which to draw the string
+ * @font: the font in which to draw the string
+ * @matrix: (nullable): a `PangoMatrix`
+ * @glyphs: the glyph string to draw
+ * @x: the x position of the start of the string (in Pango
+ *   units in user space coordinates)
+ * @y: the y position of the baseline (in Pango units
+ *   in user space coordinates)
  *
- * Renders a #PangoGlyphString onto a FreeType2 bitmap, possibly
+ * Renders a `PangoGlyphString` onto a FreeType2 bitmap, possibly
  * transforming the layed-out coordinates through a transformation
- * matrix. Note that the transformation matrix for @font is not
+ * matrix.
+ *
+ * Note that the transformation matrix for @font is not
  * changed, so to produce correct rendering results, the @font
- * must have been loaded using a #PangoContext with an identical
+ * must have been loaded using a `PangoContext` with an identical
  * transformation matrix to that passed in to this function.
  *
  * Since: 1.6
- **/
+ */
 void
 pango_ft2_render_transformed (FT_Bitmap         *bitmap,
 			      const PangoMatrix *matrix,
@@ -744,14 +739,14 @@ pango_ft2_render_transformed (FT_Bitmap         *bitmap,
 
 /**
  * pango_ft2_render:
- * @bitmap:  the FreeType2 bitmap onto which to draw the string
- * @font:    the font in which to draw the string
- * @glyphs:  the glyph string to draw
- * @x:       the x position of the start of the string (in pixels)
- * @y:       the y position of the baseline (in pixels)
+ * @bitmap: the FreeType2 bitmap onto which to draw the string
+ * @font: the font in which to draw the string
+ * @glyphs: the glyph string to draw
+ * @x: the x position of the start of the string (in pixels)
+ * @y: the y position of the baseline (in pixels)
  *
- * Renders a #PangoGlyphString onto a FreeType2 bitmap.
- **/
+ * Renders a `PangoGlyphString` onto a FreeType2 bitmap.
+ */
 void
 pango_ft2_render (FT_Bitmap        *bitmap,
 		  PangoFont        *font,

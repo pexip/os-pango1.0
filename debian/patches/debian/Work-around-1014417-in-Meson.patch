@@ -1,0 +1,35 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Fri, 12 Aug 2022 15:48:24 +0100
+Subject: Work around #1014417 in Meson
+
+Forwarded: not-needed, Meson should be fixed instead
+---
+ tests/meson.build | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/tests/meson.build b/tests/meson.build
+index e75b8e2..e24cd80 100644
+--- a/tests/meson.build
++++ b/tests/meson.build
+@@ -2,6 +2,13 @@ test_cflags = [
+   '-DSRCDIR=@0@'.format(meson.current_source_dir()),
+ ]
+ 
++if meson.version() == '0.63.0'
++    # Work around https://github.com/mesonbuild/meson/issues/10577
++    tap_test_protocol = 'exitcode'
++else
++    tap_test_protocol = 'tap'
++endif
++
+ if xft_dep.found()
+   test_cflags += [ '-DHAVE_X', '-DHAVE_XFT' ]
+ endif
+@@ -301,6 +308,6 @@ foreach t: tests
+     args: ['-k', '--tap'],
+     env: test_env,
+     suite: 'pango',
+-    protocol: 'tap',
++    protocol: tap_test_protocol,
+   )
+ endforeach
