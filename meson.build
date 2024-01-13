@@ -273,7 +273,7 @@ pango_deps += harfbuzz_dep
 
 fontconfig_option = get_option('fontconfig')
 
-fontconfig_sys_required = (host_system != 'windows' and host_system != 'darwin')
+fontconfig_sys_required = (host_system not in ['windows', 'darwin', 'ios'])
 if fontconfig_sys_required and fontconfig_option.disabled()
   error('Fontconfig is required on this platform (pass -Dfontconfig=enabled or -Dfontconfig=auto)')
 endif
@@ -350,7 +350,7 @@ if build_pangoft2
 endif
 
 xft_dep = dependency('xft', version: xft_req_version, required: get_option('xft'))
-if xft_dep.found() and fontconfig_dep.found() and freetype_dep.found()
+if xft_dep.found() and fontconfig_dep.found() and freetype_dep.found() and not get_option('xft').disabled()
   pango_conf.set('HAVE_XFT', 1)
   pango_deps += dependency('xrender', required: false)
   pango_deps += xft_dep
