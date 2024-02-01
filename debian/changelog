@@ -1,3 +1,9 @@
+pango1.0 (1.50.12+ds-1+pexip24u3) pexip-bookworm; urgency=medium
+
+  * New versioning scheme
+
+ -- Mark Hymers <mark.hymers@pexip.com>  Thu, 01 Feb 2024 16:15:34 +0000
+
 pango1.0 (1.50.12+ds-1pexip2) pexip-bookworm; urgency=medium
 
   * Bookworm build for product distribution
