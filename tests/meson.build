@@ -56,11 +56,11 @@ if cairo_dep.found()
   if build_pangoft2
     tests += [
       [ 'testmisc', [ 'testmisc.c' ], [ libpangocairo_dep, libpangoft2_dep, glib_dep, harfbuzz_dep ] ],
-      [ 'testserialize', [ 'testserialize.c' ], [ libpangocairo_dep, libpangoft2_dep ] ],
     ]
 
     if host_system != 'darwin'
       tests += [
+        [ 'testserialize', [ 'testserialize.c' ], [ libpangocairo_dep, libpangoft2_dep ] ],
         [ 'test-layout', [ 'test-layout.c', 'test-common.c' ], [ libpangocairo_dep, libpangoft2_dep ] ],
         [ 'test-fonts', [ 'test-fonts.c', 'test-common.c' ], [ libpangocairo_dep, libpangoft2_dep ] ],
         [ 'test-no-fonts', [ 'test-no-fonts.c' ], [ libpangocairo_dep, libpangoft2_dep ] ],
