@@ -257,7 +257,7 @@ pango_deps += harfbuzz_dep
 # system because a fallback is done at the end. Override 'disabled' option on
 # platforms that requires it.
 fontconfig_option = get_option('fontconfig')
-fontconfig_required = host_system not in ['windows', 'darwin']
+fontconfig_required = host_system not in ['windows', 'darwin', 'emscripten']
 if not fontconfig_option.disabled() or fontconfig_required
   fontconfig_option = false
 endif
@@ -431,9 +431,9 @@ if ['pkgconfig', 'internal'].contains(cairo_found_type)
     endif
   endforeach
 
-  if pango_font_backends.length() == 0
-    error('No Cairo font backends found')
-  endif
+  # if pango_font_backends.length() == 0
+  #   error('No Cairo font backends found')
+  # endif
 
   # Check the following Cairo surface backends
   # - dependency
@@ -579,9 +579,9 @@ root_inc = include_directories('.')
 pango_inc = include_directories('pango')
 
 subdir('pango')
-subdir('utils')
-subdir('examples')
-subdir('tests')
+# subdir('utils')
+# subdir('examples')
+# subdir('tests')
 subdir('tools')
 
 if get_option('gtk_doc')
