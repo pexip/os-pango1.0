@@ -159,10 +159,7 @@ pango_win32_dwrite_font_map_populate (PangoWin32FontMap *map)
 
           hr = family->GetFont (j, &font);
           if (FAILED (hr) || font == NULL)
-            {
-              g_warning ("IDWriteFontFamily::GetFont failed with error code %x\n", (unsigned)hr);
-              break;
-            }
+            continue;
 
           face = _pango_win32_get_dwrite_font_face_from_dwrite_font (font);
           if (face == NULL)
