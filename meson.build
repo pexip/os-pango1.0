@@ -251,7 +251,7 @@ freetype2_pc = ''
 freetype_lib = []
 
 # Platforms where fontconfig is required
-fontconfig_required = host_system not in ['windows', 'darwin']
+fontconfig_required = host_system not in ['windows', 'darwin', 'ios']
 # Disable fontconfig by default on platforms where it is optional
 fontconfig_option = get_option('fontconfig').disable_auto_if(not fontconfig_required)
 
@@ -332,19 +332,19 @@ if xft_dep.found() and fontconfig_dep.found() and freetype_dep.found()
 endif
 
 has_core_text = false
-if host_system == 'darwin'
+if host_system == 'darwin' or host_system == 'ios'
   has_core_text = cc.links('''#include <CoreText/CoreText.h>
                               int main (void) {
                                 CTGetCoreTextVersion ();
                                 return 0;
                               }''',
                            name: 'CoreText availability',
-                           dependencies: dependency('appleframeworks', modules: 'ApplicationServices'))
+                           dependencies: dependency('appleframeworks', modules: [ 'CoreFoundation', 'CoreText' ]))
   if has_core_text
     pango_conf.set('HAVE_CORE_TEXT', 1)
   endif
 
-  pango_deps += dependency('appleframeworks', modules: [ 'CoreFoundation', 'ApplicationServices' ])
+  pango_deps += dependency('appleframeworks', modules: [ 'CoreFoundation', 'CoreText' ])
 endif
 
 # Check for dwrite_3.h (from more recent Windows SDK or mingw-w64)
