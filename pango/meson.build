@@ -518,7 +518,7 @@ if cairo_dep.found()
     pangocairo_deps += libpangowin32_dep
   endif
 
-  if host_system == 'darwin' and pango_font_backends.contains('quartz')
+  if host_system in ['darwin', 'ios'] and pango_font_backends.contains('quartz')
     pangocairo_sources += [
       'pangocoretext.c',
       'pangocoretext-fontmap.c',
