@@ -257,7 +257,7 @@ pango_deps += harfbuzz_dep
 # system because a fallback is done at the end. Override 'disabled' option on
 # platforms that requires it.
 fontconfig_option = get_option('fontconfig')
-fontconfig_required = host_system not in ['windows', 'darwin']
+fontconfig_required = host_system not in ['windows', 'darwin', 'ios']
 if not fontconfig_option.disabled() or fontconfig_required
   fontconfig_option = false
 endif
@@ -340,19 +340,19 @@ if xft_dep.found() and fontconfig_dep.found() and freetype_dep.found()
 endif
 
 has_core_text = false
-if host_system == 'darwin'
+if host_system == 'darwin' or host_system == 'ios'
   has_core_text = cc.links('''#include <CoreText/CoreText.h>
                               int main (void) {
                                 CTGetCoreTextVersion ();
                                 return 0;
                               }''',
                            name: 'CoreText availability',
-                           dependencies: dependency('appleframeworks', modules: 'ApplicationServices'))
+                           dependencies: dependency('appleframeworks', modules: [ 'CoreFoundation', 'CoreText' ]))
   if has_core_text
     pango_conf.set('HAVE_CORE_TEXT', 1)
   endif
 
-  pango_deps += dependency('appleframeworks', modules: [ 'CoreFoundation', 'ApplicationServices' ])
+  pango_deps += dependency('appleframeworks', modules: [ 'CoreFoundation', 'CoreText' ])
 endif
 
 # If option is 'auto' or 'enabled' it is not required to find cairo on the
