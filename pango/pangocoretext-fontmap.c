@@ -28,7 +28,7 @@
 #include "pangocoretext-private.h"
 #include "pango-impl-utils.h"
 
-#include <Carbon/Carbon.h>
+#include <CoreText/CoreText.h>
 
 typedef struct _FontHashKey      FontHashKey;
 
@@ -687,7 +687,7 @@ pango_core_text_family_list_faces (PangoFontFamily  *family,
 
               /* Try to create a sensible face name. */
               g_free (italic_face->style_name);
-              if (strcasecmp (face->style_name, "regular") == 0)
+              if (g_ascii_strcasecmp (face->style_name, "regular") == 0)
                 italic_face->style_name = g_strdup ("Oblique");
               else
                 italic_face->style_name = g_strdup_printf ("%s Oblique",
