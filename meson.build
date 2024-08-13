@@ -581,7 +581,9 @@ pango_inc = include_directories('pango')
 subdir('pango')
 subdir('utils')
 subdir('examples')
-subdir('tests')
+if get_option('tests')
+  subdir('tests')
+endif
 subdir('tools')
 
 if get_option('gtk_doc')
