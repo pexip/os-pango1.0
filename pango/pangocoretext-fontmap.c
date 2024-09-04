@@ -1586,7 +1586,7 @@ G_DEFINE_TYPE (PangoCoreTextFontset,
                pango_core_text_fontset,
                PANGO_TYPE_FONTSET);
 
-#if !defined(MAC_OS_X_VERSION_10_8) || MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_8
+#if !defined (AVAILABLE_MAC_OS_X_VERSION_10_8_AND_LATER)
 /* This symbol does exist in the CoreText library shipped with Snow
  * Leopard and Lion, however, it is not found in the public header files.
  */
@@ -1654,7 +1654,7 @@ pango_core_text_fontset_new (PangoCoreTextFontsetKey    *key,
   fontset->real_font_count = fontset->fonts->len;
 
   /* Add the cascade list for this language */
-#if defined(MAC_OS_X_VERSION_10_8) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_8
+#if defined (AVAILABLE_MAC_OS_X_VERSION_10_8_AND_LATER)
     {
       CFArrayRef language_pref_list = NULL;
       CFStringRef languages[1];
