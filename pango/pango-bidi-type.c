@@ -29,6 +29,7 @@
 
 #include "pango-bidi-type.h"
 #include "pango-utils.h"
+#include "pango-utils-private.h"
 
 /**
  * pango_bidi_type_for_unichar:
@@ -48,13 +49,9 @@
 PangoBidiType
 pango_bidi_type_for_unichar (gunichar ch)
 {
-  FriBidiCharType fribidi_ch_type;
-
   G_STATIC_ASSERT (sizeof (FriBidiChar) == sizeof (gunichar));
 
-  fribidi_ch_type = fribidi_get_bidi_type (ch);
-
-  switch (fribidi_ch_type)
+  switch ((guint) fribidi_get_bidi_type (ch))
     {
     case FRIBIDI_TYPE_LTR:  return PANGO_BIDI_TYPE_L;
     case FRIBIDI_TYPE_LRE:  return PANGO_BIDI_TYPE_LRE;
@@ -79,7 +76,6 @@ pango_bidi_type_for_unichar (gunichar ch)
     case FRIBIDI_TYPE_RLI:  return PANGO_BIDI_TYPE_RLI;
     case FRIBIDI_TYPE_FSI:  return PANGO_BIDI_TYPE_FSI;
     case FRIBIDI_TYPE_PDI:  return PANGO_BIDI_TYPE_PDI;
-    case _FRIBIDI_TYPE_SENTINEL:
     default:
       return PANGO_BIDI_TYPE_ON;
     }
@@ -92,7 +88,7 @@ pango_bidi_type_for_unichar (gunichar ch)
  * @text: the text to itemize.
  * @length: the number of bytes (not characters) to process, or -1
  *   if @text is nul-terminated and the length should be calculated.
- * @pbase_dir: input base direction, and output resolved direction.
+ * @pbase_dir: (inout): input base direction, and output resolved direction.
  *
  * Return the bidirectional embedding levels of the input paragraph.
  *
@@ -102,22 +98,45 @@ pango_bidi_type_for_unichar (gunichar ch)
  * If the input base direction is a weak direction, the direction of the
  * characters in the text will determine the final resolved direction.
  *
- * Return value: a newly allocated array of embedding levels, one item per
- *   character (not byte), that should be freed using [func@GLib.free].
+ * Returns: (array) (transfer full): a newly allocated array of embedding
+ *   levels, one item per character (not byte), that should be freed using
+ *   [func@GLib.free].
  *
  * Since: 1.4
  */
 guint8 *
 pango_log2vis_get_embedding_levels (const gchar    *text,
-				    int             length,
-				    PangoDirection *pbase_dir)
+                                    int             length,
+                                    PangoDirection *pbase_dir)
 {
-  glong n_chars, i;
-  guint8 *embedding_levels_list;
+  unsigned int n_chars;
+  guint8 *embedding_levels;
+
+  if (length < 0)
+    length = strlen (text);
+
+  n_chars = g_utf8_strlen (text, length);
+  embedding_levels = g_new (guint8, n_chars);
+
+  pango_log2vis_fill_embedding_levels (text, length, n_chars, embedding_levels, pbase_dir);
+
+  return embedding_levels;
+}
+
+void
+pango_log2vis_fill_embedding_levels (const gchar    *text,
+                                    int             length,
+                                    unsigned int    n_chars,
+                                    guint8         *embedding_levels_list,
+                                    PangoDirection *pbase_dir)
+{
+  glong i;
   const gchar *p;
   FriBidiParType fribidi_base_dir;
   FriBidiCharType *bidi_types;
+  FriBidiCharType bidi_types_[64];
   FriBidiBracketType *bracket_types;
+  FriBidiBracketType bracket_types_[64];
   FriBidiLevel max_level;
   FriBidiCharType ored_types = 0;
   FriBidiCharType anded_strongs = FRIBIDI_TYPE_RLE;
@@ -145,14 +164,16 @@ pango_log2vis_get_embedding_levels (const gchar    *text,
       break;
     }
 
-  if (length < 0)
-    length = strlen (text);
-
-  n_chars = g_utf8_strlen (text, length);
-
-  bidi_types = g_new (FriBidiCharType, n_chars);
-  bracket_types = g_new (FriBidiBracketType, n_chars);
-  embedding_levels_list = g_new (guint8, n_chars);
+  if (n_chars < 64)
+    {
+      bidi_types = bidi_types_;
+      bracket_types = bracket_types_;
+    }
+  else
+    {
+      bidi_types = g_new (FriBidiCharType, n_chars);
+      bracket_types = g_new (FriBidiBracketType, n_chars);
+    }
 
   for (i = 0, p = text; p < text + length; p = g_utf8_next_char(p), i++)
     {
@@ -232,12 +253,13 @@ pango_log2vis_get_embedding_levels (const gchar    *text,
     }
 
 resolved:
-  g_free (bidi_types);
-  g_free (bracket_types);
+  if (n_chars >= 64)
+    {
+      g_free (bidi_types);
+      g_free (bracket_types);
+    }
 
   *pbase_dir = (fribidi_base_dir == FRIBIDI_PAR_LTR) ?  PANGO_DIRECTION_LTR : PANGO_DIRECTION_RTL;
-
-  return embedding_levels_list;
 }
 
 /**
@@ -277,7 +299,7 @@ pango_unichar_direction (gunichar ch)
 /**
  * pango_get_mirror_char:
  * @ch: a Unicode character
- * @mirrored_ch: location to store the mirrored character
+ * @mirrored_ch: (out) (optional): location to store the mirrored character
  *
  * Returns the mirrored character of a Unicode character.
  *

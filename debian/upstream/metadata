@@ -1,4 +1,6 @@
-Bug-Database: https://gitlab.gnome.org/GNOME/pango/issues
-Bug-Submit: https://gitlab.gnome.org/GNOME/pango/issues/new
+---
+Bug-Database: https://gitlab.gnome.org/GNOME/pango/-/issues
+Bug-Submit: https://gitlab.gnome.org/GNOME/pango/-/issues/new
 Repository: https://gitlab.gnome.org/GNOME/pango.git
 Repository-Browse: https://gitlab.gnome.org/GNOME/pango
+Security-Contact: https://security.gnome.org/

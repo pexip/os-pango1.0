@@ -350,7 +350,7 @@ pango_read_line (FILE *stream, GString *str)
 
 /**
  * pango_skip_space:
- * @pos: (inout): in/out string position
+ * @pos: (inout) (transfer none): in/out string position
  *
  * Skips 0 or more characters of white space.
  *
@@ -374,7 +374,7 @@ pango_skip_space (const char **pos)
 
 /**
  * pango_scan_word:
- * @pos: (inout): in/out string position
+ * @pos: (inout) (transfer none): in/out string position
  * @out: a `GString` into which to write the result
  *
  * Scans a word into a `GString` buffer.
@@ -419,7 +419,7 @@ pango_scan_word (const char **pos, GString *out)
 
 /**
  * pango_scan_string:
- * @pos: (inout): in/out string position
+ * @pos: (inout) (transfer none): in/out string position
  * @out: a `GString` into which to write the result
  *
  * Scans a string into a `GString` buffer.
@@ -512,7 +512,7 @@ pango_scan_string (const char **pos, GString *out)
 
 /**
  * pango_scan_int:
- * @pos: (inout): in/out string position
+ * @pos: (inout) (transfer none): in/out string position
  * @out: (out): an int into which to write the result
  *
  * Scans an integer.
@@ -749,9 +749,9 @@ _pango_parse_enum (GType       type,
 		       s->str);
 
 	  if (possible_values)
-	    *possible_values = s->str;
-
-	  g_string_free (s, possible_values ? FALSE : TRUE);
+	    *possible_values = g_string_free (s, FALSE);
+          else
+	    g_string_free (s, TRUE);
 	}
     }
 
@@ -811,9 +811,7 @@ pango_parse_flags (GType        type,
               g_string_append (s, v->value_nick);
             }
 
-          *possible_values = s->str;
-
-          g_string_free (s, FALSE);
+          *possible_values = g_string_free (s, FALSE);
 	}
     }
 

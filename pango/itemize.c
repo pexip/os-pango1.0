@@ -33,6 +33,7 @@
 #include "pango-emoji-private.h"
 #include "pango-attributes-private.h"
 #include "pango-item-private.h"
+#include "pango-utils-private.h"
 
 #include <hb-ot.h>
 
@@ -177,7 +178,7 @@ width_iter_is_upright (gunichar ch)
   };
   static const int max = sizeof(upright) / sizeof(upright[0]);
   int st = 0;
-  int ed = max;
+  int ed = max - 1;
 
   if (ch < upright[0][0])
     return FALSE;
@@ -292,6 +293,7 @@ struct _ItemizeState
   PangoItem *item;
 
   guint8 *embedding_levels;
+  guint8 embedding_levels_[64];
   int embedding_end_offset;
   const char *embedding_end;
   guint8 embedding;
@@ -433,6 +435,10 @@ itemize_state_init (ItemizeState               *state,
                     PangoAttrIterator          *cached_iter,
                     const PangoFontDescription *desc)
 {
+  unsigned int n_chars;
+
+  n_chars = g_utf8_strlen (text + start_index, length);
+
   state->context = context;
   state->text = text;
   state->end = text + start_index + length;
@@ -447,7 +453,11 @@ itemize_state_init (ItemizeState               *state,
   /* First, apply the bidirectional algorithm to break
    * the text into directional runs.
    */
-  state->embedding_levels = pango_log2vis_get_embedding_levels (text + start_index, length, &base_dir);
+  if (n_chars < 64)
+    state->embedding_levels = state->embedding_levels_;
+  else
+    state->embedding_levels = g_new (guint8, n_chars);
+  pango_log2vis_fill_embedding_levels (text + start_index, length, n_chars, state->embedding_levels, &base_dir);
 
   state->embedding_end_offset = 0;
   state->embedding_end = text + start_index;
@@ -503,7 +513,7 @@ itemize_state_init (ItemizeState               *state,
                                &state->script_end, &state->script);
 
   width_iter_init (&state->width_iter, text + start_index, length);
-  _pango_emoji_iter_init (&state->emoji_iter, text + start_index, length);
+  _pango_emoji_iter_init (&state->emoji_iter, text + start_index, length, n_chars);
 
   if (!PANGO_GRAVITY_IS_VERTICAL (state->context->resolved_gravity))
     state->width_iter.end = state->end;
@@ -1017,7 +1027,8 @@ itemize_state_process_run (ItemizeState *state)
 static void
 itemize_state_finish (ItemizeState *state)
 {
-  g_free (state->embedding_levels);
+  if (state->embedding_levels != state->embedding_levels_)
+    g_free (state->embedding_levels);
   if (state->free_attr_iter)
     pango_attr_iterator_destroy (state->attr_iter);
   _pango_script_iter_fini (&state->script_iter);
@@ -1077,6 +1088,7 @@ collect_font_scale (PangoContext  *context,
                   break;
                 case PANGO_FONT_SCALE_SUPERSCRIPT:
                   if (prev &&
+                      prev->analysis.font &&
                       hb_ot_metrics_get_position (pango_font_get_hb_font (prev->analysis.font),
                                                   HB_OT_METRICS_TAG_SUPERSCRIPT_EM_Y_SIZE,
                                                   &y_size))
@@ -1091,6 +1103,7 @@ collect_font_scale (PangoContext  *context,
                   break;
                 case PANGO_FONT_SCALE_SUBSCRIPT:
                   if (prev &&
+                      prev->analysis.font &&
                       hb_ot_metrics_get_position (pango_font_get_hb_font (prev->analysis.font),
                                                   HB_OT_METRICS_TAG_SUBSCRIPT_EM_Y_SIZE,
                                                   &y_size))
@@ -1104,7 +1117,8 @@ collect_font_scale (PangoContext  *context,
                     }
                   break;
                 case PANGO_FONT_SCALE_SMALL_CAPS:
-                  if (hb_ot_metrics_get_position (pango_font_get_hb_font (item->analysis.font),
+                  if (item->analysis.font &&
+                      hb_ot_metrics_get_position (pango_font_get_hb_font (item->analysis.font),
                                                   HB_OT_METRICS_TAG_CAP_HEIGHT,
                                                   &cap_height) &&
                       hb_ot_metrics_get_position (pango_font_get_hb_font (item->analysis.font),
@@ -1323,7 +1337,7 @@ find_text_transform (const PangoAnalysis *analysis)
  * add font scale and text transform attributes to make
  * them be appear according to variant. The log_attrs are
  * needed for taking text transforms into account when
- * determining the case of characters int he run.
+ * determining the case of characters in the run.
  */
 static void
 split_item_for_variant (const char   *text,
