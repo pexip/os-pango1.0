@@ -25,6 +25,8 @@
 #include <pango/pangocairo-fc.h>
 #include <gio/gio.h>
 
+static PangoFontMap *generate_font_map (void);
+
 static void
 test_serialize_attr_list (void)
 {
@@ -35,6 +37,7 @@ test_serialize_attr_list (void)
     "0 1 family    Times",
     "0 1 family    \"Times\"    ",
     "0 1 family    \"Times\\n\\\"New\\\" Roman\"    ",
+    "0 1 family    Times    ",
     "0 10 foreground red, 5 15 weight bold, 0 200 font-desc \"Sans Small-Caps 10\"",
     "0 10 foreground red\n5 15 weight bold\n0 200 font-desc \"Sans Small-Caps 10\"",
     "  0   10   fallback  false,\n 5 15 weight semilight\n\n \n \n",
@@ -42,6 +45,9 @@ test_serialize_attr_list (void)
     "0 -1 size 10",
     "0 1 weight 700, 2 4 weight book",
     "0 200 rise 100\n5 15 family Times\n10 11 size 10240\n11 100 fallback 0\n30 60 stretch 2\n",
+    "weight bold",
+    "font-features \"tnum=1,sinf\"",
+    "0 -1 word 1",
     "",
   };
   const char *roundtripped[] = {
@@ -51,6 +57,7 @@ test_serialize_attr_list (void)
     "0 1 family \"Times\"",
     "0 1 family \"Times\"",
     "0 1 family \"Times\\n\\\"New\\\" Roman\"",
+    "0 1 family \"Times    \"",
     "0 10 foreground #ffff00000000\n5 15 weight bold\n0 200 font-desc \"Sans Small-Caps 10\"",
     "0 10 foreground #ffff00000000\n5 15 weight bold\n0 200 font-desc \"Sans Small-Caps 10\"",
     "0 10 fallback false\n5 15 weight semilight",
@@ -58,12 +65,16 @@ test_serialize_attr_list (void)
     "0 4294967295 size 10",
     "0 1 weight bold\n2 4 weight book",
     "0 200 rise 100\n5 15 family \"Times\"\n10 11 size 10240\n11 100 fallback false\n30 60 stretch condensed",
+    "0 4294967295 weight bold",
+    "0 4294967295 font-features \"tnum=1,sinf\"",
+    "0 4294967295 word 1",
     "",
   };
   const char *invalid[] = {
     "not an attr list",
     "0 -1 FOREGROUND xyz",
     ",,bla.wewq",
+    " 0 10 font-desc aCantarell 11\"",
   };
 
   for (int i = 0; i < G_N_ELEMENTS (valid); i++)
@@ -142,6 +153,7 @@ test_serialize_tab_array (void)
 static void
 test_serialize_font (void)
 {
+  PangoFontMap *fontmap;
   PangoContext *context;
   PangoFontDescription *desc;
   PangoFont *font;
@@ -166,7 +178,8 @@ test_serialize_font (void)
     "  ]\n"
     "}";
 
-  context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  fontmap = generate_font_map ();
+  context = pango_font_map_create_context (fontmap);
   desc = pango_font_description_from_string ("Cantarell Italic 20 @wght=600");
   font = pango_context_load_font (context, desc);
 
@@ -187,6 +200,7 @@ test_serialize_font (void)
   g_bytes_unref (bytes);
   g_bytes_unref (bytes2);
   g_object_unref (context);
+  g_object_unref (fontmap);
 }
 
 static void
@@ -197,6 +211,7 @@ test_serialize_layout_minimal (void)
     "  \"text\" : \"Almost nothing\"\n"
     "}\n";
 
+  PangoFontMap *fontmap;
   PangoContext *context;
   GBytes *bytes;
   PangoLayout *layout;
@@ -204,7 +219,8 @@ test_serialize_layout_minimal (void)
   GBytes *out_bytes;
   const char *str;
 
-  context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  fontmap = generate_font_map ();
+  context = pango_font_map_create_context (fontmap);
 
   bytes = g_bytes_new_static (test, strlen (test) + 1);
 
@@ -228,6 +244,7 @@ test_serialize_layout_minimal (void)
   g_object_unref (layout);
   g_bytes_unref (bytes);
   g_object_unref (context);
+  g_object_unref (fontmap);
 }
 
 static void
@@ -280,6 +297,7 @@ test_serialize_layout_valid (void)
     "  \"line-spacing\" : 1.5\n"
     "}\n";
 
+  PangoFontMap *fontmap;
   PangoContext *context;
   GBytes *bytes;
   PangoLayout *layout;
@@ -288,7 +306,8 @@ test_serialize_layout_valid (void)
   GBytes *out_bytes;
   char *s;
 
-  context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  fontmap = generate_font_map ();
+  context = pango_font_map_create_context (fontmap);
 
   bytes = g_bytes_new_static (test, strlen (test) + 1);
 
@@ -323,6 +342,7 @@ test_serialize_layout_valid (void)
 
   g_object_unref (layout);
   g_object_unref (context);
+  g_object_unref (fontmap);
 }
 
 static void
@@ -338,12 +358,14 @@ test_serialize_layout_context (void)
     "  \"text\" : \"Some fun with layouts!\"\n"
     "}\n";
 
+  PangoFontMap *fontmap;
   PangoContext *context;
   GBytes *bytes;
   PangoLayout *layout;
   GError *error = NULL;
 
-  context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  fontmap = generate_font_map ();
+  context = pango_font_map_create_context (fontmap);
 
   bytes = g_bytes_new_static (test, strlen (test) + 1);
 
@@ -359,6 +381,7 @@ test_serialize_layout_context (void)
   g_object_unref (layout);
   g_bytes_unref (bytes);
   g_object_unref (context);
+  g_object_unref (fontmap);
 }
 
 static void
@@ -415,9 +438,11 @@ test_serialize_layout_invalid (void)
     }
   };
 
+  PangoFontMap *fontmap;
   PangoContext *context;
 
-  context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
+  fontmap = generate_font_map ();
+  context = pango_font_map_create_context (fontmap);
 
   for (int i = 0; i < G_N_ELEMENTS (test); i++)
     {
@@ -437,10 +462,11 @@ test_serialize_layout_invalid (void)
     }
 
   g_object_unref (context);
+  g_object_unref (fontmap);
 }
 
-static void
-install_fonts (void)
+static PangoFontMap *
+generate_font_map (void)
 {
   char *dir;
   FcConfig *config;
@@ -468,19 +494,15 @@ install_fonts (void)
   pango_fc_font_map_set_config (PANGO_FC_FONT_MAP (map), config);
   FcConfigDestroy (config);
 
-  pango_cairo_font_map_set_default (PANGO_CAIRO_FONT_MAP (map));
-
-  g_object_unref (map);
-
   g_free (dir);
+
+  return map;
 }
 
 int
 main (int argc, char *argv[])
 {
   g_test_init (&argc, &argv, NULL);
-
-  install_fonts ();
 
   g_test_add_func ("/serialize/attr-list", test_serialize_attr_list);
   g_test_add_func ("/serialize/tab-array", test_serialize_tab_array);

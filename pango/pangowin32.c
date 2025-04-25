@@ -29,9 +29,16 @@
 #include <glib.h>
 #include <hb.h>
 
+#ifdef USE_HB_GDI
+#include <hb-gdi.h>
+#endif
+
+#include <hb-ot.h>
+
 #include "pango-impl-utils.h"
 #include "pangowin32.h"
 #include "pangowin32-private.h"
+#include "pango-coverage-private.h"
 
 #define MAX_FREED_FONTS 256
 
@@ -126,14 +133,21 @@ _pango_win32_font_init (PangoWin32Font *win32font)
   win32font->glyph_info = g_hash_table_new_full (NULL, NULL, NULL, g_free);
 }
 
-static GPrivate display_dc_key = G_PRIVATE_INIT ((GDestroyNotify) DeleteDC);
+static void
+_delete_dc (HDC dc)
+{
+  /* Don't pass DeleteDC func pointer to the GDestroyNotify.
+   * 32bit build requires matching calling convention (__cdecl vs __stdcall) */
+  DeleteDC (dc);
+}
+
+static GPrivate display_dc_key = G_PRIVATE_INIT ((GDestroyNotify) _delete_dc);
 static GPrivate dwrite_items = G_PRIVATE_INIT ((GDestroyNotify) pango_win32_dwrite_items_destroy);
 
 HDC
 _pango_win32_get_display_dc (void)
 {
   HDC hdc = g_private_get (&display_dc_key);
-  PangoWin32DWriteItems *items;
 
   if (hdc == NULL)
     {
@@ -154,12 +168,8 @@ _pango_win32_get_display_dc (void)
 #endif
     }
 
-  items = g_private_get (&dwrite_items);
-  if (items == NULL)
-    {
-      items = pango_win32_init_direct_write ();
-      g_private_set (&dwrite_items, items);
-    }
+  /* ensure DirectWrite is initialized */
+  pango_win32_get_direct_write_items ();
 
   return hdc;
 }
@@ -167,7 +177,15 @@ _pango_win32_get_display_dc (void)
 PangoWin32DWriteItems *
 pango_win32_get_direct_write_items (void)
 {
-  return g_private_get (&dwrite_items);
+  PangoWin32DWriteItems *items = g_private_get (&dwrite_items);
+
+  if (items == NULL)
+    {
+      items = pango_win32_init_direct_write ();
+      g_private_set (&dwrite_items, items);
+    }
+
+  return items;
 }
 
 /**
@@ -848,7 +866,6 @@ pango_win32_font_finalize (GObject *object)
 {
   PangoWin32Font *win32font = (PangoWin32Font *)object;
   PangoWin32FontCache *cache = pango_win32_font_map_get_font_cache (win32font->fontmap);
-  PangoWin32Font *fontmap;
 
   if (cache != NULL && win32font->hfont != NULL)
     pango_win32_font_cache_unload (cache, win32font->hfont);
@@ -861,12 +878,10 @@ pango_win32_font_finalize (GObject *object)
 
   g_hash_table_destroy (win32font->glyph_info);
 
-  fontmap = g_weak_ref_get ((GWeakRef *) &win32font->fontmap);
-  if (fontmap)
-  {
-    g_object_remove_weak_pointer (G_OBJECT (win32font->fontmap), (gpointer *) (gpointer) &win32font->fontmap);
-    g_object_unref (fontmap);
-  }
+  if (win32font->fontmap)
+    g_object_remove_weak_pointer (G_OBJECT (win32font->fontmap), (gpointer *) &win32font->fontmap);
+
+  g_free (win32font->variations);
 
   G_OBJECT_CLASS (_pango_win32_font_parent_class)->finalize (object);
 }
@@ -876,9 +891,14 @@ pango_win32_font_describe (PangoFont *font)
 {
   PangoFontDescription *desc;
   PangoWin32Font *win32font = PANGO_WIN32_FONT (font);
+  int size;
 
   desc = pango_font_description_copy (win32font->win32face->description);
-  pango_font_description_set_size (desc, win32font->size / (PANGO_SCALE / PANGO_WIN32_FONT_MAP (win32font->fontmap)->resolution));
+  size = (int) (0.5 + win32font->size * PANGO_WIN32_FONT_MAP (win32font->fontmap)->resolution / PANGO_SCALE);
+  pango_font_description_set_size (desc, size);
+
+  if (win32font->variations)
+    pango_font_description_set_variations (desc, win32font->variations);
 
   return desc;
 }
@@ -891,6 +911,9 @@ pango_win32_font_describe_absolute (PangoFont *font)
 
   desc = pango_font_description_copy (win32font->win32face->description);
   pango_font_description_set_absolute_size (desc, win32font->size);
+
+  if (win32font->variations)
+    pango_font_description_set_variations (desc, win32font->variations);
 
   return desc;
 }
@@ -910,10 +933,9 @@ pango_win32_font_get_coverage (PangoFont     *font,
       hb_codepoint_t ch = HB_SET_VALUE_INVALID;
 
       hb_face_collect_unicodes (hb_face, chars);
-      while (hb_set_next(chars, &ch))
-        pango_coverage_set (coverage, ch, PANGO_COVERAGE_EXACT);
 
-      win32face->coverage = g_object_ref (coverage);
+      coverage->chars = chars;
+      win32face->coverage = coverage;
     }
 
   return g_object_ref (win32face->coverage);
@@ -1083,6 +1105,8 @@ pango_win32_render_layout_line (HDC              hdc,
 	case PANGO_UNDERLINE_ERROR_LINE:
           g_warning ("Underline value %d not implemented", uline);
           break;
+        default:
+          g_assert_not_reached ();
 	}
 
       if (uline != PANGO_UNDERLINE_NONE)
@@ -1165,7 +1189,7 @@ pango_win32_get_item_properties (PangoItem      *item,
     {
       PangoAttribute *attr = tmp_list->data;
 
-      switch (attr->klass->type)
+      switch ((int) attr->klass->type)
 	{
 	case PANGO_ATTR_UNDERLINE:
 	  if (uline)
@@ -1239,7 +1263,12 @@ static inline guint32 hb_gdi_uint32_swap (const guint32 v)
 /*
  * Adapted from https://www.mail-archive.com/harfbuzz@lists.freedesktop.org/msg06538.html
  * by Konstantin Ritt.
+ *
+ * HarfBuzz added GDI support after this code was done, and may not have been enabled
+ * in the build, so this now becomes the fallback method used to create a hb_face_t if
+ * HarfBuzz was neither built with DirectWrite nor GDI support.
  */
+#if !defined (USE_HB_DWRITE) && !defined (USE_HB_GDI)
 static hb_blob_t *
 hfont_reference_table (hb_face_t *face, hb_tag_t tag, void *user_data)
 {
@@ -1281,24 +1310,57 @@ hfont_reference_table (hb_face_t *face, hb_tag_t tag, void *user_data)
   SelectObject (hdc, old_hfont);
   return hb_blob_create (buf, size, HB_MEMORY_MODE_READONLY, buf, g_free);
 }
+#endif
 
 static hb_font_t *
 pango_win32_font_create_hb_font (PangoFont *font)
 {
   PangoWin32Font *win32font = (PangoWin32Font *)font;
-  HFONT hfont;
   hb_face_t *face = NULL;
   hb_font_t *hb_font = NULL;
 
   g_return_val_if_fail (font != NULL, NULL);
 
+#ifdef USE_HB_DWRITE
+  face = pango_win32_font_create_hb_face_dwrite (win32font);
+#else
+  HFONT hfont;
+
   hfont = _pango_win32_font_get_hfont (font);
 
-  /* We are *not* allowed to destroy the HFONT here ! */
+#ifdef USE_HB_GDI
+  face = hb_gdi_face_create (hfont);
+#else
   face = hb_face_create_for_tables (hfont_reference_table, (void *)hfont, NULL);
+#endif
+
+#endif
 
   hb_font = hb_font_create (face);
   hb_font_set_scale (hb_font, win32font->size, win32font->size);
+
+  if (win32font->variations)
+    {
+      unsigned int n_axes;
+
+      n_axes = hb_ot_var_get_axis_infos (face, 0, NULL, NULL);
+      if (n_axes > 0)
+        {
+          hb_ot_var_axis_info_t *axes;
+          float *coords;
+
+          axes = g_newa (hb_ot_var_axis_info_t, n_axes);
+          coords = g_newa (float, n_axes);
+
+          hb_ot_var_get_axis_infos (face, 0, &n_axes, axes);
+          for (unsigned int i = 0; i < n_axes; i++)
+            coords[axes[i].axis_index] = axes[i].default_value;
+
+          pango_parse_variations (win32font->variations, axes, n_axes, coords);
+
+          hb_font_set_var_coords_design (hb_font, coords, n_axes);
+        }
+    }
   hb_face_destroy (face);
 
   return hb_font;

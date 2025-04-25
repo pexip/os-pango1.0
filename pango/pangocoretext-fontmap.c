@@ -12,7 +12,7 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Library General Public License for more details.
  *
  * You should have received a copy of the GNU Library General Public
@@ -37,8 +37,8 @@ typedef struct _PangoCoreTextFontset PangoCoreTextFontset;
 #define PANGO_TYPE_CORE_TEXT_FAMILY              (pango_core_text_family_get_type ())
 #define PANGO_CORE_TEXT_FAMILY(object)           (G_TYPE_CHECK_INSTANCE_CAST ((object), PANGO_TYPE_CORE_TEXT_FAMILY, PangoCoreTextFamily))
 #define PANGO_IS_CORE_TEXT_FAMILY(object)        (G_TYPE_CHECK_INSTANCE_TYPE ((object), PANGO_TYPE_CORE_TEXT_FAMILY))
-#define PANGO_CORE_TEXT_FAMILY_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST ((klass), PANGO_CORE_TEXT_FAMILY, PangoCoreTextFamilyClass))
-#define PANGO_IS_CORE_TEXT_FAMILY_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), PANGO_CORE_TEXT_FAMILY))
+#define PANGO_CORE_TEXT_FAMILY_CLASS(klass)     (G_TYPE_CHECK_CLASS_CAST ((klass), PANGO_CORE_TEXT_FAMILY, PangoCoreTextFamilyClass))
+#define PANGO_IS_CORE_TEXT_FAMILY_CLASS(klass)  (G_TYPE_CHECK_CLASS_TYPE ((klass), PANGO_CORE_TEXT_FAMILY))
 #define PANGO_CORE_TEXT_FAMILY_GET_CLASS(object) (G_TYPE_INSTANCE_GET_CLASS((object), PANGO_CORE_TEXT_FAMILY, PangoCoreTextFamilyClass))
 
 #define PANGO_TYPE_CORE_TEXT_FONTSET           (pango_core_text_fontset_get_type ())
@@ -68,8 +68,8 @@ typedef struct _PangoCoreTextFamilyClass PangoCoreTextFamilyClass;
 #define PANGO_TYPE_CORE_TEXT_FACE              (pango_core_text_face_get_type ())
 #define PANGO_CORE_TEXT_FACE(object)           (G_TYPE_CHECK_INSTANCE_CAST ((object), PANGO_TYPE_CORE_TEXT_FACE, PangoCoreTextFace))
 #define PANGO_IS_CORE_TEXT_FACE(object)        (G_TYPE_CHECK_INSTANCE_TYPE ((object), PANGO_TYPE_CORE_TEXT_FACE))
-#define PANGO_CORE_TEXT_FACE_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST ((klass), PANGO_CORE_TEXT_FACE, PangoCoreTextFaceClass))
-#define PANGO_IS_CORE_TEXT_FACE_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), PANGO_CORE_TEXT_FACE))
+#define PANGO_CORE_TEXT_FACE_CLASS(klass)       (G_TYPE_CHECK_CLASS_CAST ((klass), PANGO_CORE_TEXT_FACE, PangoCoreTextFaceClass))
+#define PANGO_IS_CORE_TEXT_FACE_CLASS(klass)    (G_TYPE_CHECK_CLASS_TYPE ((klass), PANGO_CORE_TEXT_FACE))
 #define PANGO_CORE_TEXT_FACE_GET_CLASS(object) (G_TYPE_INSTANCE_GET_CLASS((object), PANGO_CORE_TEXT_FACE, PangoCoreTextFaceClass))
 
 struct _PangoCoreTextFace
@@ -141,26 +141,26 @@ get_real_family (const char *family_name)
     case 'c':
     case 'C':
       if (g_ascii_strcasecmp (family_name, "cursive") == 0)
-	return "Apple Chancery";
+        return "Apple Chancery";
       break;
     case 'f':
     case 'F':
       if (g_ascii_strcasecmp (family_name, "fantasy") == 0)
-	return "Papyrus";
+        return "Papyrus";
       break;
     case 'm':
     case 'M':
       if (g_ascii_strcasecmp (family_name, "monospace") == 0)
-	return "Courier";
+        return "Menlo";
       break;
     case 's':
     case 'S':
       if (g_ascii_strcasecmp (family_name, "sans") == 0)
-	return "Helvetica";
+        return "Helvetica";
       else if (g_ascii_strcasecmp (family_name, "serif") == 0)
-	return "Times";
+        return "Times";
       else if (g_ascii_strcasecmp (family_name, "system-ui") == 0)
-	return ".AppleSystemUIFont";
+        return ".AppleSystemUIFont";
       break;
     }
 
@@ -267,7 +267,7 @@ ct_font_descriptor_get_traits (CTFontDescriptorRef desc)
    */
   dict = CTFontDescriptorCopyAttribute (desc, kCTFontTraitsAttribute);
   cf_number = (CFNumberRef)CFDictionaryGetValue (dict, kCTFontSymbolicTrait);
-  if (!CFNumberGetValue (cf_number, kCFNumberSInt64Type, &traits))
+  if (!(cf_number && CFNumberGetValue (cf_number, kCFNumberSInt64Type, &traits)))
     traits = 0;
   CFRelease (dict);
 
@@ -646,7 +646,7 @@ pango_core_text_family_list_faces (PangoFontFamily  *family,
 
       italic_faces = g_hash_table_new (g_direct_hash, g_direct_equal);
 
-      count = CFArrayGetCount (ctfaces);
+      count = ctfaces ? CFArrayGetCount (ctfaces) : 0;
       for (i = 0; i < count; i++)
         {
           PangoCoreTextFace *face;
@@ -660,13 +660,13 @@ pango_core_text_family_list_faces (PangoFontFamily  *family,
           if ((face->traits & kCTFontItalicTrait) == kCTFontItalicTrait ||
               pango_core_text_face_is_oblique (face))
             g_hash_table_insert (italic_faces,
-				 GINT_TO_POINTER ((gint)face->weight),
+                                 GINT_TO_POINTER ((gint)face->weight),
                                  face);
         }
 
       CFRelease (font_descriptors);
       CFRelease (attributes);
-      CFRelease (ctfaces);
+      if (ctfaces) CFRelease (ctfaces);
 
       /* For all fonts for which a non-synthetic italic variant does
        * not exist on the system, we create synthesized versions here.
@@ -703,7 +703,7 @@ pango_core_text_family_list_faces (PangoFontFamily  *family,
       ctfamily->faces = g_new (PangoFontFace *, ctfamily->n_faces);
 
       for (l = faces, i = 0; l; l = l->next, i++)
-	ctfamily->faces[i] = l->data;
+        ctfamily->faces[i] = l->data;
 
       g_list_free (faces);
       g_hash_table_destroy (italic_faces);
@@ -745,7 +745,7 @@ pango_core_text_family_finalize (GObject *object)
   if (family->n_faces != -1)
     {
       for (i = 0; i < family->n_faces; i++)
-	g_object_unref (family->faces[i]);
+        g_object_unref (family->faces[i]);
 
       g_free (family->faces);
     }
@@ -804,8 +804,8 @@ pango_core_text_font_map_finalize (GObject *object)
 
 static guint32
 hash_bytes_fnv (unsigned char *buffer,
-		int            len,
-		guint32        hval)
+                int            len,
+                guint32        hval)
 {
   while (len--)
     {
@@ -818,7 +818,7 @@ hash_bytes_fnv (unsigned char *buffer,
 
 static void
 get_context_matrix (PangoContext *context,
-		    PangoMatrix *matrix)
+                    PangoMatrix *matrix)
 {
   const PangoMatrix *set_matrix;
   const PangoMatrix identity = PANGO_MATRIX_INIT;
@@ -1017,6 +1017,7 @@ struct _PangoCoreTextFontKey
   double resolution;
   gboolean synthetic_italic;
   gpointer context_key;
+  char *variations;
 };
 
 static void
@@ -1034,6 +1035,22 @@ pango_core_text_font_key_init (PangoCoreTextFontKey    *key,
   key->synthetic_italic = synthetic_italic;
   key->gravity = pango_core_text_fontset_key_get_gravity (fontset_key);
   key->context_key = pango_core_text_fontset_key_get_context_key (fontset_key);
+  key->variations = (char *) pango_font_description_get_variations (fontset_key->desc);
+}
+
+static void
+pango_core_text_font_key_init_from_key (PangoCoreTextFontKey       *key,
+                                        const PangoCoreTextFontKey *orig)
+{
+  key->fontmap = orig->fontmap;
+  key->ctfontdescriptor = orig->ctfontdescriptor;
+  key->matrix = orig->matrix;
+  key->pointsize = orig->pointsize;
+  key->resolution = orig->resolution;
+  key->synthetic_italic = orig->synthetic_italic;
+  key->gravity = orig->gravity;
+  key->context_key = orig->context_key;
+  key->variations = orig->variations;
 }
 
 static PangoCoreTextFontKey *
@@ -1053,6 +1070,7 @@ pango_core_text_font_key_copy (const PangoCoreTextFontKey *old)
     key->context_key = PANGO_CORE_TEXT_FONT_MAP_GET_CLASS (key->fontmap)->context_key_copy (key->fontmap, old->context_key);
   else
     key->context_key = NULL;
+  key->variations = g_strdup (old->variations);
 
   return key;
 }
@@ -1065,6 +1083,8 @@ pango_core_text_font_key_free (PangoCoreTextFontKey *key)
 
   if (key->context_key)
     PANGO_CORE_TEXT_FONT_MAP_GET_CLASS (key->fontmap)->context_key_free (key->fontmap, key->context_key);
+
+  g_free (key->variations);
 
   g_slice_free (PangoCoreTextFontKey, key);
 }
@@ -1081,6 +1101,9 @@ pango_core_text_font_key_hash (const PangoCoreTextFontKey *key)
   if (key->context_key)
     hash ^= PANGO_CORE_TEXT_FONT_MAP_GET_CLASS (key->fontmap)->context_key_hash (key->fontmap, key->context_key);
 
+  if (key->variations)
+    hash ^= g_str_hash (key->variations);
+
   return (hash ^ CFHash (key->ctfontdescriptor));
 }
 
@@ -1093,7 +1116,8 @@ pango_core_text_font_key_equal (const PangoCoreTextFontKey *key_a,
       key_a->gravity == key_b->gravity &&
       key_a->pointsize == key_b->pointsize &&
       key_a->resolution == key_b->resolution &&
-      key_a->synthetic_italic == key_b->synthetic_italic)
+      key_a->synthetic_italic == key_b->synthetic_italic &&
+      g_strcmp0 (key_a->variations, key_b->variations) == 0)
     {
       if (key_a->context_key && key_b->context_key)
         return PANGO_CORE_TEXT_FONT_MAP_GET_CLASS (key_a->fontmap)->context_key_equal (key_a->fontmap,
@@ -1148,6 +1172,11 @@ pango_core_text_font_key_get_ctfontdescriptor (const PangoCoreTextFontKey *key)
   return key->ctfontdescriptor;
 }
 
+const char *
+pango_core_text_font_key_get_variations (const PangoCoreTextFontKey *key)
+{
+  return key->variations;
+}
 
 
 static void
@@ -1165,32 +1194,37 @@ pango_core_text_font_map_add (PangoCoreTextFontMap *ctfontmap,
 }
 
 static PangoCoreTextFont *
+pango_core_text_font_map_new_font_from_key (PangoCoreTextFontMap *fontmap,
+                                            PangoCoreTextFontKey *key)
+{
+  PangoCoreTextFont *font;
+
+  font = g_hash_table_lookup (fontmap->font_hash, key);
+  if (font)
+    return g_object_ref (font);
+
+  font = PANGO_CORE_TEXT_FONT_MAP_GET_CLASS (fontmap)->create_font (fontmap, key);
+
+  if (!font)
+    return NULL;
+
+  pango_core_text_font_map_add (fontmap, key, font);
+
+  return g_object_ref (font);
+}
+
+static PangoCoreTextFont *
 pango_core_text_font_map_new_font (PangoCoreTextFontMap    *fontmap,
                                    PangoCoreTextFontsetKey *fontset_key,
                                    CTFontDescriptorRef      ctfontdescriptor,
                                    gboolean                 synthetic_italic)
 {
-  PangoCoreTextFontMapClass *klass;
-  PangoCoreTextFont *font;
   PangoCoreTextFontKey key;
 
   pango_core_text_font_key_init (&key, fontmap, fontset_key, ctfontdescriptor,
                                  synthetic_italic);
 
-  font = g_hash_table_lookup (fontmap->font_hash, &key);
-  if (font)
-    return g_object_ref (font);
-
-  /* Call create_font */
-  klass = PANGO_CORE_TEXT_FONT_MAP_GET_CLASS (fontmap);
-  font = klass->create_font (fontmap, &key);
-
-  if (!font)
-    return NULL;
-
-  pango_core_text_font_map_add (fontmap, &key, font);
-
-  return font;
+  return pango_core_text_font_map_new_font_from_key (fontmap, &key);
 }
 
 static gboolean
@@ -1211,13 +1245,13 @@ find_best_match (PangoCoreTextFamily         *font_family,
 
       if (pango_font_description_better_match (description, best_description,
                                                new_desc))
-	{
-	  pango_font_description_free (best_description);
-	  best_description = new_desc;
-	  *best_face = (PangoCoreTextFace *)font_family->faces[i];
-	}
+        {
+          pango_font_description_free (best_description);
+          best_description = new_desc;
+          *best_face = (PangoCoreTextFace *)font_family->faces[i];
+        }
       else
-	pango_font_description_free (new_desc);
+        pango_font_description_free (new_desc);
     }
 
   if (best_description)
@@ -1288,8 +1322,8 @@ pango_core_text_font_map_load_font (PangoFontMap               *fontmap,
 
 static void
 list_families_foreach (gpointer key,
-		       gpointer value,
-		       gpointer user_data)
+                       gpointer value,
+                       gpointer user_data)
 {
   GSList **list = user_data;
 
@@ -1321,11 +1355,11 @@ pango_core_text_font_map_list_families (PangoFontMap      *fontmap,
 
       tmp_list = family_list;
       while (tmp_list)
-	{
-	  (*families)[i] = tmp_list->data;
-	  i++;
-	  tmp_list = tmp_list->next;
-	}
+        {
+          (*families)[i] = tmp_list->data;
+          i++;
+          tmp_list = tmp_list->next;
+        }
     }
 
   g_slist_free (family_list);
@@ -1519,6 +1553,15 @@ pango_core_text_font_map_init (PangoCoreTextFontMap *ctfontmap)
     g_hash_table_insert (ctfontmap->families,
                          g_utf8_casefold (family->family_name, -1), family);
   }
+  /* Insert .AppleSystemUIFont because it isn't included in the result
+   * set from CTFontCollectionCreateFromAvailableFonts. If it's not
+   * included in the families fontset it can't be used to render text.
+   */
+  family = g_object_new (PANGO_TYPE_CORE_TEXT_FAMILY, NULL);
+  family->family_name = g_strdup (".AppleSystemUIFont");
+    g_hash_table_insert (ctfontmap->families,
+                         g_utf8_casefold (family->family_name, -1), family);
+
 }
 
 static PangoFontFace *
@@ -1530,11 +1573,44 @@ pango_core_text_font_map_get_face (PangoFontMap *fontmap,
   return PANGO_FONT_FACE (_pango_core_text_font_get_face (cfont));
 }
 
+static PangoFont *
+pango_core_text_font_map_reload_font (PangoFontMap *fontmap,
+                                      PangoFont    *font,
+                                      double        scale,
+                                      PangoContext *context,
+                                      const char   *variations)
+{
+  PangoCoreTextFontMap *ctfontmap = PANGO_CORE_TEXT_FONT_MAP (fontmap);
+  PangoCoreTextFont *ctfont = PANGO_CORE_TEXT_FONT (font);
+  PangoCoreTextFontKey key;
+  PangoFont *scaled;
+
+  pango_core_text_font_key_init_from_key (&key, _pango_core_text_font_get_font_key (ctfont));
+
+  if (scale != 1.0)
+    key.pointsize *= scale;
+
+  if (context)
+    {
+      get_context_matrix (context, &key.matrix);
+      if (context && PANGO_CORE_TEXT_FONT_MAP_GET_CLASS (fontmap)->context_key_get)
+        key.context_key = (gpointer) PANGO_CORE_TEXT_FONT_MAP_GET_CLASS (fontmap)->context_key_get (ctfontmap, context);
+    }
+
+  if (variations)
+    g_warning_once ("pango_core_text_font_map_reload_font: variations are ignored");
+
+  scaled = (PangoFont *)pango_core_text_font_map_new_font_from_key (ctfontmap, &key);
+
+  return scaled;
+}
+
 static void
 pango_core_text_font_map_class_init (PangoCoreTextFontMapClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
   PangoFontMapClass *fontmap_class = PANGO_FONT_MAP_CLASS (class);
+  PangoFontMapClassPrivate *pclass;
 
   object_class->finalize = pango_core_text_font_map_finalize;
 
@@ -1545,6 +1621,10 @@ pango_core_text_font_map_class_init (PangoCoreTextFontMapClass *class)
   fontmap_class->get_serial = pango_core_text_font_map_get_serial;
   fontmap_class->changed = pango_core_text_font_map_changed;
   fontmap_class->get_face = pango_core_text_font_map_get_face;
+
+  pclass = g_type_class_get_private ((GTypeClass *) class, PANGO_TYPE_FONT_MAP);
+
+  pclass->reload_font = pango_core_text_font_map_reload_font;
 }
 
 /*

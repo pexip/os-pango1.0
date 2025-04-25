@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-/* Freetype has undefined macros in its header */
+/* FreeType has undefined macros in its header */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wundef"
 #include <cairo-ft.h>
@@ -86,6 +86,10 @@ pango_cairo_fc_font_create_base_metrics_for_context (PangoCairoFont *cfont,
       metrics->ascent = PANGO_PIXELS_CEIL (metrics->ascent) * PANGO_SCALE;
       metrics->descent = PANGO_PIXELS_CEIL (metrics->descent) * PANGO_SCALE;
       metrics->height = PANGO_PIXELS_CEIL (metrics->height) * PANGO_SCALE;
+      metrics->underline_position = PANGO_PIXELS_CEIL (metrics->underline_position) * PANGO_SCALE;
+      metrics->underline_thickness = PANGO_PIXELS_CEIL (metrics->underline_thickness) * PANGO_SCALE;
+      metrics->strikethrough_position = PANGO_PIXELS_CEIL (metrics->strikethrough_position) * PANGO_SCALE;
+      metrics->strikethrough_thickness = PANGO_PIXELS_CEIL (metrics->strikethrough_thickness) * PANGO_SCALE;
     }
 
   return metrics;

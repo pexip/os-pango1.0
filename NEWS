@@ -1,4 +1,108 @@
-Overview of changes in 1.50.12, xx-xx-xxxx
+Overview of changes in 1.56.3, 16-03-2025
+=========================================
+- Improve font description serialization
+- fontconfig: Avoid FcFontSetSort when possible
+- coverage: Extend coverage by Unicode decomposition
+- win32: Speed up coverage creation
+- Deprecate pango_font_descriptions_free
+
+Overview of changes in 1.56.2, 04-03-2025
+=========================================
+- Annotation fixes
+- fontconfig: Set optical size for fonts with an opsz axis
+- fontconfig: Make panog_font_map_reload_font scale linearly
+
+Overview of changes in 1.56.1, 18-01-2025
+=========================================
+- Avoid criticals when there are no fonts
+- fontconfig: Handle lack of FC_FONT_WRAPPER in font cache
+- fontconfig: Prefer application fonts even if they are older
+
+Overview of changes in 1.56.0, 09-01-2025
+=========================================
+- Support setting font features in font descriptions
+- serialization: Document the tab array format
+- serialization: Accept attributes without range
+- win32: Improve the pango_font_map_reload_font implementation
+- win32: Take variations into account for caching
+- layout: Fix measuring ellipsis runs with shapes
+- build: Require C11
+- build: Require GLib 2.80
+- build: Require cairo 1.18
+
+Overview of changes in 1.55, 26-11-2024
+=======================================
+- Support Unicode 16
+- Add pango_font_map_add_font_file
+- fontconfig: Reject patterns without FC_FILE
+- coretext: Actually use .AppleSystemUIFont
+- coretext: Keep track of variations
+- win32: Use font options for caching
+- win32: Keep variations in PangoWin32Font
+- build: Require harfbuzz 8.4.0
+- build: Require fontconfig 2.15
+- build: Require meson 1.2.0
+- build: Require Window 10
+
+Overview of changes in 1.54.0, 09-06-2024
+=========================================
+- Build fixes
+- Memory leak fixes
+- Drop the install-tests build option
+- Add build-examples and build-tests build options
+- Require meson 0.63
+- Add pango_item_get_char_offset
+- Update to Unicode 15.1
+- Fix wrong use of GWeakRef, leading to crashes
+
+Overview of changes in 1.52.2, 31-03-2024
+=========================================
+- coretext: Implement reload_font
+- coretext: Use Menlo instead of Courier for monospace
+- win32: Avoid a double free
+- Update to Unicode 15.1
+- Simplify hexbox drawing
+
+Overview of changes in 1.52.1, 05-03-2024
+=========================================
+- Fix hexbox drawing
+
+Overview of changes in 1.52.0, 25-02-2024
+=========================================
+- Add pango_font_map_reload_font
+- Improve formatting of font sizes
+
+Overview of changes in 1.51.2, 10-02-2024
+=========================================
+- Build improvements on Windows
+- Use single fontconfig thread
+- Fix problems with spaces at line ends
+- Allow custom fonts on Windows
+- pango-viewer: Fix hint-metrics options
+- Pangofont: Add properties
+
+Overview of changes in 1.51.0, 11-08-2023
+=========================================
+- itemize: Improve script itemization
+- build: Check for cairo DWrite dependency
+- win32: Fix various issues and crashes
+- layout: Add a missing switch case
+
+Overview of changes in 1.50.14, 02-03-2023
+==========================================
+- Fix underline thickness in scaled contexts
+
+Overview of changes in 1.50.13, 20-02-2023
+==========================================
+- win32: Add back fallback for empty fontsets
+- win32: Improve DirectWrite support
+- Fix word segmentation for Japanese
+- Don't set backspace-deletes-char for math symbols
+- coretext: Fix a crash
+- cairo: Apply metrics hinting to underlines too
+- Treat COLRv1 fonts as color fonts
+
+Overview of changes in 1.50.12, 18-11-2022
 ==========================================
 - Fix weight conversion on MacOS
 - Update to Unicode 15
