@@ -32,7 +32,18 @@
 #endif
 
 #include <pango/pangocairo.h>
+
+#ifdef G_OS_WIN32
+#include <pango/pangowin32.h>
+#endif
+
+#ifdef HAVE_FREETYPE
+#include <pango/pangoft2.h>
+#include <pango/pangocairo-fc.h>
+#endif
+
 #include "test-common.h"
+
 
 char *
 diff_with_file (const char  *file,
@@ -40,7 +51,14 @@ diff_with_file (const char  *file,
                 gssize       len,
                 GError     **error)
 {
+#ifdef G_OS_WIN32
+  const char *command[] = { "diff", "-u", "-i", "--strip-trailing-cr", file, NULL, NULL };
+  const int tmp_file_idx = 5;
+#else
   const char *command[] = { "diff", "-u", "-i", file, NULL, NULL };
+  const int tmp_file_idx = 4;
+#endif
+
   char *diff, *tmpfile;
   int fd;
 
@@ -63,7 +81,7 @@ diff_with_file (const char  *file,
       goto done;
     }
   close (fd);
-  command[4] = tmpfile;
+  command[tmp_file_idx] = tmpfile;
 
   /* run diff command */
   g_spawn_sync (NULL,
@@ -88,7 +106,7 @@ diff_bytes (GBytes  *b1,
             GError **error)
 {
   const char *command[] = { "diff", "-u", "-i", NULL, NULL, NULL };
-  char *diff, *tmpfile, *tmpfile2;
+  char *diff = NULL, *tmpfile = NULL, *tmpfile2 = NULL;
   int fd;
   const char *text;
   gsize len;
@@ -232,5 +250,35 @@ get_script_name (GUnicodeScript s)
   nick = value->value_nick;
   g_type_class_unref (class);
   return nick;
+}
+
+/* Create a fontmap that will return our included Cantarell-VF.otf
+ * for "Cantarell"
+ *
+ * FIXME: Make this work for macOS
+ */
+PangoFontMap *
+get_font_map_with_cantarell (void)
+{
+  PangoFontMap *fontmap;
+  GError *error = NULL;
+  char *path;
+
+  fontmap = pango_cairo_font_map_new ();
+
+  /* FIXME: the coretext backend doesn't implement add_font_file */
+  if (strcmp (G_OBJECT_TYPE_NAME (fontmap), "PangoCairoCoreTextFontMap") != 0)
+    {
+      path = g_test_build_filename (G_TEST_DIST, "fonts", "Cantarell-VF.otf", NULL);
+      if (g_test_verbose ())
+        g_test_message ("adding %s to font map", path);
+      pango_font_map_add_font_file (fontmap, path, &error);
+      g_assert_no_error (error);
+      g_free (path);
+    }
+
+  g_assert_true (pango_cairo_font_map_get_resolution (PANGO_CAIRO_FONT_MAP (fontmap)) == 96.0);
+
+  return fontmap;
 }
 

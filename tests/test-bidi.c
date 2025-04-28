@@ -23,8 +23,6 @@
 #include <pango/pango.h>
 #include <pango/pangocairo.h>
 
-static PangoContext *context;
-
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 
 static void
@@ -174,9 +172,13 @@ test_move_cursor_line (void)
     "aאב12b",
     "pa­ra­graph", // soft hyphens
   };
+  PangoFontMap *fontmap;
+  PangoContext *context;
   PangoLayout *layout;
   gboolean fail = FALSE;
 
+  fontmap = pango_cairo_font_map_new ();
+  context = pango_font_map_create_context (fontmap);
   layout = pango_layout_new (context);
 
   for (int i = 0; i < G_N_ELEMENTS (tests); i++)
@@ -270,8 +272,8 @@ test_move_cursor_line (void)
               while (trailing--)
                 index = g_utf8_next_char (text + index) - text;
 
-              g_assert (index == -1 || index == G_MAXINT ||
-                        (0 <= index && index <= strlen (tests[i])));
+              g_assert_true (index == -1 || index == G_MAXINT ||
+                             (0 <= index && index <= strlen (tests[i])));
 
               if (index == -1 || index == G_MAXINT)
                 break;
@@ -329,6 +331,8 @@ test_move_cursor_line (void)
     }
 
   g_object_unref (layout);
+  g_object_unref (context);
+  g_object_unref (fontmap);
 
   if (fail)
     g_test_fail ();
@@ -350,6 +354,8 @@ test_move_cursor_para (void)
     { "long word", 40 },
     { "זוהי השורה הראשונה" "\n" "זוהי השורה השנייה" "\n" "זוהי השורה השלישית" , 200 },
   };
+  PangoFontMap *fontmap;
+  PangoContext *context;
   PangoLayout *layout;
   PangoRectangle pos, old_pos;
   int index;
@@ -360,6 +366,8 @@ test_move_cursor_para (void)
   PangoRectangle ext;
   PangoLayoutIter *iter;
 
+  fontmap = pango_cairo_font_map_new ();
+  context = pango_font_map_create_context (fontmap);
   layout = pango_layout_new (context);
 
   for (int i = 0; i < G_N_ELEMENTS (tests); i++)
@@ -393,8 +401,8 @@ test_move_cursor_para (void)
           while (trailing--)
             index = g_utf8_next_char (text + index) - text;
 
-          g_assert (index == -1 || index == G_MAXINT ||
-                    (0 <= index && index <= strlen (tests[i].text)));
+          g_assert_true (index == -1 || index == G_MAXINT ||
+                         (0 <= index && index <= strlen (tests[i].text)));
 
           if (index == -1 || index == G_MAXINT)
             break;
@@ -434,8 +442,8 @@ test_move_cursor_para (void)
           while (trailing--)
             index = g_utf8_next_char (text + index) - text;
 
-          g_assert (index == -1 || index == G_MAXINT ||
-                    (0 <= index && index <= strlen (tests[i].text)));
+          g_assert_true (index == -1 || index == G_MAXINT ||
+                         (0 <= index && index <= strlen (tests[i].text)));
 
           if (index == -1 || index == G_MAXINT)
             break;
@@ -451,17 +459,23 @@ test_move_cursor_para (void)
     }
 
   g_object_unref (layout);
+  g_object_unref (context);
+  g_object_unref (fontmap);
 }
 
 static void
 test_sinhala_cursor (void)
 {
   const char *text = "ර් á ";
+  PangoFontMap *fontmap;
+  PangoContext *context;
   PangoLayout *layout;
   const char *p;
   const PangoLogAttr *attrs;
   int n, i;
 
+  fontmap = pango_cairo_font_map_new ();
+  context = pango_font_map_create_context (fontmap);
   layout = pango_layout_new (context);
 
   pango_layout_set_text (layout, text, -1);
@@ -469,6 +483,8 @@ test_sinhala_cursor (void)
   if (pango_layout_get_unknown_glyphs_count (layout) > 0)
     {
       g_object_unref (layout);
+      g_object_unref (context);
+      g_object_unref (fontmap);
       g_test_skip ("missing Sinhala fonts");
       return;
     }
@@ -489,17 +505,148 @@ test_sinhala_cursor (void)
       g_assert_true (strong.x == weak.x);
       g_assert_true (strong.width == weak.width);
     }
+
+  g_object_unref (layout);
+  g_object_unref (context);
+  g_object_unref (fontmap);
+}
+
+static struct
+{
+  const char *text;
+  int chars[20];
+  int n_chars;
+  int n_runs;
+  int offsets[20];
+  int levels[20];
+  GUnicodeScript scripts[20];
+} nested_tests[] = {
+  {
+    /* The example from docs/pango_bidi.md */
+    .text = "abאב12αβ",
+    .chars = { 0, 1, 4, 5, 3, 2, 6, 7, -1, },
+    .n_chars = 8,
+    .n_runs = 5,
+    .offsets = { 0, 4, 2, 6, -1, },
+    .levels = { 0, 2, 1, 0, -1, },
+    .scripts = {
+      G_UNICODE_SCRIPT_LATIN,  /* ab */
+      G_UNICODE_SCRIPT_HEBREW, /* 12 */
+      G_UNICODE_SCRIPT_HEBREW, /* אב */
+      G_UNICODE_SCRIPT_GREEK,  /* αβ */
+      -1,                      /* NULL run */
+    },
+  },
+  {
+    /* https://gitlab.gnome.org/GNOME/pango/-/issues/794 */
+    .text = "abאב12",
+    .chars = { 0, 1, 4, 5, 3, 2, -1, },
+    .n_chars = 6,
+    .n_runs = 4,
+    .offsets = { 0, 4, 2, -1, },
+    .levels = { 0, 2, 1, -1, },
+    .scripts = {
+      G_UNICODE_SCRIPT_LATIN,  /* ab */
+      G_UNICODE_SCRIPT_HEBREW, /* 12 */
+      G_UNICODE_SCRIPT_HEBREW, /* אב */
+      -1,                      /* NULL run */
+    },
+  },
+};
+
+static void
+test_bidi_nested (void)
+{
+  for (int i = 0; i < G_N_ELEMENTS (nested_tests); i++)
+    {
+      const char *text = nested_tests[i].text;
+      gunichar *codes;
+      glong n_chars;
+      PangoFontMap *fontmap;
+      PangoContext *context;
+      PangoLayout *layout;
+      PangoLayoutIter *iter;
+
+      codes = g_utf8_to_ucs4_fast (text, -1, &n_chars);
+      g_assert_nonnull (codes);
+      g_assert_true (n_chars == nested_tests[i].n_chars);
+
+      fontmap = pango_cairo_font_map_new ();
+      context = pango_font_map_create_context (fontmap);
+      layout = pango_layout_new (context);
+      pango_layout_set_text (layout, text, -1);
+
+      if (pango_layout_get_unknown_glyphs_count (layout) > 0)
+        {
+          g_object_unref (layout);
+          g_object_unref (context);
+          g_object_unref (fontmap);
+          g_test_skip ("missing fonts");
+          return;
+        }
+
+      /* Iterate chars in visual order */
+      iter = pango_layout_get_iter (layout);
+      for (int j = 0; j < nested_tests[i].n_chars; j++)
+        {
+          int index = pango_layout_iter_get_index (iter);
+          int offset = g_utf8_pointer_to_offset (text, text + index);
+          gboolean moved = pango_layout_iter_next_char (iter);
+
+          g_assert_true (offset == nested_tests[i].chars[j]);
+          g_assert_true (moved == (j + 1 < n_chars));
+        }
+      pango_layout_iter_free (iter);
+
+      /* Iterate runs in visual order */
+      iter = pango_layout_get_iter (layout);
+      for (int j = 0; j < nested_tests[i].n_runs; j++)
+        {
+          PangoLayoutRun *run = pango_layout_iter_get_run_readonly (iter);
+          gboolean moved = pango_layout_iter_next_run (iter);
+
+          if (j + 1 < nested_tests[i].n_runs)
+            {
+              int offset;
+
+              g_assert_nonnull (run);
+
+              offset = g_utf8_pointer_to_offset (text, text + run->item->offset);
+              g_assert_true (offset == nested_tests[i].offsets[j]);
+              g_assert_true (offset == pango_item_get_char_offset (run->item));
+              g_assert_true (run->item->analysis.level == nested_tests[i].levels[j]);
+              g_assert_true (run->item->analysis.script == nested_tests[i].scripts[j]);
+              g_assert_true (moved == (j + 1 < nested_tests[i].n_runs));
+
+              g_assert_true (moved);
+            }
+          else
+            {
+              g_assert_null (run);
+
+              g_assert_false (moved);
+            }
+        }
+      pango_layout_iter_free (iter);
+
+      /* Lines */
+      iter = pango_layout_get_iter (layout);
+      g_assert_true (pango_layout_iter_at_last_line (iter));
+      g_assert_false (pango_layout_iter_next_line (iter));
+      pango_layout_iter_free (iter);
+
+      g_object_unref (layout);
+      g_object_unref (context);
+      g_object_unref (fontmap);
+
+      g_free (codes);
+    }
 }
 
 int
 main (int argc, char *argv[])
 {
-  PangoFontMap *fontmap;
-
   setlocale (LC_ALL, "");
-
-  fontmap = pango_cairo_font_map_get_default ();
-  context = pango_font_map_create_context (fontmap);
 
   g_test_init (&argc, &argv, NULL);
 
@@ -510,6 +657,7 @@ main (int argc, char *argv[])
   g_test_add_func ("/bidi/move-cursor-line", test_move_cursor_line);
   g_test_add_func ("/bidi/move-cursor-para", test_move_cursor_para);
   g_test_add_func ("/bidi/sinhala-cursor", test_sinhala_cursor);
+  g_test_add_func ("/bidi/nested", test_bidi_nested);
 
   return g_test_run ();
 }

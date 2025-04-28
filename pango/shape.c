@@ -300,6 +300,23 @@ find_text_transform (const PangoAnalysis *analysis)
 }
 
 static gboolean
+font_has_color (hb_font_t *font)
+{
+  hb_face_t *face;
+
+  face = hb_font_get_face (font);
+
+#if HB_VERSION_ATLEAST (7, 0, 0)
+  if (hb_ot_color_has_paint (face))
+    return TRUE;
+#endif
+
+  return hb_ot_color_has_layers (face) ||
+         hb_ot_color_has_png (face) ||
+         hb_ot_color_has_svg (face);
+}
+
+static gboolean
 glyph_has_color (hb_font_t      *font,
                  hb_codepoint_t  glyph)
 {
@@ -307,6 +324,11 @@ glyph_has_color (hb_font_t      *font,
   hb_blob_t *blob;
 
   face = hb_font_get_face (font);
+
+#if HB_VERSION_ATLEAST (7, 0, 0)
+  if (hb_ot_color_glyph_has_paint (face, glyph))
+    return TRUE;
+#endif
 
   if (hb_ot_color_glyph_get_layers (face, glyph, 0, NULL, NULL) > 0)
     return TRUE;
@@ -367,6 +389,7 @@ pango_hb_shape (const char          *item_text,
   PangoGlyphInfo *infos;
   PangoTextTransform transform;
   int hyphen_index;
+  gboolean font_is_color;
 
   g_return_if_fail (analysis != NULL);
   g_return_if_fail (analysis->font != NULL);
@@ -497,13 +520,14 @@ pango_hb_shape (const char          *item_text,
   pango_glyph_string_set_size (glyphs, num_glyphs);
   infos = glyphs->glyphs;
   last_cluster = -1;
+  font_is_color = font_has_color (hb_font);
 
   for (i = 0; i < num_glyphs; i++)
     {
       infos[i].glyph = hb_glyph->codepoint;
       glyphs->log_clusters[i] = hb_glyph->cluster - item_offset;
       infos[i].attr.is_cluster_start = glyphs->log_clusters[i] != last_cluster;
-      infos[i].attr.is_color = glyph_has_color (hb_font, hb_glyph->codepoint);
+      infos[i].attr.is_color = font_is_color && glyph_has_color (hb_font, hb_glyph->codepoint);
       hb_glyph++;
       last_cluster = glyphs->log_clusters[i];
     }
@@ -773,7 +797,7 @@ pango_shape_internal (const char          *item_text,
  * @text: the text to process
  * @length: the length (in bytes) of @text
  * @analysis: `PangoAnalysis` structure from [func@Pango.itemize]
- * @glyphs: glyph string in which to store results
+ * @glyphs: (out caller-allocates): glyph string in which to store results
  *
  * Convert the characters in @text into glyphs.
  *
@@ -810,7 +834,7 @@ pango_shape (const char          *text,
  * @paragraph_text: (nullable): text of the paragraph (see details).
  * @paragraph_length: the length (in bytes) of @paragraph_text. -1 means nul-terminated text.
  * @analysis: `PangoAnalysis` structure from [func@Pango.itemize].
- * @glyphs: glyph string in which to store results.
+ * @glyphs: (out caller-allocates): glyph string in which to store results.
  *
  * Convert the characters in @text into glyphs.
  *
@@ -860,7 +884,7 @@ pango_shape_full (const char          *item_text,
  * @paragraph_length: the length (in bytes) of @paragraph_text.
  *     -1 means nul-terminated text.
  * @analysis:  `PangoAnalysis` structure from [func@Pango.itemize]
- * @glyphs: glyph string in which to store results
+ * @glyphs: (out caller-allocates): glyph string in which to store results
  * @flags: flags influencing the shaping process
  *
  * Convert the characters in @text into glyphs.
@@ -906,7 +930,7 @@ pango_shape_with_flags (const char          *item_text,
  * @paragraph_length: the length (in bytes) of @paragraph_text.
  *     -1 means nul-terminated text.
  * @log_attrs: (nullable): array of `PangoLogAttr` for @item
- * @glyphs: glyph string in which to store results
+ * @glyphs: (out caller-allocates): glyph string in which to store results
  * @flags: flags influencing the shaping process
  *
  * Convert the characters in @item into glyphs.

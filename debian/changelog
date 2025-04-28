@@ -1,3 +1,192 @@
+pango1.0 (1.56.3-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Mon, 17 Mar 2025 14:38:37 -0400
+
+pango1.0 (1.56.2-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Thu, 13 Mar 2025 11:33:37 -0400
+
+pango1.0 (1.56.1-1) unstable; urgency=medium
+
+  * New upstream release
+  * Remove 3 patches applied in new release
+  * Remove now unnecessary Build-Conflicts: fonts-cantarell
+  * autopkgtest: Add Depends: fonts-cantarell as a way to test
+    the underlying issue
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Sun, 19 Jan 2025 10:08:35 -0500
+
+pango1.0 (1.56.0-3) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Tue, 14 Jan 2025 04:00:17 -0500
+
+pango1.0 (1.56.0-2) experimental; urgency=medium
+
+  * Cherry-pick build system improvements
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Mon, 13 Jan 2025 08:47:53 -0500
+
+pango1.0 (1.56.0-1) experimental; urgency=medium
+
+  * New upstream release
+  * Bump minimum glib and cairo
+  * Update Build-Depends: help2man -> python3-docutils
+  * debian/libpango*.symbols: Add new symbols
+  * Opt into Salsa CI
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Thu, 09 Jan 2025 12:52:04 -0900
+
+pango1.0 (1.55.0+ds-3) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Tue, 03 Dec 2024 14:04:40 -0500
+
+pango1.0 (1.55.0+ds-2) experimental; urgency=medium
+
+  * New upstream release
+  * Remove fonts-cantarell from Build-Depends and Depends
+  * Add Build-Conflicts: fonts-cantarell (issue was reported upstream)
+  * Bump minimum fontconfig, harfbuzz, and meson
+  * debian/libpango-1.0-0.symbols: Add new symbol
+  * Remove 2 workaround patches that are no longer needed
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Mon, 02 Dec 2024 12:38:25 -0500
+
+pango1.0 (1.54.0+ds-3) unstable; urgency=medium
+
+  * Depend on gir1.2-harfbuzz-0.0-dev
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Thu, 17 Oct 2024 13:13:52 -0400
+
+pango1.0 (1.54.0+ds-2) unstable; urgency=medium
+
+  * Enable sysprof profiling integration on available architectures
+    (LP: #2077465)
+  * Bump Standards Version to 4.7.0
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Tue, 20 Aug 2024 16:56:39 -0400
+
+pango1.0 (1.54.0+ds-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/libpango-1.0-0.symbols: Add new symbol
+  * Add patch to revert dropping installed tests uses by autopkgtests
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Mon, 10 Jun 2024 09:19:21 -0400
+
+pango1.0 (1.52.2+ds-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Fri, 03 May 2024 14:34:33 -0400
+
+pango1.0 (1.52.1+ds-1) unstable; urgency=medium
+
+  * New upstream release
+  * Drop dh-sequence-gnome from Build-Depends
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Fri, 08 Mar 2024 16:14:27 -0500
+
+pango1.0 (1.52.0+ds-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+    - 1.51.2:
+      + Use single fontconfig thread
+      + Fix problems with spaces at line ends
+      + pango-viewer: Fix hint-metrics options
+      + Pangofont: Add properties
+    - 1.52.0:
+      + Add pango_font_map_reload_font
+      + Improve formatting of font sizes
+  * debian/libpango-1.0-0.symbols: Add new symbol.
+
+ -- Amin Bandali <bandali@ubuntu.com>  Tue, 27 Feb 2024 15:47:27 -0500
+
+pango1.0 (1.51.0+ds-4) unstable; urgency=medium
+
+  * Team upload
+  * d/control, d/rules: Reinstate dh-sequence-gnome, but disable
+    control.in.
+    Ubuntu uses this sequence to pull in the Ubuntu-specific
+    dh_translations.
+  * d/control: Depend on systematic names for required GIR XML
+    harfbuzz hasn't actually added a Provides for gir1.2-harfbuzz-0.0-dev
+    yet (#1061082), so we can't depend on that one yet. Hide it behind
+    a build-profile for now.
+  * d/control: Depend on recent gobject-introspection.
+    This means we no longer need libgirepository1.0-dev, which has the
+    disadvantage that it isn't multi-arch co-installable.
+  * d/rules: Use cross g-ir-scanner if cross-compiling (see #1060838)
+  * d/control: Use perl from the build architecture if cross-compiling.
+    We are not compiling a Perl extension, just running a script, so
+    the build architecture's perl is fine.
+  * d/control: Don't produce pango1.0-tools during cross-builds.
+    The man page is generated with help2man, so it's skipped when
+    cross-building. This means the pango1.0-tools package would be
+    incomplete if we are cross-building, unless we are under the nodoc
+    build profile, in which case we explicitly don't mind omitting
+    man pages.
+    In practice the only package in Debian main that depends on
+    pango1.0-tools is libpango1.0-dev, and a build-architecture copy of
+    pango1.0-tools is adequate for that purpose, so not building it is
+    unlikely to be particularly harmful.
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 18 Jan 2024 00:34:38 +0000
+
+pango1.0 (1.51.0+ds-3) unstable; urgency=medium
+
+  * Team upload
+
+  [ Amin Bandali ]
+  * Change packaging branch to debian/latest
+
+  [ Simon McVittie ]
+  * d/control: Stop generating from a template.
+    We don't use any of the other dh-sequence-gnome features (there are no
+    libtool archives, and we don't use the gnome:Foo family of substvars)
+    so drop the build-dependency on dh-sequence-gnome.
+  * libpango1.0-dev: Add Provides for the contained GIR XML.
+    Adding versioned Provides on gir1.2-*-dev corresponding to each GIR XML
+    file is a small step towards being able to exclude GObject-Introspection
+    with a build-profile when cross-compiling. (Helps: #1030223)
+  * Drop libpango1.0-0 transitional package.
+    This was released in Debian 11 and 12 with all the versioned dependencies
+    in the form x (>= y), so if third-party packages still depend on this
+    obsolete transitional package, users can keep its Debian 12 version
+    installed. (Closes: #1055225)
+  * Remove version constraints unnecessary since Debian 11
+  * d/upstream/metadata: Canonicalize Bug-Database, Bug-Submit
+  * Update standards version to 4.6.2, no changes needed.
+
+ -- Simon McVittie <smcv@debian.org>  Thu, 02 Nov 2023 12:44:04 +0000
+
+pango1.0 (1.51.0+ds-2) unstable; urgency=medium
+
+  * Release to unstable
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Tue, 15 Aug 2023 23:04:52 -0400
+
+pango1.0 (1.51.0+ds-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Tue, 15 Aug 2023 04:47:12 -0400
+
+pango1.0 (1.50.14+ds-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 14 Jun 2023 09:14:46 +0100
+
 pango1.0 (1.50.12+ds-1+pexip24u3) pexip-bookworm; urgency=medium
 
   * New versioning scheme

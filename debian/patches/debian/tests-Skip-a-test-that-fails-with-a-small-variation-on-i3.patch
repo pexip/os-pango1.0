@@ -8,10 +8,10 @@ Forwarded: no
  1 file changed, 11 insertions(+), 1 deletion(-)
 
 diff --git a/tests/test-layout.c b/tests/test-layout.c
-index 1139e4f..0043fde 100644
+index ce2ed0d..ff74b48 100644
 --- a/tests/test-layout.c
 +++ b/tests/test-layout.c
-@@ -97,7 +97,17 @@ test_layout (gconstpointer d)
+@@ -132,7 +132,17 @@ test_layout (gconstpointer d)
        for (line = lines[0]; line != NULL; line = lines[++i])
          g_test_message ("%s", line);
  

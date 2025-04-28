@@ -127,6 +127,7 @@ void                  _pango_core_text_font_set_context_key      (PangoCoreTextF
                                                                   gpointer           context_key);
 void                  _pango_core_text_font_set_font_key         (PangoCoreTextFont    *font,
                                                                   PangoCoreTextFontKey *key);
+PangoCoreTextFontKey *_pango_core_text_font_get_font_key         (PangoCoreTextFont    *font);
 void                  _pango_core_text_font_set_ctfont           (PangoCoreTextFont    *font,
                                                                   CTFontRef         font_ref);
 
@@ -148,6 +149,8 @@ _PANGO_EXTERN
 PangoGravity          pango_core_text_font_key_get_gravity          (const PangoCoreTextFontKey *key);
 _PANGO_EXTERN
 CTFontDescriptorRef   pango_core_text_font_key_get_ctfontdescriptor (const PangoCoreTextFontKey *key);
+_PANGO_EXTERN
+const char *          pango_core_text_font_key_get_variations       (const PangoCoreTextFontKey *key);
 
 PangoCoreTextFace *   pango_core_text_font_map_find_face (PangoCoreTextFontMap       *map,
                                                           const PangoCoreTextFontKey *key);

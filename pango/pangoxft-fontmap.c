@@ -158,12 +158,13 @@ static int
 close_display_cb (Display   *display,
 		  XExtCodes *extcodes G_GNUC_UNUSED)
 {
-  GSList *tmp_list;
+  GSList *tmp_list, *fontmap_copy;
 
   G_LOCK (fontmaps);
-  tmp_list = g_slist_copy (fontmaps);
+  fontmap_copy = g_slist_copy (fontmaps);
   G_UNLOCK (fontmaps);
 
+  tmp_list = fontmap_copy;
   while (tmp_list)
     {
       PangoXftFontMap *xftfontmap = tmp_list->data;
@@ -173,7 +174,7 @@ close_display_cb (Display   *display,
 	pango_xft_shutdown_display (display, xftfontmap->screen);
     }
 
-  g_slist_free (tmp_list);
+  g_slist_free (fontmap_copy);
 
   registered_displays = g_slist_remove (registered_displays, display);
 
@@ -390,7 +391,9 @@ pango_xft_font_map_default_substitute (PangoFcFontMap *fcfontmap,
   PangoXftFontMap *xftfontmap = PANGO_XFT_FONT_MAP (fcfontmap);
   double d;
 
-  FcConfigSubstitute (NULL, pattern, FcMatchPattern);
+  FcConfigSubstitute (pango_fc_font_map_get_config (fcfontmap),
+                      pattern, FcMatchPattern);
+
   if (fcfontmap->substitute_func)
     fcfontmap->substitute_func (pattern, fcfontmap->substitute_data);
   XftDefaultSubstitute (xftfontmap->display, xftfontmap->screen, pattern);

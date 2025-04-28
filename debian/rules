@@ -4,11 +4,30 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,-O1 -Wl,-z,defs
 
 built_binaries := $(shell dh_listpackages)
+configure_options :=
 
 ifneq ($(filter libpango1.0-doc,$(built_binaries)),)
 with_docs = true
 else
 with_docs = false
+endif
+
+ifneq ($(filter pango1.0-tools,$(built_binaries)),)
+configure_options += -Dman-pages=true
+endif
+
+ifneq ($(filter pkg.pango1.0.nosysprof,$(DEB_BUILD_PROFILES)),)
+configure_options += -Dsysprof=disabled
+else
+ifeq ($(filter amd64 arm64 armel armhf i386 mips64el ppc64el riscv64 s390x hppa loong64 powerpc ppc64 sh4,$(DEB_HOST_ARCH)),)
+configure_options += -Dsysprof=disabled
+else
+configure_options += -Dsysprof=enabled
+endif
+endif
+
+ifneq ($(DEB_BUILD_ARCH),$(DEB_HOST_ARCH))
+configure_options += --cross-file=$(DEB_HOST_GNU_TYPE)-gobject-introspection.ini
 endif
 
 %:
@@ -19,7 +38,7 @@ override_dh_auto_configure:
 		-Dauto_features=enabled \
 		-Dgtk_doc=$(with_docs) \
 		-Dinstall-tests=true \
-		$(NULL)
+		$(configure_options)
 
 override_dh_auto_test-arch:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))

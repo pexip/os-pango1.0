@@ -162,17 +162,16 @@ pango_fc_font_finalize (GObject *object)
 {
   PangoFcFont *fcfont = PANGO_FC_FONT (object);
   PangoFcFontPrivate *priv = fcfont->priv;
-  PangoFcFontMap *fontmap;
+  PangoFontMap *fontmap;
 
   g_slist_foreach (fcfont->metrics_by_lang, (GFunc)free_metrics_info, NULL);
   g_slist_free (fcfont->metrics_by_lang);
 
-  fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
+  fontmap = fcfont->fontmap;
   if (fontmap)
     {
-      _pango_fc_font_map_remove (PANGO_FC_FONT_MAP (fcfont->fontmap), fcfont);
-      g_weak_ref_clear ((GWeakRef *) &fcfont->fontmap);
-      g_object_unref (fontmap);
+      g_object_remove_weak_pointer (G_OBJECT (fontmap), (gpointer *) &fcfont->fontmap);
+      _pango_fc_font_map_remove (PANGO_FC_FONT_MAP (fontmap), fcfont);
     }
 
   pango_font_description_free (fcfont->description);
@@ -240,7 +239,10 @@ pango_fc_font_set_property (GObject       *object,
         PangoFcFontMap *fcfontmap = PANGO_FC_FONT_MAP (g_value_get_object (value));
 
         g_return_if_fail (fcfont->fontmap == NULL);
-        g_weak_ref_set ((GWeakRef *) &fcfont->fontmap, fcfontmap);
+
+        fcfont->fontmap = (PangoFontMap *) fcfontmap;
+        if (fcfontmap)
+          g_object_add_weak_pointer (G_OBJECT (fcfontmap), (gpointer *) &fcfont->fontmap);
       }
       goto set_decoder;
 
@@ -274,8 +276,8 @@ pango_fc_font_get_property (GObject       *object,
     case PROP_FONTMAP:
       {
 	PangoFcFont *fcfont = PANGO_FC_FONT (object);
-	PangoFontMap *fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
-	g_value_take_object (value, fontmap);
+
+	g_value_set_object (value, fcfont->fontmap);
       }
       break;
     default:
@@ -331,8 +333,6 @@ pango_fc_font_get_coverage (PangoFont     *font,
   PangoFcFont *fcfont = (PangoFcFont *)font;
   PangoFcFontPrivate *priv = fcfont->priv;
   FcCharSet *charset;
-  PangoFcFontMap *fontmap;
-  PangoCoverage *coverage;
 
   if (priv->decoder)
     {
@@ -340,13 +340,10 @@ pango_fc_font_get_coverage (PangoFont     *font,
       return _pango_fc_font_map_fc_to_coverage (charset);
     }
 
-  fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
-  if (!fontmap)
+  if (!fcfont->fontmap)
     return pango_coverage_new ();
 
-  coverage = _pango_fc_font_map_get_coverage (fontmap, fcfont);
-  g_object_unref (fontmap);
-  return coverage;
+  return _pango_fc_font_map_get_coverage (PANGO_FC_FONT_MAP (fcfont->fontmap), fcfont);
 }
 
 /* For Xft, it would be slightly more efficient to simply to
@@ -477,7 +474,7 @@ pango_fc_font_get_metrics (PangoFont     *font,
       PangoFontMap *fontmap;
       PangoContext *context;
 
-      fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
+      fontmap = fcfont->fontmap;
       if (!fontmap)
 	return pango_font_metrics_new ();
 
@@ -526,7 +523,6 @@ pango_fc_font_get_metrics (PangoFont     *font,
         }
 
       g_object_unref (context);
-      g_object_unref (fontmap);
     }
 
   return pango_font_metrics_ref (info->metrics);
@@ -932,37 +928,6 @@ get_font_size (PangoFcFontKey *key,
     }
 }
 
-static void
-parse_variations (const char            *variations,
-                  hb_ot_var_axis_info_t *axes,
-                  int                    n_axes,
-                  float                 *coords)
-{
-  const char *p;
-  const char *end;
-  hb_variation_t var;
-  int i;
-
-  p = variations;
-  while (p && *p)
-    {
-      end = strchr (p, ',');
-      if (hb_variation_from_string (p, end ? end - p: -1, &var))
-        {
-          for (i = 0; i < n_axes; i++)
-            {
-              if (axes[i].tag == var.tag)
-                {
-                  coords[axes[i].axis_index] = var.value;
-                  break;
-                }
-            }
-        }
-
-      p = end ? end + 1 : NULL;
-    }
-}
-
 static hb_font_t *
 pango_fc_font_create_hb_font (PangoFont *font)
 {
@@ -1054,7 +1019,11 @@ pango_fc_font_create_hb_font (PangoFont *font)
 
       hb_ot_var_get_axis_infos (hb_face, 0, &n_axes, axes);
       for (i = 0; i < n_axes; i++)
-        coords[axes[i].axis_index] = axes[i].default_value;
+        {
+          coords[axes[i].axis_index] = axes[i].default_value;
+          if (axes[i].tag == HB_TAG ('o', 'p', 's', 'z'))
+            coords[axes[i].axis_index] = point_size;
+        }
 
       if (FcPatternGetInteger (pattern, FC_INDEX, 0, &index) == FcResultMatch &&
           index != 0)
@@ -1064,11 +1033,11 @@ pango_fc_font_create_hb_font (PangoFont *font)
         }
 
       if (FcPatternGetString (pattern, FC_FONT_VARIATIONS, 0, (FcChar8 **)&variations) == FcResultMatch)
-        parse_variations (variations, axes, n_axes, coords);
+        pango_parse_variations (variations, axes, n_axes, coords);
 
       variations = pango_fc_font_key_get_variations (key);
       if (variations)
-        parse_variations (variations, axes, n_axes, coords);
+        pango_parse_variations (variations, axes, n_axes, coords);
 
       hb_font_set_var_coords_design (hb_font, coords, n_axes);
 
@@ -1107,17 +1076,11 @@ static PangoLanguage **
 _pango_fc_font_get_languages (PangoFont *font)
 {
   PangoFcFont * fcfont = PANGO_FC_FONT (font);
-  PangoFcFontMap *fontmap;
-  PangoLanguage **languages;
 
-  fontmap = g_weak_ref_get ((GWeakRef *) &fcfont->fontmap);
-  if (!fontmap)
+  if (!fcfont->fontmap)
     return NULL;
 
-  languages  = _pango_fc_font_map_get_languages (fontmap, fcfont);
-  g_object_unref (fontmap);
-
-  return languages;
+  return _pango_fc_font_map_get_languages (PANGO_FC_FONT_MAP (fcfont->fontmap), fcfont);
 }
 
 /**
