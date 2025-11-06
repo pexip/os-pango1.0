@@ -2858,7 +2858,7 @@ pango_attr_list_from_string (const char *text)
       double num;
       int len;
 
-      if g_ascii_isdigit (p[0])
+      if (g_ascii_isdigit (p[0]))
         {
           start_index = g_ascii_strtoll (p, &endp, 10);
           if (*endp != ' ')
